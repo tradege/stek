@@ -53,12 +53,6 @@ importers:
       class-validator:
         specifier: ^0.14.0
         version: 0.14.3
-      decimal.js:
-        specifier: ^10.6.0
-        version: 10.6.0
-      ioredis:
-        specifier: ^5.9.2
-        version: 5.9.2
       otplib:
         specifier: ^12.0.0
         version: 12.0.1
@@ -83,9 +77,6 @@ importers:
       socket.io:
         specifier: ^4.6.0
         version: 4.8.3
-      uuid:
-        specifier: ^9.0.1
-        version: 9.0.1
     devDependencies:
       '@nestjs/cli':
         specifier: ^10.0.0
@@ -118,7 +109,7 @@ importers:
         specifier: ^1.5.0
         version: 1.5.6
       '@types/uuid':
-        specifier: ^9.0.0
+        specifier: ^9.0.8
         version: 9.0.8
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.0.0
@@ -126,6 +117,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^6.0.0
         version: 6.21.0(eslint@8.57.1)(typescript@5.9.3)
+      decimal.js:
+        specifier: ^10.6.0
+        version: 10.6.0
       eslint:
         specifier: ^8.0.0
         version: 8.57.1
@@ -135,6 +129,9 @@ importers:
       eslint-plugin-prettier:
         specifier: ^5.0.0
         version: 5.5.5(@types/eslint@9.6.1)(eslint-config-prettier@9.1.2(eslint@8.57.1))(eslint@8.57.1)(prettier@3.8.1)
+      ioredis:
+        specifier: ^5.9.2
+        version: 5.9.2
       jest:
         specifier: ^29.5.0
         version: 29.7.0(@types/node@20.19.31)(ts-node@10.9.2(@types/node@20.19.31)(typescript@5.9.3))
@@ -165,6 +162,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      uuid:
+        specifier: ^13.0.0
+        version: 13.0.0
 
 packages:
 
@@ -3290,6 +3290,10 @@ packages:
   utils-merge@1.0.1:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
+
+  uuid@13.0.0:
+    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
+    hasBin: true
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
@@ -7115,6 +7119,8 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   utils-merge@1.0.1: {}
+
+  uuid@13.0.0: {}
 
   uuid@9.0.1: {}
 
