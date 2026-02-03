@@ -1,0 +1,429 @@
+// StakePro - Crypto Casino Database Schema
+// Prisma Schema for PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER HIERARCHY (MLM/Agent System)
+// 5-Level Structure: Admin → Super Master → Master → Agent → User
+// ============================================
+
+enum UserRole {
+  ADMIN         // Full system control
+  SUPER_MASTER  // Country/Region manager with credit lines
+  MASTER        // Group manager
+  AGENT         // Direct player manager
+  USER          // The player
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+}
+
+model User {
+  id                String      @id @default(uuid())
+  email             String      @unique
+  username          String      @unique
+  passwordHash      String
+  role              UserRole    @default(USER)
+  status            UserStatus  @default(PENDING_VERIFICATION)
+  
+  // Hierarchy - Recursive relationship
+  parentId          String?
+  parent            User?       @relation("UserHierarchy", fields: [parentId], references: [id])
+  children          User[]      @relation("UserHierarchy")
+  
+  // Hierarchy level (0 = Admin, 1 = Super Master, etc.)
+  hierarchyLevel    Int         @default(4)
+  hierarchyPath     String      @default("") // e.g., "/admin-id/super-id/master-id/agent-id/"
+  
+  // Commission settings
+  revenueSharePercent   Decimal   @default(0) @db.Decimal(5, 2)  // % of house edge
+  turnoverRebatePercent Decimal   @default(0) @db.Decimal(5, 2)  // % of total bets
+  
+  // Credit line (for Super Masters and Masters)
+  creditLimit       Decimal     @default(0) @db.Decimal(18, 8)
+  creditUsed        Decimal     @default(0) @db.Decimal(18, 8)
+  
+  // Profile
+  displayName       String?
+  avatarUrl         String?
+  country           String?
+  language          String      @default("en")
+  timezone          String      @default("UTC")
+  
+  // Security
+  twoFactorEnabled  Boolean     @default(false)
+  twoFactorSecret   String?
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  wallets           Wallet[]
+  bets              Bet[]
+  transactions      Transaction[]
+  commissionsEarned Commission[]  @relation("CommissionRecipient")
+  commissionsGenerated Commission[] @relation("CommissionSource")
+  sentTips          Tip[]       @relation("TipSender")
+  receivedTips      Tip[]       @relation("TipReceiver")
+  vaultDeposits     VaultDeposit[]
+  sessions          UserSession[]
+  
+  @@index([parentId])
+  @@index([role])
+  @@index([status])
+  @@index([hierarchyPath])
+  @@index([email])
+  @@index([username])
+}
+
+model UserSession {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token         String    @unique
+  ipAddress     String
+  userAgent     String?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}
+
+// ============================================
+// FINANCIAL ENGINE (Multi-Currency Wallets)
+// ============================================
+
+enum Currency {
+  BTC
+  ETH
+  USDT
+  SOL
+  // Add more as needed
+}
+
+model Wallet {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency        Currency
+  
+  // Balances (using Redis for real-time, this is for persistence)
+  balance         Decimal     @default(0) @db.Decimal(18, 8)
+  lockedBalance   Decimal     @default(0) @db.Decimal(18, 8)  // For pending bets
+  
+  // Deposit address
+  depositAddress  String?     @unique
+  
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  transactions    Transaction[]
+  
+  @@unique([userId, currency])
+  @@index([userId])
+  @@index([currency])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BET
+  WIN
+  COMMISSION
+  TIP_SENT
+  TIP_RECEIVED
+  VAULT_DEPOSIT
+  VAULT_WITHDRAWAL
+  RAIN_RECEIVED
+  CREDIT_GIVEN
+  CREDIT_REPAID
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  walletId        String
+  wallet          Wallet            @relation(fields: [walletId], references: [id])
+  
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  
+  amount          Decimal           @db.Decimal(18, 8)
+  balanceBefore   Decimal           @db.Decimal(18, 8)
+  balanceAfter    Decimal           @db.Decimal(18, 8)
+  
+  // External reference (blockchain tx, bet id, etc.)
+  externalRef     String?
+  
+  // Metadata
+  metadata        Json?
+  
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  confirmedAt     DateTime?
+  
+  @@index([userId])
+  @@index([walletId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// VAULT (Savings Feature)
+// ============================================
+
+model VaultDeposit {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  currency        Currency
+  
+  amount          Decimal     @db.Decimal(18, 8)
+  interestRate    Decimal     @default(0) @db.Decimal(5, 4)  // APY
+  
+  depositedAt     DateTime    @default(now())
+  withdrawnAt     DateTime?
+  
+  @@index([userId])
+  @@index([currency])
+}
+
+// ============================================
+// TIPPING (P2P Transfers)
+// ============================================
+
+model Tip {
+  id              String      @id @default(uuid())
+  senderId        String
+  sender          User        @relation("TipSender", fields: [senderId], references: [id])
+  receiverId      String
+  receiver        User        @relation("TipReceiver", fields: [receiverId], references: [id])
+  
+  currency        Currency
+  amount          Decimal     @db.Decimal(18, 8)
+  message         String?
+  
+  createdAt       DateTime    @default(now())
+  
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+// ============================================
+// RAIN (Chat Bonuses)
+// ============================================
+
+model Rain {
+  id              String      @id @default(uuid())
+  creatorId       String
+  currency        Currency
+  totalAmount     Decimal     @db.Decimal(18, 8)
+  amountPerUser   Decimal     @db.Decimal(18, 8)
+  maxParticipants Int
+  
+  participants    RainParticipant[]
+  
+  expiresAt       DateTime
+  createdAt       DateTime    @default(now())
+  
+  @@index([creatorId])
+}
+
+model RainParticipant {
+  id              String      @id @default(uuid())
+  rainId          String
+  rain            Rain        @relation(fields: [rainId], references: [id])
+  userId          String
+  
+  claimedAt       DateTime    @default(now())
+  
+  @@unique([rainId, userId])
+  @@index([rainId])
+  @@index([userId])
+}
+
+// ============================================
+// COMMISSION SYSTEM (Dynamic Distribution)
+// ============================================
+
+model Commission {
+  id              String      @id @default(uuid())
+  
+  // Who earned the commission
+  recipientId     String
+  recipient       User        @relation("CommissionRecipient", fields: [recipientId], references: [id])
+  
+  // Who generated the commission (the player who bet)
+  sourceUserId    String
+  sourceUser      User        @relation("CommissionSource", fields: [sourceUserId], references: [id])
+  
+  // Related bet
+  betId           String
+  bet             Bet         @relation(fields: [betId], references: [id])
+  
+  // Commission details
+  currency        Currency
+  amount          Decimal     @db.Decimal(18, 8)
+  
+  // Type of commission
+  commissionType  CommissionType
+  
+  // Hierarchy level of recipient (1 = direct parent, 2 = grandparent, etc.)
+  levelFromSource Int
+  
+  createdAt       DateTime    @default(now())
+  
+  @@index([recipientId])
+  @@index([sourceUserId])
+  @@index([betId])
+  @@index([createdAt])
+}
+
+enum CommissionType {
+  REVENUE_SHARE     // % of house edge
+  TURNOVER_REBATE   // % of total bet amount
+}
+
+// ============================================
+// GAME INTEGRITY (Provably Fair)
+// ============================================
+
+model Bet {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  
+  gameType        GameType
+  currency        Currency
+  
+  // Bet details
+  betAmount       Decimal     @db.Decimal(18, 8)
+  multiplier      Decimal     @db.Decimal(10, 4)
+  payout          Decimal     @db.Decimal(18, 8)
+  profit          Decimal     @db.Decimal(18, 8)  // Can be negative (loss)
+  
+  // Provably Fair
+  serverSeed      String
+  serverSeedHash  String      // SHA256 of serverSeed (shown before bet)
+  clientSeed      String
+  nonce           Int
+  
+  // Game-specific data
+  gameData        Json?       // Stores game-specific info (crash point, mines positions, etc.)
+  
+  // Status
+  isWin           Boolean
+  
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  settledAt       DateTime?
+  
+  // Relations
+  commissions     Commission[]
+  
+  @@index([userId])
+  @@index([gameType])
+  @@index([createdAt])
+  @@index([isWin])
+}
+
+enum GameType {
+  CRASH
+  PLINKO
+  MINES
+  DICE
+  LIMBO
+  KENO
+  WHEEL
+  BLACKJACK
+  ROULETTE
+  BACCARAT
+  // Add more games as needed
+}
+
+// ============================================
+// SERVER SEEDS (For Provably Fair rotation)
+// ============================================
+
+model ServerSeed {
+  id              String      @id @default(uuid())
+  userId          String
+  
+  seed            String
+  seedHash        String      // SHA256(seed)
+  
+  isActive        Boolean     @default(true)
+  nonce           Int         @default(0)
+  
+  revealedAt      DateTime?
+  createdAt       DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([isActive])
+}
+
+// ============================================
+// SYSTEM CONFIGURATION
+// ============================================
+
+model SystemConfig {
+  id              String      @id @default(uuid())
+  key             String      @unique
+  value           Json
+  description     String?
+  
+  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime    @default(now())
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id              String      @id @default(uuid())
+  userId          String?
+  action          String
+  entityType      String
+  entityId        String?
+  
+  oldData         Json?
+  newData         Json?
+  
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime    @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
