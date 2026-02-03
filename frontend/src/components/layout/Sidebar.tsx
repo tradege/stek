@@ -1,4 +1,7 @@
+'use client';
 import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // Icons (using simple SVG placeholders - replace with your icon library)
 const icons = {
@@ -48,6 +51,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  close: (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
 };
 
 interface NavItem {
@@ -73,79 +81,111 @@ const secondaryNavItems: NavItem[] = [
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/settings' },
 ];
 
+interface SidebarProps {
+  onClose?: () => void;
+}
+
 /**
  * Sidebar - Main navigation sidebar
  * Electric Cyberpunk theme with glowing accents
  */
-const Sidebar: React.FC = () => {
-  const currentPath = '/games/crash'; // This would come from router in real app
+const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
+  const pathname = usePathname();
+  
+  const handleNavClick = () => {
+    // Close sidebar on mobile when navigating
+    if (onClose) {
+      onClose();
+    }
+  };
   
   return (
-    <aside className="sidebar">
-      {/* Logo */}
-      <div className="p-6 border-b border-card-border">
+    <aside className="h-full flex flex-col bg-bg-card">
+      {/* Logo + Close Button */}
+      <div className="p-4 lg:p-6 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-accent-primary flex items-center justify-center shadow-glow-cyan">
-            <span className="text-xl font-bold text-text-inverse">S</span>
+            <span className="text-xl font-bold text-black">S</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-text-primary">StakePro</h1>
+            <h1 className="text-xl font-bold text-white">StakePro</h1>
             <p className="text-xs text-text-secondary">Crypto Casino</p>
           </div>
         </div>
+        {/* Close button - mobile only */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden"
+          >
+            {icons.close}
+          </button>
+        )}
       </div>
       
       {/* Main Navigation */}
-      <nav className="flex-1 py-4 overflow-y-auto scrollbar-hide">
+      <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
         {/* Games Section */}
         <div className="px-4 mb-2">
-          <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
             Games
           </span>
         </div>
         
-        <ul className="space-y-1">
+        <ul className="space-y-1 px-2">
           {mainNavItems.map((item) => {
-            const isActive = currentPath === item.href;
+            const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
             return (
               <li key={item.id}>
-                <a
+                <Link
                   href={item.href}
-                  className={isActive ? 'sidebar-item-active' : 'sidebar-item'}
+                  onClick={handleNavClick}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
+                      : 'text-text-secondary hover:text-white hover:bg-white/5'
+                  }`}
                 >
                   {icons[item.icon]}
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex-1 font-medium">{item.label}</span>
                   {item.badge && (
-                    <span className="badge-cyan text-[10px]">{item.badge}</span>
+                    <span className="px-2 py-0.5 text-[10px] bg-accent-primary/20 text-accent-primary rounded-full font-semibold">
+                      {item.badge}
+                    </span>
                   )}
-                </a>
+                </Link>
               </li>
             );
           })}
         </ul>
         
         {/* Divider */}
-        <div className="my-4 mx-4 border-t border-card-border" />
+        <div className="my-4 mx-4 border-t border-white/10" />
         
         {/* Secondary Section */}
         <div className="px-4 mb-2">
-          <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
             Account
           </span>
         </div>
         
-        <ul className="space-y-1">
+        <ul className="space-y-1 px-2">
           {secondaryNavItems.map((item) => {
-            const isActive = currentPath === item.href;
+            const isActive = pathname === item.href;
             return (
               <li key={item.id}>
-                <a
+                <Link
                   href={item.href}
-                  className={isActive ? 'sidebar-item-active' : 'sidebar-item'}
+                  onClick={handleNavClick}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
+                      : 'text-text-secondary hover:text-white hover:bg-white/5'
+                  }`}
                 >
                   {icons[item.icon]}
-                  <span>{item.label}</span>
-                </a>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
               </li>
             );
           })}
@@ -153,12 +193,12 @@ const Sidebar: React.FC = () => {
       </nav>
       
       {/* VIP Banner */}
-      <div className="p-4 border-t border-card-border">
-        <div className="card-glow p-4 text-center">
+      <div className="p-4 border-t border-white/10">
+        <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
           <div className="text-2xl mb-2">👑</div>
           <p className="text-sm font-semibold text-accent-primary">VIP Program</p>
           <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
-          <button className="btn-outline w-full mt-3 text-sm py-2">
+          <button className="w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors">
             Learn More
           </button>
         </div>

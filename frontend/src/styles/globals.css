@@ -377,3 +377,64 @@
 .rain-particle {
   animation: rain-fall 3s linear infinite;
 }
+
+/* Slide in animation for live bets */
+@keyframes slide-in {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Slide down animation for dropdowns */
+@keyframes slide-down {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out;
+}
+
+/* Thin scrollbar utility */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thumb-white\/10::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-white\/10::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Safe area for mobile */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Small glow utilities */
+.shadow-glow-cyan-sm {
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
