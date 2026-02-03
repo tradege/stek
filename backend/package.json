@@ -21,7 +21,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:push": "prisma db push"
+    "prisma:seed": "ts-node ../prisma/seed.ts",
+    "db:push": "prisma db push",
+    "db:seed": "npx prisma db seed"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -35,6 +37,7 @@
     "@nestjs/throttler": "^5.0.0",
     "@nestjs/websockets": "^10.0.0",
     "@prisma/client": "^5.0.0",
+    "argon2": "^0.31.2",
     "bcrypt": "^5.1.0",
     "bullmq": "^4.0.0",
     "class-transformer": "^0.5.1",
@@ -81,6 +84,9 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "uuid": "^13.0.0"
+  },
+  "prisma": {
+    "seed": "ts-node ../prisma/seed.ts"
   },
   "jest": {
     "moduleFileExtensions": [
