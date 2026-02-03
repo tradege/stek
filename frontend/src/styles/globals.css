@@ -1,0 +1,379 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   ELECTRIC OBSIDIAN - GLOBAL STYLES
+   ============================================ */
+
+/* Import Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* ============================================
+   BASE LAYER
+   ============================================ */
+@layer base {
+  :root {
+    /* CSS Variables for dynamic theming */
+    --color-main: #0A0E17;
+    --color-card: #131B2C;
+    --color-accent: #00F0FF;
+    --color-danger: #FF385C;
+    --color-success: #00D46E;
+    --color-warning: #FFB800;
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #94A3B8;
+    
+    /* Glow intensities */
+    --glow-sm: 0 0 10px;
+    --glow-md: 0 0 15px;
+    --glow-lg: 0 0 25px;
+    --glow-xl: 0 0 40px;
+  }
+  
+  html {
+    @apply scroll-smooth;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  body {
+    @apply bg-main text-text-primary font-sans antialiased;
+    background-image: 
+      radial-gradient(ellipse at top, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0, 240, 255, 0.02) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-main;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-card-border rounded-full;
+    transition: background-color 0.2s;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-tertiary;
+  }
+  
+  /* Selection */
+  ::selection {
+    @apply bg-accent-primary/30 text-text-primary;
+  }
+}
+
+/* ============================================
+   COMPONENT LAYER
+   ============================================ */
+@layer components {
+  /* ---- BUTTONS ---- */
+  .btn {
+    @apply px-4 py-2 font-semibold rounded-button transition-all duration-200 
+           flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply btn bg-accent-primary text-text-inverse hover:bg-accent-secondary
+           shadow-glow-cyan hover:shadow-glow-cyan-lg active:scale-[0.98];
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger-primary text-text-primary hover:bg-danger-secondary
+           shadow-glow-red hover:shadow-glow-red-lg active:scale-[0.98];
+  }
+  
+  .btn-success {
+    @apply btn bg-success-primary text-text-inverse hover:bg-success-secondary
+           shadow-glow-green hover:shadow-glow-green-lg active:scale-[0.98];
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent text-text-secondary hover:text-text-primary
+           hover:bg-card border border-card-border;
+  }
+  
+  .btn-outline {
+    @apply btn bg-transparent text-accent-primary border border-accent-primary
+           hover:bg-accent-muted hover:shadow-glow-cyan-sm;
+  }
+  
+  /* BET Button - Special styling */
+  .btn-bet {
+    @apply btn-primary text-lg font-bold py-3 px-8 uppercase tracking-wider
+           animate-pulse-glow;
+  }
+  
+  /* ---- CARDS ---- */
+  .card {
+    @apply bg-card rounded-card border border-card-border shadow-card
+           transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply card hover:bg-card-hover hover:shadow-card-hover hover:border-accent-primary/20;
+  }
+  
+  .card-glow {
+    @apply card border-accent-primary/30 shadow-glow-cyan-sm;
+  }
+  
+  /* ---- INPUTS ---- */
+  .input {
+    @apply w-full px-4 py-3 bg-main border border-card-border rounded-input
+           text-text-primary placeholder:text-text-tertiary
+           focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/50
+           transition-all duration-200;
+  }
+  
+  .input-error {
+    @apply input border-danger-primary focus:border-danger-primary focus:ring-danger-primary/50;
+  }
+  
+  /* ---- BADGES ---- */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-badge;
+  }
+  
+  .badge-cyan {
+    @apply badge bg-accent-muted text-accent-primary;
+  }
+  
+  .badge-red {
+    @apply badge bg-danger-muted text-danger-primary;
+  }
+  
+  .badge-green {
+    @apply badge bg-success-muted text-success-primary;
+  }
+  
+  /* ---- MULTIPLIER DISPLAY ---- */
+  .multiplier {
+    @apply font-mono font-bold tabular-nums tracking-tight;
+  }
+  
+  .multiplier-rising {
+    @apply multiplier text-accent-primary text-glow-cyan;
+  }
+  
+  .multiplier-crashed {
+    @apply multiplier text-danger-primary text-glow-red animate-crash-shake;
+  }
+  
+  .multiplier-won {
+    @apply multiplier text-success-primary text-glow-green;
+  }
+  
+  /* ---- GAME PANEL ---- */
+  .game-panel {
+    @apply card p-0 overflow-hidden;
+  }
+  
+  .game-panel-header {
+    @apply px-4 py-3 border-b border-card-border flex items-center justify-between;
+  }
+  
+  .game-panel-body {
+    @apply p-4;
+  }
+  
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    @apply fixed left-0 top-0 h-full w-64 bg-card border-r border-card-border
+           flex flex-col z-sidebar;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 text-text-secondary
+           hover:text-text-primary hover:bg-card-hover transition-colors cursor-pointer;
+  }
+  
+  .sidebar-item-active {
+    @apply sidebar-item text-accent-primary bg-accent-muted border-l-2 border-accent-primary;
+  }
+  
+  /* ---- HEADER ---- */
+  .header {
+    @apply fixed top-0 left-64 right-0 h-16 bg-card/80 backdrop-blur-sm
+           border-b border-card-border flex items-center justify-between px-6 z-header;
+  }
+  
+  /* ---- CHAT ---- */
+  .chat-message {
+    @apply flex gap-3 p-3 hover:bg-card-hover rounded-card transition-colors;
+  }
+  
+  .chat-bubble {
+    @apply bg-main px-3 py-2 rounded-lg text-sm;
+  }
+  
+  .chat-input {
+    @apply input bg-card border-0 focus:ring-0;
+  }
+  
+  /* ---- TABLES ---- */
+  .table-container {
+    @apply overflow-x-auto;
+  }
+  
+  .table {
+    @apply w-full text-sm;
+  }
+  
+  .table th {
+    @apply px-4 py-3 text-left text-text-secondary font-medium uppercase tracking-wider
+           border-b border-card-border bg-card;
+  }
+  
+  .table td {
+    @apply px-4 py-3 border-b border-card-border;
+  }
+  
+  .table tr:hover td {
+    @apply bg-card-hover;
+  }
+  
+  /* ---- WALLET ---- */
+  .wallet-balance {
+    @apply flex items-center gap-2 px-4 py-2 bg-card rounded-card border border-card-border;
+  }
+  
+  .wallet-amount {
+    @apply font-mono font-semibold tabular-nums text-accent-primary;
+  }
+  
+  /* ---- CRYPTO ICONS ---- */
+  .crypto-icon {
+    @apply w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold;
+  }
+  
+  .crypto-btc {
+    @apply crypto-icon bg-crypto-btc/20 text-crypto-btc;
+  }
+  
+  .crypto-eth {
+    @apply crypto-icon bg-crypto-eth/20 text-crypto-eth;
+  }
+  
+  .crypto-usdt {
+    @apply crypto-icon bg-crypto-usdt/20 text-crypto-usdt;
+  }
+  
+  .crypto-sol {
+    @apply crypto-icon bg-crypto-sol/20 text-crypto-sol;
+  }
+}
+
+/* ============================================
+   UTILITY LAYER
+   ============================================ */
+@layer utilities {
+  /* Glow text effects */
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3);
+  }
+  
+  .text-glow-red {
+    text-shadow: 0 0 10px rgba(255, 56, 92, 0.5), 0 0 20px rgba(255, 56, 92, 0.3);
+  }
+  
+  .text-glow-green {
+    text-shadow: 0 0 10px rgba(0, 212, 110, 0.5), 0 0 20px rgba(0, 212, 110, 0.3);
+  }
+  
+  /* Gradient backgrounds */
+  .bg-gradient-game {
+    background: linear-gradient(180deg, #131B2C 0%, #0A0E17 100%);
+  }
+  
+  .bg-gradient-header {
+    background: linear-gradient(90deg, rgba(0, 240, 255, 0.05) 0%, transparent 50%);
+  }
+  
+  /* Glass effect */
+  .glass {
+    @apply bg-card/60 backdrop-blur-md border border-card-border/50;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Tabular numbers for counters */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* Crash graph gradient */
+  .crash-graph-gradient {
+    background: linear-gradient(180deg, 
+      rgba(0, 240, 255, 0.2) 0%, 
+      rgba(0, 240, 255, 0.05) 50%,
+      transparent 100%
+    );
+  }
+  
+  /* Crash line */
+  .crash-line {
+    stroke: #00F0FF;
+    stroke-width: 3;
+    filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));
+  }
+  
+  .crash-line-danger {
+    stroke: #FF385C;
+    filter: drop-shadow(0 0 8px rgba(255, 56, 92, 0.6));
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+  }
+}
+
+@keyframes crash-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Rain animation for bonuses */
+@keyframes rain-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.rain-particle {
+  animation: rain-fall 3s linear infinite;
+}
