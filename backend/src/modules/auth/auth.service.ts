@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import { User, UserRole, UserStatus, Currency } from '@prisma/client';
 
 // DTOs
@@ -167,8 +168,17 @@ export class AuthService {
       throw new UnauthorizedException(`Account is ${user.status.toLowerCase()}`);
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    // Verify password (support both argon2 and bcrypt)
+    let isPasswordValid = false;
+    
+    if (user.passwordHash.startsWith('$argon2')) {
+      // Argon2 hash
+      isPasswordValid = await argon2.verify(user.passwordHash, password);
+    } else {
+      // Bcrypt hash
+      isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    }
+    
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }

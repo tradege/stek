@@ -1,32 +1,32 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PrismaService } from '../../prisma/prisma.service';
-import { UserStatus } from '@prisma/client';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { PrismaService } from "../../prisma/prisma.service";
+import { UserStatus } from "@prisma/client";
 
 export interface JwtPayload {
-  sub: string;      // User ID
+  sub: string;
   username: string;
   email: string;
   role: string;
-  iat?: number;     // Issued at
-  exp?: number;     // Expiration
+  iat?: number;
+  exp?: number;
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'stakepro-super-secret-key-change-in-production',
+      secretOrKey: configService.get<string>("JWT_SECRET") || "stakepro-super-secret-key-change-in-production",
     });
   }
 
-  /**
-   * Validate JWT payload and return user
-   * This is called automatically by Passport after token verification
-   */
   async validate(payload: JwtPayload) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -42,14 +42,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException(`Account is ${user.status.toLowerCase()}`);
+      throw new UnauthorizedException("Account is " + user.status.toLowerCase());
     }
 
-    // Return user object - this will be attached to request.user
     return user;
   }
 }
