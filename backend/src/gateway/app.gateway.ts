@@ -31,6 +31,86 @@ interface AuthenticatedSocket extends Socket {
   lastChatTime?: number;
 }
 
+// Socket-based Rate Limiter (prevents DDoS by Socket ID)
+class SocketRateLimiter {
+  private timestamps: Map<string, number[]> = new Map();
+  private readonly windowMs: number;
+  private readonly maxRequests: number;
+  public blockedCount: number = 0;
+  public allowedCount: number = 0;
+
+  constructor(windowMs: number = 1000, maxRequests: number = 1) {
+    this.windowMs = windowMs;
+    this.maxRequests = maxRequests;
+    
+    // Cleanup old entries every 30 seconds
+    setInterval(() => this.cleanup(), 30000);
+  }
+
+  isRateLimited(socketId: string): boolean {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    
+    // Get or create timestamps array
+    let timestamps = this.timestamps.get(socketId);
+    if (!timestamps) {
+      timestamps = [];
+      this.timestamps.set(socketId, timestamps);
+    }
+    
+    // Remove old timestamps outside the window
+    const validTimestamps = timestamps.filter(t => t > windowStart);
+    this.timestamps.set(socketId, validTimestamps);
+    
+    // Check if rate limited
+    if (validTimestamps.length >= this.maxRequests) {
+      this.blockedCount++;
+      return true;
+    }
+    
+    // Add current timestamp
+    validTimestamps.push(now);
+    this.allowedCount++;
+    return false;
+  }
+
+  removeSocket(socketId: string): void {
+    this.timestamps.delete(socketId);
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    
+    for (const [socketId, timestamps] of this.timestamps.entries()) {
+      const validTimestamps = timestamps.filter(t => t > windowStart);
+      if (validTimestamps.length === 0) {
+        this.timestamps.delete(socketId);
+      } else {
+        this.timestamps.set(socketId, validTimestamps);
+      }
+    }
+  }
+
+  getSize(): number {
+    return this.timestamps.size;
+  }
+
+  getStats(): { blocked: number; allowed: number; blockRate: number } {
+    const total = this.blockedCount + this.allowedCount;
+    return {
+      blocked: this.blockedCount,
+      allowed: this.allowedCount,
+      blockRate: total > 0 ? (this.blockedCount / total) * 100 : 0
+    };
+  }
+
+  resetStats(): void {
+    this.blockedCount = 0;
+    this.allowedCount = 0;
+  }
+}
+
 interface GameTick {
   gameId: string;
   multiplier: number;
@@ -87,6 +167,7 @@ export class AppGateway {
   private eventBus: EventEmitter;
   private connectedClients: Map<string, AuthenticatedSocket> = new Map();
   private userSockets: Map<string, Set<string>> = new Map();  // userId -> Set of socketIds
+  private chatRateLimiter: SocketRateLimiter = new SocketRateLimiter(1000, 1);  // 1 msg per second per socket
 
   // Statistics
   private stats = {
@@ -191,6 +272,9 @@ export class AppGateway {
     this.connectedClients.delete(socket.id);
     this.stats.currentConnections--;
 
+    // Remove from rate limiter
+    this.chatRateLimiter.removeSocket(socket.id);
+
     // Remove from user sockets
     if (socket.userId && this.userSockets.has(socket.userId)) {
       this.userSockets.get(socket.userId)!.delete(socket.id);
@@ -276,13 +360,12 @@ export class AppGateway {
       return;
     }
 
-    // Rate limiting
-    const now = Date.now();
-    if (socket.lastChatTime && now - socket.lastChatTime < CHAT_RATE_LIMIT_MS) {
+    // Rate limiting by Socket ID (prevents DDoS)
+    if (this.chatRateLimiter.isRateLimited(socket.id)) {
       socket.emit('error', { 
         code: 'RATE_LIMITED', 
         message: 'Please wait before sending another message',
-        retryAfter: CHAT_RATE_LIMIT_MS - (now - socket.lastChatTime),
+        retryAfter: CHAT_RATE_LIMIT_MS,
       });
       return;
     }
@@ -301,9 +384,6 @@ export class AppGateway {
       });
       return;
     }
-
-    // Update rate limit timestamp
-    socket.lastChatTime = now;
 
     // Broadcast to chat room
     const chatMessage: ChatMessage = {
@@ -444,6 +524,20 @@ export class AppGateway {
       message,
       timestamp: new Date(),
     });
+  }
+
+  /**
+   * Get rate limiter statistics
+   */
+  public getRateLimiterStats(): { blocked: number; allowed: number; blockRate: number } {
+    return this.chatRateLimiter.getStats();
+  }
+
+  /**
+   * Reset rate limiter statistics
+   */
+  public resetRateLimiterStats(): void {
+    this.chatRateLimiter.resetStats();
   }
 }
 
