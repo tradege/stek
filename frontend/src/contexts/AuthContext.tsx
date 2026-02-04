@@ -87,6 +87,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [token, connect, disconnect]);
 
+    // Listen for balance update events from socket - update balance in real-time
+  useEffect(() => {
+    const handleBalanceUpdate = (event: CustomEvent<{ change: string; reason: string; newBalance?: string }>) => {
+      console.log('[Auth] Balance update event received:', event.detail);
+      
+      // Update balance directly in state for instant UI update
+      setUser(prevUser => {
+        if (!prevUser) return prevUser;
+        
+        const change = parseFloat(event.detail.change);
+        if (isNaN(change)) return prevUser;
+        
+        // Update USDT balance
+        const updatedBalance = prevUser.balance.map(b => {
+          if (b.currency === 'USDT') {
+            const currentBalance = parseFloat(b.available);
+            const newBalance = event.detail.newBalance 
+              ? event.detail.newBalance 
+              : (currentBalance + change).toFixed(2);
+            return { ...b, available: newBalance };
+          }
+          return b;
+        });
+        
+        console.log('[Auth] Balance updated in state:', updatedBalance);
+        return { ...prevUser, balance: updatedBalance };
+      });
+    };
+    window.addEventListener('balance:update', handleBalanceUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('balance:update', handleBalanceUpdate as EventListener);
+    };
+  }, []);
+
   /**
    * Fetch current user data
    */

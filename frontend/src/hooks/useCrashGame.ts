@@ -7,7 +7,7 @@ import { useSocket } from '@/contexts/SocketContext';
 export type GameState = 'WAITING' | 'STARTING' | 'RUNNING' | 'CRASHED';
 
 // Bet status for the current user
-export type BetStatus = 'NONE' | 'PLACED' | 'CASHED_OUT' | 'LOST';
+export type BetStatus = 'NONE' | 'PLACED' | 'CASHED_OUT' | 'LOST' | 'WON';
 
 interface GameRound {
   gameId: string;
@@ -106,9 +106,16 @@ export const useCrashGame = (): CrashGameState => {
     if (!socket) return;
 
     // Game tick - multiplier update
-    const handleTick = (data: { multiplier: number; gameId: string }) => {
-      targetMultiplierRef.current = data.multiplier;
-      setGameId(data.gameId);
+    const handleTick = (data: { multiplier: number | string; gameId?: string }) => {
+      // Parse multiplier - could be string or number from backend
+      const mult = typeof data.multiplier === 'string' ? parseFloat(data.multiplier) : data.multiplier;
+      if (!isNaN(mult)) {
+        targetMultiplierRef.current = mult;
+      }
+      
+      if (data.gameId) {
+        setGameId(data.gameId);
+      }
       
       if (gameState !== 'RUNNING') {
         setGameState('RUNNING');
@@ -116,41 +123,53 @@ export const useCrashGame = (): CrashGameState => {
       }
       
       // Update potential win if bet is placed
-      if (betStatus === 'PLACED' && currentBet) {
-        setPotentialWin(currentBet.betAmount * data.multiplier);
+      if (betStatus === 'PLACED' && currentBet && !isNaN(mult)) {
+        setPotentialWin(currentBet.betAmount * mult);
       }
     };
 
-    // Game crashed
-    const handleCrashed = (data: { crashPoint: number; gameId: string }) => {
-      console.log('[Crash] Game crashed at:', data.crashPoint);
-      
-      // Cancel animation
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      
-      setGameState('CRASHED');
-      setCrashPoint(data.crashPoint);
-      setCurrentMultiplier(data.crashPoint);
-      targetMultiplierRef.current = data.crashPoint;
-      
-      // Update history
-      setRecentCrashes(prev => [data.crashPoint, ...prev.slice(0, 9)]);
-      
-      // If player had a bet and didn't cash out, they lost
-      if (betStatus === 'PLACED') {
-        setBetStatus('LOST');
-        setPotentialWin(0);
+    // Game crashed - FIXED: Handle both string and number crashPoint, and gameNumber vs gameId
+    const handleCrashed = (data: { crashPoint: number | string; gameId?: string; gameNumber?: number }) => {
+      try {
+        // Parse crashPoint - backend sends it as string
+        const cp = typeof data.crashPoint === 'string' ? parseFloat(data.crashPoint) : data.crashPoint;
+        const gid = data.gameId || data.gameNumber?.toString() || '';
+        
+        console.log('[Crash] Game crashed at:', cp, 'Raw data:', data);
+        
+        if (isNaN(cp)) {
+          console.error('[Crash] Invalid crashPoint:', data.crashPoint);
+          return;
+        }
+        
+        // Cancel animation
+        
+        setGameState('CRASHED');
+        setCrashPoint(cp);
+        setCurrentMultiplier(cp);
+        targetMultiplierRef.current = cp;
+        
+        // Update history
+        setRecentCrashes(prev => { if (prev.length > 0 && prev[0] === cp) { return prev; } return [cp, ...prev].slice(0, 10); });
+        
+        // If player had a bet and didn't cash out, they lost
+        if (betStatus === 'PLACED') {
+          setBetStatus('LOST');
+          setPotentialWin(0);
+        }
+      } catch (err) {
+        console.error('[Crash] Error handling crash event:', err);
       }
     };
 
     // Game starting (countdown)
-    const handleStarting = (data: { countdown: number; gameId: string }) => {
+    const handleStarting = (data: { countdown: number; gameId?: string; gameNumber?: number }) => {
       console.log('[Crash] Game starting in:', data.countdown);
+      const gid = data.gameId || data.gameNumber?.toString() || '';
+      
       setGameState('WAITING');
       setCountdown(data.countdown);
-      setGameId(data.gameId);
+      setGameId(gid);
       setCurrentMultiplier(1.00);
       targetMultiplierRef.current = 1.00;
       setCrashPoint(null);
@@ -164,50 +183,74 @@ export const useCrashGame = (): CrashGameState => {
     };
 
     // Game started
-    const handleStarted = (data: { gameId: string }) => {
-      console.log('[Crash] Game started:', data.gameId);
+    const handleStarted = (data: { gameId?: string; gameNumber?: number }) => {
+      const gid = data.gameId || data.gameNumber?.toString() || '';
+      console.log('[Crash] Game started:', gid);
+      
       setGameState('RUNNING');
       setCountdown(0);
       lastUpdateTimeRef.current = Date.now();
       
       // Start animation loop
+      // Animation cleanup moved to separate useEffect
+      // if (animationRef.current) {
+        // cancelAnimationFrame(animationRef.current);
       animationRef.current = requestAnimationFrame(animateMultiplier);
     };
 
     // Bet placed confirmation
-    const handleBetPlaced = (data: { success: boolean; bet: PlayerBet; error?: string }) => {
-      if (data.success) {
-        console.log('[Crash] Bet placed:', data.bet);
-        setBetStatus('PLACED');
-        setCurrentBet(data.bet);
-        setError(null);
-      } else {
-        console.error('[Crash] Bet failed:', data.error);
-        setError(data.error || 'Failed to place bet');
+    const handleBetPlaced = (data: { success?: boolean; bet?: PlayerBet; error?: string; userId?: string; amount?: string }) => {
+      // Handle both confirmation format and broadcast format
+      if (data.success !== undefined) {
+        if (data.success && data.bet) {
+          console.log('[Crash] Bet placed:', data.bet);
+          setBetStatus('PLACED');
+          setCurrentBet(data.bet);
+          setError(null);
+        } else if (!data.success) {
+          console.error('[Crash] Bet failed:', data.error);
+          setError(data.error || 'Failed to place bet');
+          setBetStatus('NONE');
+          setCurrentBet(null);
+        }
+      }
+      // Broadcast format - just log it
+      else if (data.userId && data.amount) {
+        console.log('[Crash] Bet broadcast:', data.userId, data.amount);
       }
     };
 
     // Cashout confirmation
-    const handleCashout = (data: { success: boolean; multiplier: number; profit: number; error?: string }) => {
-      if (data.success) {
-        console.log('[Crash] Cashed out at:', data.multiplier, 'Profit:', data.profit);
-        setBetStatus('CASHED_OUT');
-        setCurrentBet(prev => prev ? { ...prev, cashoutMultiplier: data.multiplier, profit: data.profit } : null);
-        setError(null);
-      } else {
-        console.error('[Crash] Cashout failed:', data.error);
-        setError(data.error || 'Failed to cash out');
+    const handleCashout = (data: { success?: boolean; multiplier?: number | string; profit?: number | string; error?: string; betId?: string }) => {
+      // Handle confirmation format
+      if (data.success !== undefined) {
+        if (data.success) {
+          const mult = typeof data.multiplier === 'string' ? parseFloat(data.multiplier) : (data.multiplier || 0);
+          const prof = typeof data.profit === 'string' ? parseFloat(data.profit) : (data.profit || 0);
+          
+          console.log('[Crash] Cashed out at:', mult, 'Profit:', prof);
+          setBetStatus('CASHED_OUT');
+          setCurrentBet(prev => prev ? { ...prev, cashoutMultiplier: mult, profit: prof } : null);
+          setError(null);
+        } else {
+          console.error('[Crash] Cashout failed:', data.error);
+          setError(data.error || 'Failed to cash out');
+        }
+      }
+      // Broadcast format - just log it
+      else if (data.betId) {
+        console.log('[Crash] Cashout broadcast:', data.betId);
       }
     };
 
-    // State change handler - handles WAITING, STARTING, RUNNING states from backend
+    // State change handler - handles WAITING, STARTING, RUNNING, CRASHED states from backend
     const handleStateChange = (data: { state: string; gameNumber?: number; multiplier?: string; crashPoint?: string }) => {
       console.log('[Crash] State change:', data.state, data);
       
       const gameIdStr = data.gameNumber?.toString() || '';
       
       if (data.state === 'WAITING') {
-        handleStarting({ countdown: 5, gameId: gameIdStr });
+        handleStarting({ countdown: 10, gameId: gameIdStr }); // 10 seconds waiting time
       } else if (data.state === 'STARTING') {
         handleStarting({ countdown: 3, gameId: gameIdStr });
       } else if (data.state === 'RUNNING') {
@@ -220,9 +263,15 @@ export const useCrashGame = (): CrashGameState => {
           }
         }
       } else if (data.state === 'CRASHED' && data.crashPoint) {
+        // Don't call handleCrashed here - it's already called by crash:crashed event
+        // This prevents duplicate history entries
         const cp = parseFloat(data.crashPoint);
         if (!isNaN(cp)) {
-          handleCrashed({ crashPoint: cp, gameId: gameIdStr });
+          setGameState('CRASHED');
+          setCrashPoint(cp);
+          setCurrentMultiplier(cp);
+          targetMultiplierRef.current = cp;
+          // History is updated by crash:crashed event, not here
         }
       }
     };
@@ -235,6 +284,23 @@ export const useCrashGame = (): CrashGameState => {
     socket.on('crash:started', handleStarted);
     socket.on('crash:bet_placed', handleBetPlaced);
     socket.on('crash:cashout', handleCashout);
+    
+    // Listen for balance updates and trigger page refresh of balance
+    const handleBalanceUpdate = (data: { change: string; reason: string }) => {
+      console.log('[Crash] Balance update received:', data);
+      // Dispatch a custom event that AuthContext can listen to
+      window.dispatchEvent(new CustomEvent('balance:update', { detail: data }));
+    };
+    socket.on('balance:update', handleBalanceUpdate);
+    
+    // Listen for crash history on connect
+    const handleHistory = (data: { crashes: number[] }) => {
+      console.log('[Crash] History received:', data.crashes.length, 'entries');
+      if (data.crashes && data.crashes.length > 0) {
+        setRecentCrashes(data.crashes);
+      }
+    };
+    socket.on('crash:history', handleHistory);
 
     // Request current game state
     socket.emit('crash:get_state');
@@ -248,10 +314,9 @@ export const useCrashGame = (): CrashGameState => {
       socket.off('crash:started', handleStarted);
       socket.off('crash:bet_placed', handleBetPlaced);
       socket.off('crash:cashout', handleCashout);
+      socket.off('balance:update', handleBalanceUpdate);
+      socket.off('crash:history', handleHistory);
       
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
     };
   }, [socket, gameState, betStatus, currentBet, animateMultiplier]);
 
@@ -262,36 +327,40 @@ export const useCrashGame = (): CrashGameState => {
     }
     
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
     };
   }, [gameState, animateMultiplier]);
 
   // Place bet action
   const placeBet = useCallback((amount: number, autoCashout?: number) => {
+    console.log('[Crash] placeBet called with:', { amount, autoCashout, gameState, betStatus, isConnected, hasSocket: !!socket });
+    
     if (!socket || !isConnected) {
+      console.error('[Crash] Not connected - socket:', !!socket, 'isConnected:', isConnected);
       setError('Not connected to server');
       return;
     }
     
-    if (gameState !== 'WAITING') {
-      setError('Can only bet during waiting phase');
+    // Allow betting during WAITING or STARTING phases (before game actually runs)
+    if (gameState !== 'WAITING' && gameState !== 'STARTING') {
+      console.error('[Crash] Wrong game state:', gameState, '- expected WAITING or STARTING');
+      setError('Can only bet before game starts');
       return;
     }
     
     if (betStatus === 'PLACED') {
+      console.error('[Crash] Bet already placed:', betStatus);
       setError('Bet already placed');
       return;
     }
     
-    console.log('[Crash] Placing bet:', amount, 'Auto cashout:', autoCashout);
+    console.log('[Crash] ✅ All checks passed, emitting crash:place_bet');
     
     socket.emit('crash:place_bet', {
       amount,
       autoCashout: autoCashout || null,
     });
+    
+    console.log('[Crash] ✅ Emitted crash:place_bet event');
     
     // Optimistic update
     setBetStatus('PLACED');

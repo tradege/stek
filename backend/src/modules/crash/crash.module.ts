@@ -4,11 +4,11 @@
  * ============================================
  * Main module for the Crash game
  */
-
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { CrashService } from './crash.service';
 import { CrashGateway } from './crash.gateway';
+import { GameConfigService } from './game-config.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -19,7 +19,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  providers: [CrashService, CrashGateway],
-  exports: [CrashService],
+  providers: [CrashService, CrashGateway, GameConfigService],
+  exports: [CrashService, GameConfigService],
 })
 export class CrashModule {}

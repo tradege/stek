@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
 import WalletModal from '@/components/wallet/WalletModal';
 import { SoundToggleButton } from '@/hooks/useGameSounds';
 
@@ -12,19 +13,77 @@ interface HeaderProps {
   isMobile?: boolean;
 }
 
+// Format number to compact form (1.2k, 1.2M, etc.)
+const formatCompact = (num: number): string => {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k';
+  }
+  return num.toString();
+};
+
 /**
  * Header - Top navigation bar
  * Contains: Menu (mobile), Search, Wallet Balance, Sound, Notifications, User Menu, Chat (mobile)
  */
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { socket, isConnected } = useSocket();
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // Real-time stats
+  const [onlineUsers, setOnlineUsers] = useState<number>(0);
+  const [betsToday, setBetsToday] = useState<number>(0);
+  const [totalVolume, setTotalVolume] = useState<number>(0);
 
   // Get primary balance (USDT)
   const primaryBalance = user?.balance?.find(b => b.currency === 'USDT');
   const balanceAmount = primaryBalance ? parseFloat(primaryBalance.available) : 0;
+
+  // Listen for real-time stats from socket
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for online users count
+    const handleOnlineUsers = (count: number) => {
+      setOnlineUsers(count);
+    };
+
+    // Listen for global stats
+    const handleGlobalStats = (stats: { onlineUsers?: number; betsToday?: number; totalVolume?: number }) => {
+      if (stats.onlineUsers !== undefined) setOnlineUsers(stats.onlineUsers);
+      if (stats.betsToday !== undefined) setBetsToday(stats.betsToday);
+      if (stats.totalVolume !== undefined) setTotalVolume(stats.totalVolume);
+    };
+
+    socket.on('stats:online', handleOnlineUsers);
+    socket.on('stats:global', handleGlobalStats);
+
+    // Request initial stats
+    socket.emit('stats:request');
+
+    return () => {
+      socket.off('stats:online', handleOnlineUsers);
+      socket.off('stats:global', handleGlobalStats);
+    };
+  }, [socket]);
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <>
@@ -69,13 +128,17 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
             {/* Live Stats - Desktop only */}
             <div className="hidden xl:flex items-center gap-6 text-sm">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 <span className="text-text-secondary">Online:</span>
-                <span className="text-white font-semibold tabular-nums">12,847</span>
+                <span className="text-white font-semibold tabular-nums">
+                  {onlineUsers > 0 ? formatCompact(onlineUsers) : '...'}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-text-secondary">Bets Today:</span>
-                <span className="text-white font-semibold tabular-nums">1.2M</span>
+                <span className="text-white font-semibold tabular-nums">
+                  {betsToday > 0 ? formatCompact(betsToday) : '...'}
+                </span>
               </div>
             </div>
           </div>
@@ -100,178 +163,164 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                     <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold">
                       ₮
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-sm font-mono tabular-nums text-white">
-                        {balanceAmount.toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                      <span className="text-[10px] text-text-secondary hidden sm:block">USDT</span>
-                    </div>
-                    <svg
-                      className={`w-4 h-4 text-text-secondary transition-transform hidden sm:block ${
-                        isWalletOpen ? 'rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
+                    <span className="text-white font-semibold tabular-nums hidden sm:block">
+                      {balanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-text-secondary text-sm hidden sm:block">USDT</span>
+                    <svg className={`w-4 h-4 text-text-secondary transition-transform ${isWalletOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  
+
                   {/* Wallet Dropdown */}
                   {isWalletOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-bg-card border border-white/10 rounded-xl p-4 z-50 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-semibold text-white">Wallet</h3>
-                        <Link href="/wallet" className="text-accent-primary text-sm hover:underline">
-                          View All
-                        </Link>
-                      </div>
-                      
-                      {/* Balance List */}
-                      <div className="space-y-2">
-                        {user.balance?.map((bal) => (
-                          <div key={bal.currency} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-sm font-bold">
-                                ₮
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-white">{bal.currency}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-mono tabular-nums text-white">
-                                {parseFloat(bal.available).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                              </p>
-                              {parseFloat(bal.locked) > 0 && (
-                                <p className="text-xs text-text-secondary">
-                                  Locked: {parseFloat(bal.locked).toFixed(2)}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Actions */}
-                      <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-                        <button 
-                          onClick={() => { setIsWalletOpen(false); setIsWalletModalOpen(true); }}
-                          className="flex-1 py-2 px-4 bg-accent-primary text-black font-medium rounded-lg hover:bg-accent-primary/90 transition-colors text-sm"
-                        >
-                          Deposit
-                        </button>
-                        <button 
-                          onClick={() => { setIsWalletOpen(false); setIsWalletModalOpen(true); }}
-                          className="flex-1 py-2 px-4 border border-white/20 text-white rounded-lg hover:bg-white/5 transition-colors text-sm"
-                        >
-                          Withdraw
-                        </button>
-                      </div>
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-bg-card border border-white/10 rounded-lg shadow-xl py-2 z-50">
+                      <button
+                        onClick={() => {
+                          setIsWalletModalOpen(true);
+                          setIsWalletOpen(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Deposit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsWalletModalOpen(true);
+                          setIsWalletOpen(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                        </svg>
+                        Withdraw
+                      </button>
                     </div>
                   )}
                 </div>
-                
-                {/* Deposit Button - Desktop */}
-                <button 
+
+                {/* Deposit Button */}
+                <button
                   onClick={() => setIsWalletModalOpen(true)}
-                  className="hidden sm:flex items-center gap-2 py-2 px-4 bg-accent-primary text-black font-medium rounded-lg hover:bg-accent-primary/90 transition-colors shadow-glow-cyan-sm"
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-black font-semibold rounded-lg transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>Deposit</span>
+                  Deposit
                 </button>
 
                 {/* Sound Toggle */}
                 <SoundToggleButton />
-                
-                {/* Notifications */}
-                <button className="relative p-2 text-text-secondary hover:text-white transition-colors hidden sm:block">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                    />
-                  </svg>
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                </button>
 
-                {/* Chat Button - Mobile */}
-                {isMobile && onChatClick && (
+                {/* Notifications */}
+                <div className="relative" ref={notificationsRef}>
                   <button
-                    onClick={onChatClick}
-                    className="p-2 text-text-secondary hover:text-white transition-colors lg:hidden"
+                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
+                    title="Notifications"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
+                    {/* Notification dot - hidden when no notifications */}
+                    {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" /> */}
                   </button>
-                )}
-                
+
+                  {/* Notifications Dropdown */}
+                  {isNotificationsOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-bg-card border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-white/10">
+                        <h3 className="text-white font-semibold">Notifications</h3>
+                      </div>
+                      <div className="p-6 text-center">
+                        <svg className="w-12 h-12 text-text-secondary mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <p className="text-text-secondary text-sm">No new notifications</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* User Menu */}
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-white/5 rounded-lg transition-colors"
+                    className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-lg transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-cyan-600 flex items-center justify-center shadow-glow-cyan-sm">
-                      <span className="text-sm font-bold text-black">
-                        {user.username.charAt(0).toUpperCase()}
-                      </span>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white font-bold text-sm">
+                      {user.username?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <div className="hidden lg:block text-left">
-                      <p className="text-sm font-medium text-white">{user.displayName || user.username}</p>
-                      <p className="text-xs text-text-secondary capitalize">{user.role.toLowerCase()}</p>
-                    </div>
+                    <span className="text-white font-medium hidden sm:block max-w-24 truncate">
+                      {user.username}
+                    </span>
                   </button>
 
                   {/* User Dropdown */}
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-bg-card border border-white/10 rounded-xl p-2 z-50 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
-                      <Link href="/profile" className="block px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg">
-                        Profile
-                      </Link>
-                      <Link href="/settings" className="block px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg">
-                        Settings
-                      </Link>
-                      <Link href="/transactions" className="block px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg">
-                        Transactions
-                      </Link>
-                      {/* Admin Link */}
-                      {user.role === 'ADMIN' && (
-                        <>
-                          <div className="border-t border-white/10 my-2" />
-                          <Link href="/admin/transactions" className="block px-3 py-2 text-sm text-accent-primary hover:bg-white/5 rounded-lg">
-                            🛡️ Admin Panel
-                          </Link>
-                        </>
-                      )}
-                      <div className="border-t border-white/10 my-2" />
-                      <button 
-                        onClick={logout}
-                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-white/5 rounded-lg"
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-bg-card border border-white/10 rounded-lg shadow-xl py-2 z-50">
+                      <div className="px-4 py-2 border-b border-white/10">
+                        <p className="text-white font-medium truncate">{user.username}</p>
+                        <p className="text-text-secondary text-xs truncate">{user.email}</p>
+                      </div>
+                      <Link
+                        href="/affiliates"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
                       >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Affiliates
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
                         Logout
                       </button>
                     </div>
                   )}
                 </div>
+
+                {/* Mobile Chat Button */}
+                {isMobile && onChatClick && (
+                  <button
+                    onClick={onChatClick}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden relative"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full" />
+                  </button>
+                )}
               </>
             ) : (
               // Not authenticated
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Link href="/login" className="py-2 px-3 sm:px-4 text-white hover:bg-white/5 rounded-lg transition-colors text-sm">
-                  Sign In
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Link
+                  href="/login"
+                  className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-colors text-sm font-medium"
+                >
+                  Login
                 </Link>
-                <Link href="/register" className="py-2 px-3 sm:px-4 bg-accent-primary text-black font-medium rounded-lg hover:bg-accent-primary/90 transition-colors text-sm shadow-glow-cyan-sm">
-                  Sign Up
+                <Link
+                  href="/register"
+                  className="px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-black font-semibold rounded-lg transition-colors text-sm"
+                >
+                  Register
                 </Link>
               </div>
             )}
@@ -280,9 +329,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
       </header>
 
       {/* Wallet Modal */}
-      <WalletModal 
-        isOpen={isWalletModalOpen} 
-        onClose={() => setIsWalletModalOpen(false)} 
+      <WalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
       />
     </>
   );

@@ -217,7 +217,7 @@ export class BotService implements OnModuleInit {
   /**
    * Handle game state changes
    */
-  @OnEvent('crash:state_change')
+  @OnEvent('crash.state_change')
   handleGameStateChange(data: { state: string; multiplier?: number }) {
     if (!this.isEnabled) return;
 
@@ -240,7 +240,7 @@ export class BotService implements OnModuleInit {
   /**
    * Handle tick events for cashout decisions
    */
-  @OnEvent('crash:tick')
+  @OnEvent('crash.tick')
   handleTick(data: { multiplier: number }) {
     if (!this.isEnabled) return;
     

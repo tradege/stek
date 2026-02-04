@@ -6,7 +6,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CashierModule } from './modules/wallet/cashier.module';
 import { BotModule } from './modules/bot/bot.module';
 import { AffiliateModule } from './modules/affiliate/affiliate.module';
+import { IntegrationModule } from './integration/integration.module';
 import { CrashModule } from './modules/crash/crash.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { PlinkoModule } from './modules/plinko/plinko.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -32,15 +35,22 @@ import { PrismaModule } from './prisma/prisma.module';
     // Auth module
     AuthModule,
     
+    // Admin module (User management, Stats)
+    AdminModule,
+    
     // Cashier module (Deposit/Withdraw)
     CashierModule,
     
     // Crash Game module
     CrashModule,
+    PlinkoModule,
     
     // Bot module (Ghost Protocol - Traffic Bots)
     BotModule,
     AffiliateModule,
+    
+    // External Game Provider Integration
+    IntegrationModule,
   ],
   controllers: [],
   providers: [],

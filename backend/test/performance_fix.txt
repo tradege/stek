@@ -1,0 +1,49 @@
+  describe('⚡ Performance Tests', () => {
+    it('7.1 - Should handle rapid sequential requests', async () => {
+      // Send 10 sequential requests (not parallel to avoid connection issues)
+      for (let i = 0; i < 10; i++) {
+        const response = await request(app.getHttpServer())
+          .post('/api/integration/balance')
+          .set('X-API-KEY', API_KEY)
+          .send({ userId: testUserId, currency: 'USDT' });
+        
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('OK');
+      }
+    });
+
+    it('7.2 - Should handle multiple transactions in sequence', async () => {
+      // Get initial balance
+      const initialResponse = await request(app.getHttpServer())
+        .post('/api/integration/balance')
+        .set('X-API-KEY', API_KEY)
+        .send({ userId: testUserId, currency: 'USDT' });
+      
+      const initialBalance = initialResponse.body.balance;
+      
+      // Place 5 small bets
+      for (let i = 0; i < 5; i++) {
+        const betResponse = await request(app.getHttpServer())
+          .post('/api/integration/transaction')
+          .set('X-API-KEY', API_KEY)
+          .send({
+            userId: testUserId,
+            amount: 1.00,
+            type: 'BET',
+            gameId: 'perf_test',
+            transactionId: `perf_bet_${Date.now()}_${i}`,
+          });
+        
+        expect(betResponse.body.status).toBe('OK');
+      }
+      
+      // Verify balance decreased by 5
+      const finalResponse = await request(app.getHttpServer())
+        .post('/api/integration/balance')
+        .set('X-API-KEY', API_KEY)
+        .send({ userId: testUserId, currency: 'USDT' });
+      
+      expect(finalResponse.body.balance).toBe(initialBalance - 5);
+    });
+  });
+});

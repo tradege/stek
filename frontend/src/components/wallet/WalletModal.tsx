@@ -1,6 +1,8 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -14,7 +16,7 @@ interface DepositAddress {
   minDeposit: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
 
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const { token, refreshUser } = useAuth();
@@ -27,6 +29,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const [depositAddress, setDepositAddress] = useState<DepositAddress | null>(null);
   const [txHash, setTxHash] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
+  const [copied, setCopied] = useState(false);
   
   // Withdraw state
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -139,8 +142,12 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    setMessage({ type: 'success', text: 'Address copied to clipboard!' });
-    setTimeout(() => setMessage(null), 2000);
+    setCopied(true);
+    setMessage({ type: 'success', text: '✓ Address copied to clipboard!' });
+    setTimeout(() => {
+      setMessage(null);
+      setCopied(false);
+    }, 2000);
   };
 
   if (!isOpen) return null;
@@ -154,9 +161,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-bg-card rounded-xl border border-white/10 shadow-2xl animate-slide-up">
+      <div className="relative w-full max-w-lg mx-4 bg-bg-card rounded-xl border border-white/10 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        <div className="flex items-center justify-between p-6 border-b border-white/10 sticky top-0 bg-bg-card z-10">
           <h2 className="text-xl font-bold text-white">Wallet</h2>
           <button
             onClick={onClose}
@@ -231,33 +238,57 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               {/* Deposit Address */}
               {depositAddress && (
                 <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <span className="text-sm text-text-secondary">
                       {depositAddress.network} Address
                     </span>
-                    <span className="text-xs text-accent-primary">
+                    <span className="text-xs text-accent-primary bg-accent-primary/10 px-2 py-1 rounded">
                       Min: {depositAddress.minDeposit} {selectedCurrency}
                     </span>
                   </div>
                   
-                  {/* QR Code Placeholder */}
-                  <div className="w-32 h-32 mx-auto mb-4 bg-white rounded-lg flex items-center justify-center">
-                    <span className="text-black text-xs text-center p-2">QR Code<br/>(Coming Soon)</span>
+                  {/* Real QR Code */}
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 bg-white rounded-xl shadow-lg">
+                      <QRCodeSVG 
+                        value={depositAddress.address} 
+                        size={160} 
+                        level="H"
+                        includeMargin={true}
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                      />
+                    </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={depositAddress.address}
-                      readOnly
-                      className="flex-1 bg-bg-main px-3 py-2 rounded-lg text-sm text-white font-mono truncate"
-                    />
-                    <button
-                      onClick={() => copyToClipboard(depositAddress.address)}
-                      className="px-4 py-2 bg-accent-primary/20 text-accent-primary rounded-lg hover:bg-accent-primary/30 transition-colors"
-                    >
-                      Copy
-                    </button>
+                  {/* Address with Copy Button */}
+                  <div className="space-y-2">
+                    <label className="text-xs text-text-secondary">Deposit Address</label>
+                    <div className="flex items-center gap-2 bg-bg-main p-3 rounded-lg border border-white/10">
+                      <input
+                        type="text"
+                        value={depositAddress.address}
+                        readOnly
+                        className="flex-1 bg-transparent text-white font-mono text-sm outline-none truncate"
+                      />
+                      <button
+                        onClick={() => copyToClipboard(depositAddress.address)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                          copied 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-accent-primary text-black hover:bg-accent-primary/90'
+                        }`}
+                      >
+                        {copied ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Network Warning */}
+                  <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <p className="text-xs text-yellow-400">
+                      ⚠️ Only send <span className="font-bold">{selectedCurrency}</span> on the <span className="font-bold">{depositAddress.network}</span> network. Sending other assets may result in permanent loss.
+                    </p>
                   </div>
                 </div>
               )}

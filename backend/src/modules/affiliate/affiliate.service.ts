@@ -73,7 +73,7 @@ export class AffiliateService {
 
     return {
       referralCode: user.username,
-      referralLink: `https://stek.io/?ref=${user.username}`,
+      referralLink: `http://146.190.21.113:3001/register?ref=${user.username}`,
       currentRank: {
         name: currentRank.name,
         icon: currentRank.icon,

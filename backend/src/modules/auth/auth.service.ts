@@ -114,7 +114,7 @@ export class AuthService {
           email: email.toLowerCase(),
           passwordHash,
           role: UserRole.USER,
-          status: UserStatus.ACTIVE, // Auto-activate for now
+          status: UserStatus.PENDING_APPROVAL, // Requires admin approval
           parentId,
           hierarchyPath,
           hierarchyLevel,
@@ -164,6 +164,9 @@ export class AuthService {
     }
 
     // Check if user is active
+    if (user.status === UserStatus.PENDING_APPROVAL) {
+      throw new UnauthorizedException('Your account is waiting for administrator approval. Please wait.');
+    }
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException(`Account is ${user.status.toLowerCase()}`);
     }

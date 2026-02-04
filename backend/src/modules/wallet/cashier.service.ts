@@ -422,4 +422,97 @@ export class CashierService {
       };
     }
   }
+  /**
+   * Simulate a deposit (Admin only) - Directly credits funds to user wallet
+   */
+  async simulateDeposit(
+    userId: string | null,
+    userEmail: string | null,
+    amount: number,
+    currency: string,
+    adminId: string,
+  ) {
+    // Find user by ID or email
+    let user;
+    if (userId) {
+      user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+    } else if (userEmail) {
+      user = await this.prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+    }
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Find or create wallet
+    let wallet = await this.prisma.wallet.findFirst({
+      where: { userId: user.id, currency: currency as any },
+    });
+
+    if (!wallet) {
+      wallet = await this.prisma.wallet.create({
+        data: {
+          userId: user.id,
+          currency: currency as any,
+          balance: 0,
+          lockedBalance: 0,
+        },
+      });
+    }
+
+    // Create transaction and update balance in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      const newBalance = new Decimal(wallet.balance).plus(amount);
+
+      // Update wallet balance
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: newBalance },
+      });
+
+      // Create confirmed transaction record
+      const transaction = await tx.transaction.create({
+        data: {
+          userId: user.id,
+          walletId: wallet.id,
+          type: 'DEPOSIT',
+          status: 'CONFIRMED',
+          amount: amount,
+          balanceBefore: wallet.balance,
+          balanceAfter: newBalance,
+          externalRef: `SIM-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          metadata: {
+            simulated: true,
+            simulatedBy: adminId,
+            simulatedAt: new Date().toISOString(),
+            note: 'Admin simulated deposit',
+          },
+        },
+      });
+
+      return { transaction, newBalance };
+    });
+
+    console.log(`[ADMIN] Simulated deposit of ${amount} ${currency} to user ${user.email} by admin ${adminId}`);
+
+    return {
+      success: true,
+      message: `Successfully deposited ${amount} ${currency} to ${user.username || user.email}`,
+      transaction: {
+        id: result.transaction.id,
+        amount: amount.toString(),
+        currency,
+        newBalance: result.newBalance.toString(),
+      },
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    };
+  }
 }

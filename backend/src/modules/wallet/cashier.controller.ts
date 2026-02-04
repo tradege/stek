@@ -1,12 +1,11 @@
-'use strict';
 import {
   Controller,
-  Post,
   Get,
+  Post,
   Body,
   Param,
-  UseGuards,
   Request,
+  UseGuards,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -30,6 +29,13 @@ interface ApproveTransactionDto {
   transactionId: string;
   action: 'APPROVE' | 'REJECT';
   adminNote?: string;
+}
+
+interface SimulateDepositDto {
+  userId?: string;
+  userEmail?: string;
+  amount: number;
+  currency: string;
 }
 
 @Controller('wallet')
@@ -208,6 +214,38 @@ export class AdminCashierController {
       action,
       req.user.id,
       adminNote,
+    );
+  }
+
+  /**
+   * Simulate a deposit (Admin only) - For testing purposes
+   * This directly credits funds to a user's wallet without blockchain verification
+   */
+  @Post('deposit/simulate')
+  @UseGuards(JwtAuthGuard)
+  async simulateDeposit(@Request() req, @Body() dto: SimulateDepositDto) {
+    if (req.user.role !== 'ADMIN') {
+      throw new ForbiddenException('Admin access required');
+    }
+
+    const { userId, userEmail, amount, currency } = dto;
+
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Invalid amount');
+    }
+    if (!['USDT', 'BTC', 'ETH', 'SOL'].includes(currency?.toUpperCase())) {
+      throw new BadRequestException('Unsupported currency');
+    }
+    if (!userId && !userEmail) {
+      throw new BadRequestException('User ID or Email required');
+    }
+
+    return this.cashierService.simulateDeposit(
+      userId || null,
+      userEmail || null,
+      amount,
+      currency.toUpperCase(),
+      req.user.id,
     );
   }
 }

@@ -23,6 +23,20 @@ interface PlaceBetPayload {
   autoCashoutAt?: number;
 }
 
+interface ChatSendPayload {
+  room: string;
+  message: string;
+}
+
+interface ChatJoinPayload {
+  room: string;
+}
+
+interface ChatHistoryPayload {
+  room: string;
+  limit?: number;
+}
+
 /**
  * Server-to-Client Events
  */
@@ -36,11 +50,21 @@ interface StateChangePayload {
   serverSeed?: string;
 }
 
+interface ChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  role: 'ADMIN' | 'MODERATOR' | 'VIP' | 'USER';
+  message: string;
+  timestamp: Date;
+}
+
 /**
  * Crash Game WebSocket Gateway
  * 
  * Handles real-time communication between clients and the Crash game.
  * Supports both authenticated users and guests (read-only mode).
+ * Also handles chat functionality.
  */
 @WebSocketGateway({
   namespace: '/crash',
@@ -60,8 +84,16 @@ export class CrashGateway
   // Map socket ID to user ID (for authenticated users)
   private socketToUser: Map<string, string> = new Map();
   private userToSocket: Map<string, string> = new Map();
+  
   // Track guest connections
   private guestSockets: Set<string> = new Set();
+  
+  // Chat message history (in-memory, last 100 messages)
+  private chatHistory: ChatMessage[] = [];
+  private readonly MAX_CHAT_HISTORY = 100;
+  
+  // User info cache (for chat display)
+  private userInfoCache: Map<string, { username: string; role: string }> = new Map();
 
   constructor(
     private readonly crashService: CrashService,
@@ -80,76 +112,55 @@ export class CrashGateway
   }
 
   /**
-   * Handle new client connection with GRACEFUL AUTH FALLBACK
+   * Handle new client connection
    */
   handleConnection(client: Socket): void {
-    this.logger.debug(`Client connected: ${client.id}`);
+    this.logger.log(`📡 Client connected: ${client.id}`);
     
     // Try to authenticate from handshake
-    let userId: string | null = null;
-    let isAuthenticated = false;
-
-    try {
-      // Extract token from auth payload OR headers
-      const authToken = 
-        client.handshake.auth?.token || 
-        client.handshake.headers?.authorization;
-
-      if (authToken) {
-        // Remove "Bearer " prefix if present
-        const token = authToken.replace(/^Bearer\s+/i, '');
+    const token = client.handshake.auth?.token || client.handshake.headers?.authorization;
+    
+    if (token) {
+      try {
+        const cleanToken = token.replace(/^Bearer\s+/i, '');
+        const decoded = this.jwtService.verify(cleanToken, {
+          secret: process.env.JWT_SECRET || 'your-secret-key',
+        });
         
-        if (token && token !== 'undefined' && token !== 'null') {
-          try {
-            // Verify JWT token
-            const decoded = this.jwtService.verify(token, {
-              secret: process.env.JWT_SECRET || 'your-secret-key',
-            });
-            
-            userId = decoded.sub || decoded.userId || decoded.id;
-            
-            if (userId) {
-              // Associate socket with user
-              this.socketToUser.set(client.id, userId);
-              this.userToSocket.set(userId, client.id);
-              isAuthenticated = true;
-              
-              this.logger.log(`🔐 User ${userId} authenticated on socket ${client.id}`);
-              
-              // Notify client of successful auth
-              client.emit('auth:success', { 
-                userId,
-                message: 'Authenticated successfully' 
-              });
-            }
-          } catch (jwtError) {
-            // JWT verification failed - log but continue as guest
-            this.logger.warn(`⚠️ JWT verification failed for ${client.id}: ${jwtError.message}`);
-            
-            // Notify client of auth error (non-critical)
-            client.emit('auth:error', { 
-              message: 'Token invalid or expired',
-              critical: false 
-            });
-          }
+        const userId = decoded.sub || decoded.userId || decoded.id;
+        const username = decoded.username || 'User';
+        const role = decoded.role || 'USER';
+        
+        if (userId) {
+          this.socketToUser.set(client.id, userId);
+          this.userToSocket.set(userId, client.id);
+          this.userInfoCache.set(userId, { username, role });
+          
+          this.logger.log(`🔐 User ${userId} (${username}) authenticated on connect`);
+          
+          client.emit('auth:success', { 
+            userId,
+            message: 'Authenticated successfully' 
+          });
         }
+      } catch (error) {
+        this.logger.warn(`⚠️ Auth failed for ${client.id}: ${error.message}`);
+        // Mark as guest but don't disconnect
+        this.guestSockets.add(client.id);
+        client.emit('auth:error', { 
+          message: 'Authentication failed, connected as guest',
+          critical: false 
+        });
       }
-    } catch (error) {
-      this.logger.error(`❌ Auth error for ${client.id}: ${error.message}`);
-    }
-
-    // If not authenticated, mark as guest (read-only mode)
-    if (!isAuthenticated) {
+    } else {
+      // No token - connect as guest
       this.guestSockets.add(client.id);
-      this.logger.debug(`👤 Guest connected: ${client.id}`);
-      
-      // Notify client they're in guest mode
       client.emit('auth:guest', { 
-        message: 'Connected as guest (read-only mode)' 
+        message: 'Connected as guest. Login to place bets and chat.' 
       });
     }
-
-    // Send current game state to new client (both auth and guest)
+    
+    // Send current game state to new client
     const currentRound = this.crashService.getCurrentRound();
     if (currentRound) {
       client.emit('crash:state_change', {
@@ -160,41 +171,240 @@ export class CrashGateway
         multiplier: currentRound.currentMultiplier?.toString() || '1.00',
       });
     }
+    
+    // Send crash history to new client
+    const crashHistory = this.crashService.getCrashHistory();
+    if (crashHistory.length > 0) {
+      client.emit('crash:history', { crashes: crashHistory });
+    }
   }
 
   /**
-   * Handle client disconnection
+   * Handle client disconnect
    */
   handleDisconnect(client: Socket): void {
-    this.logger.debug(`Client disconnected: ${client.id}`);
+    this.logger.log(`📴 Client disconnected: ${client.id}`);
     
-    // Clean up user mapping
     const userId = this.socketToUser.get(client.id);
     if (userId) {
-      this.userToSocket.delete(userId);
       this.socketToUser.delete(client.id);
+      this.userToSocket.delete(userId);
     }
     
-    // Clean up guest tracking
     this.guestSockets.delete(client.id);
   }
 
   // ============================================
-  // CLIENT -> SERVER EVENTS
+  // CHAT HANDLERS
   // ============================================
 
   /**
-   * Handle join room request
+   * Handle chat room join
    */
-  @SubscribeMessage('crash:join')
-  handleJoin(
+  @SubscribeMessage('chat:join')
+  handleChatJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { room?: string }
+    @MessageBody() payload: ChatJoinPayload
   ): void {
-    const room = payload?.room || 'crash';
-    client.join(room);
+    const { room } = payload;
+    client.join(`chat:${room}`);
+    this.logger.log(`💬 Client ${client.id} joined chat room: ${room}`);
+    client.emit('chat:joined', { room });
+  }
+
+  /**
+   * Handle chat history request
+   */
+  @SubscribeMessage('chat:history')
+  handleChatHistory(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: ChatHistoryPayload
+  ): void {
+    const { limit = 50 } = payload;
+    const messages = this.chatHistory.slice(-limit);
+    client.emit('chat:history', { messages });
+  }
+
+  /**
+   * Handle chat message send
+   */
+  @SubscribeMessage('chat:send')
+  handleChatSend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: ChatSendPayload
+  ): void {
+    const userId = this.socketToUser.get(client.id);
     
-    this.logger.debug(`Client ${client.id} joined room: ${room}`);
+    if (!userId) {
+      client.emit('chat:error', { message: 'Authentication required to send messages' });
+      return;
+    }
+    
+    const { room, message } = payload;
+    
+    // Validate message
+    if (!message || message.trim().length === 0) {
+      client.emit('chat:error', { message: 'Message cannot be empty' });
+      return;
+    }
+    
+    if (message.length > 200) {
+      client.emit('chat:error', { message: 'Message too long (max 200 characters)' });
+      return;
+    }
+    
+    // Get user info
+    const userInfo = this.userInfoCache.get(userId) || { username: 'User', role: 'USER' };
+    
+    const chatMessage: ChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      username: userInfo.username,
+      role: userInfo.role as ChatMessage['role'],
+      message: message.trim(),
+      timestamp: new Date(),
+    };
+    
+    // Store in history
+    this.chatHistory.push(chatMessage);
+    if (this.chatHistory.length > this.MAX_CHAT_HISTORY) {
+      this.chatHistory.shift();
+    }
+    
+    // Broadcast to room
+    this.server.to(`chat:${room}`).emit('chat:message', chatMessage);
+    
+    // Also broadcast globally for clients not in specific room
+    this.server.emit('chat:message', chatMessage);
+    
+    this.logger.log(`💬 ${userInfo.username}: ${message.substring(0, 50)}...`);
+  }
+
+  /**
+   * Handle system message (admin only)
+   */
+  @SubscribeMessage('chat:system')
+  handleChatSystem(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { message: string }
+  ): void {
+    const userId = this.socketToUser.get(client.id);
+    const userInfo = userId ? this.userInfoCache.get(userId) : null;
+    
+    if (!userInfo || userInfo.role !== 'ADMIN') {
+      client.emit('chat:error', { message: 'Admin access required' });
+      return;
+    }
+    
+    const systemMessage: ChatMessage = {
+      id: `sys-${Date.now()}`,
+      userId: 'system',
+      username: 'System',
+      role: 'ADMIN',
+      message: payload.message,
+      timestamp: new Date(),
+    };
+    
+    this.server.emit('chat:system', systemMessage);
+  }
+
+  // ============================================
+  // BOT CHAT MESSAGE HANDLER
+  // ============================================
+
+  /**
+   * Handle bot chat messages from BotService
+   */
+  @OnEvent('bot:chat_message')
+  handleBotChatMessage(payload: { username: string; message: string; timestamp: Date }): void {
+    const chatMessage: ChatMessage = {
+      id: `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: `bot-${payload.username}`,
+      username: payload.username,
+      role: 'USER',
+      message: payload.message,
+      timestamp: payload.timestamp,
+    };
+    
+    // Store in history
+    this.chatHistory.push(chatMessage);
+    if (this.chatHistory.length > this.MAX_CHAT_HISTORY) {
+      this.chatHistory.shift();
+    }
+    
+    // Broadcast to all clients
+    this.server.emit('chat:message', chatMessage);
+  }
+  /**
+   * Handle bot bet placed events from BotService
+   */
+  @OnEvent('bot:bet_placed')
+  handleBotBetPlaced(payload: { 
+    userId: string; 
+    username: string; 
+    amount: number; 
+    targetCashout: number;
+    isBot: boolean;
+  }): void {
+    // Broadcast bot bet to all clients (appears in Live Bets)
+    const betId = `bot_${payload.userId}_${Date.now()}`;
+    this.server.emit('crash:bet_placed', {
+      id: betId,
+      betId: betId,
+      oddsId: payload.userId,
+      oddsNumber: 0,
+      userId: payload.userId,
+      username: payload.username,
+      amount: payload.amount.toFixed(2),
+      currency: 'USDT',
+      isBot: true,
+    });
+    
+    this.logger.debug(`🤖 Bot bet broadcasted: ${payload.username} - $${payload.amount}`);
+  }
+
+  /**
+   * Handle bot cashout events from BotService
+   */
+  @OnEvent('bot:cashout')
+  handleBotCashout(payload: { 
+    userId: string; 
+    username: string; 
+    multiplier: number; 
+    profit: number;
+    amount: number;
+    isBot: boolean;
+  }): void {
+    // Broadcast bot cashout to all clients
+    this.server.emit('crash:cashout', {
+      oddsId: payload.userId,
+      oddsNumber: 0,
+      userId: payload.userId,
+      username: payload.username,
+      multiplier: payload.multiplier.toFixed(2),
+      profit: payload.profit.toFixed(2),
+      isBot: true,
+    });
+    
+    this.logger.debug(`🤖 Bot cashout broadcasted: ${payload.username} at ${payload.multiplier}x`);
+  }
+
+
+  // ============================================
+  // GAME ROOM HANDLERS
+  // ============================================
+
+  /**
+   * Join a specific game room
+   */
+  @SubscribeMessage('crash:join_room')
+  handleJoinRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { room: string }
+  ): void {
+    const { room } = payload;
+    client.join(room);
+    this.logger.log(`🎮 Client ${client.id} joined room: ${room}`);
     client.emit('room:joined', { room });
   }
 
@@ -220,6 +430,8 @@ export class CrashGateway
       });
       
       const userId = decoded.sub || decoded.userId || decoded.id;
+      const username = decoded.username || 'User';
+      const role = decoded.role || 'USER';
       
       if (userId) {
         // Remove from guests
@@ -228,8 +440,9 @@ export class CrashGateway
         // Associate socket with user
         this.socketToUser.set(client.id, userId);
         this.userToSocket.set(userId, client.id);
+        this.userInfoCache.set(userId, { username, role });
         
-        this.logger.log(`🔐 User ${userId} authenticated via message on socket ${client.id}`);
+        this.logger.log(`🔐 User ${userId} (${username}) authenticated via message on socket ${client.id}`);
         
         client.emit('auth:success', { userId });
       }
@@ -241,68 +454,102 @@ export class CrashGateway
 
   /**
    * Place a bet (requires authentication)
+   * Now async to handle balance deduction
    */
   @SubscribeMessage('crash:place_bet')
-  handlePlaceBet(
+  async handlePlaceBet(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: PlaceBetPayload
-  ): void {
+  ): Promise<void> {
+    this.logger.log(`🎰 Place bet request from socket ${client.id}`);
+    this.logger.debug(`   Payload: ${JSON.stringify(payload)}`);
+    
     const userId = this.socketToUser.get(client.id);
     
     // Check if user is authenticated
     if (!userId) {
+      this.logger.warn(`⚠️ Bet rejected - not authenticated: ${client.id}`);
       client.emit('crash:error', { 
         message: 'Authentication required to place bets. Please login.' 
       });
       return;
     }
     
-    const { amount, autoCashoutAt } = payload;
+    this.logger.log(`   User ID: ${userId}`);
+    
+    // Support both autoCashoutAt and autoCashout field names from frontend
+    const { amount, autoCashoutAt, autoCashout } = payload as any;
+    const autoCashoutValue = autoCashoutAt || autoCashout;
     
     // Validate amount
     if (!amount || amount <= 0) {
+      this.logger.warn(`⚠️ Bet rejected - invalid amount: ${amount}`);
       client.emit('crash:error', { message: 'Invalid bet amount' });
       return;
     }
     
-    const result = this.crashService.placeBet(
+    this.logger.log(`   Amount: ${amount}, AutoCashout: ${autoCashoutValue}`);
+    
+    const result = await this.crashService.placeBet(
       userId,
       new Decimal(amount),
-      autoCashoutAt ? new Decimal(autoCashoutAt) : undefined
+      autoCashoutValue ? new Decimal(autoCashoutValue) : undefined
     );
     
     if (result.success) {
+      this.logger.log(`✅ Bet placed successfully: ${result.bet!.id}`);
       client.emit('crash:bet_placed', {
+        success: true,
         orderId: result.bet!.id,
         amount: result.bet!.amount.toFixed(2),
+        bet: {
+          oddsId: result.bet!.id,
+          oddsName: 'Crash',
+          betAmount: parseFloat(result.bet!.amount.toFixed(2)),
+        },
       });
     } else {
+      this.logger.warn(`❌ Bet failed: ${result.error}`);
       client.emit('crash:error', { message: result.error || 'Failed to place bet' });
     }
   }
 
   /**
    * Cash out current bet (requires authentication)
+   * Now async to handle adding winnings
    */
   @SubscribeMessage('crash:cashout')
-  handleCashout(@ConnectedSocket() client: Socket): void {
+  async handleCashout(@ConnectedSocket() client: Socket): Promise<void> {
+    this.logger.log(`💰 Cashout request from socket ${client.id}`);
+    
     const userId = this.socketToUser.get(client.id);
     
     if (!userId) {
+      this.logger.warn(`⚠️ Cashout rejected - not authenticated: ${client.id}`);
       client.emit('crash:error', { 
         message: 'Authentication required to cashout. Please login.' 
       });
       return;
     }
     
-    const result = this.crashService.cashout(userId);
+    this.logger.log(`   User ID: ${userId}`);
+    
+    const result = await this.crashService.cashout(userId);
     
     if (result.success) {
-      client.emit('crash:cashout_success', {
+      this.logger.log(`✅ Cashout successful: profit ${result.profit!.toFixed(2)}`);
+      // Emit to the event name that frontend expects
+      client.emit('crash:cashout', {
+        success: true,
+        multiplier: result.multiplier?.toFixed(2) || '1.00',
         profit: result.profit!.toFixed(2),
       });
     } else {
-      client.emit('crash:error', { message: result.error || 'Failed to cashout' });
+      this.logger.warn(`❌ Cashout failed: ${result.error}`);
+      client.emit('crash:cashout', { 
+        success: false, 
+        error: result.error || 'Failed to cashout' 
+      });
     }
   }
 
@@ -346,10 +593,23 @@ export class CrashGateway
    * Broadcast bet placed to all connected clients
    */
   @OnEvent('crash.bet_placed')
-  handleBetPlacedEvent(payload: { userId: string; amount: string }): void {
+  handleBetPlacedEvent(payload: { userId: string; username: string; amount: string; betId: string; currency: string }): void {
+    // Get username from cache if not provided
+    const userInfo = this.userInfoCache.get(payload.userId) || { username: 'Player', role: 'USER' };
+    const username = payload.username || userInfo.username;
+    
     this.server.emit('crash:bet_placed', {
+      id: payload.betId,
+      oddsId: payload.betId,
+      oddsNumber: 0,
+      oddsNumberFormatted: '0',
+      oddsNumberFormattedShort: '0',
+      oddsNumberFormattedLong: '0',
       userId: payload.userId,
-      amount: payload.amount,
+      username: username,
+      amount: parseFloat(payload.amount),
+      currency: payload.currency || 'USDT',
+      status: 'ACTIVE',
     });
   }
 
@@ -361,8 +621,14 @@ export class CrashGateway
     userId: string;
     multiplier: string;
     profit: string;
+    betId?: string;
   }): void {
-    this.server.emit('crash:cashout', payload);
+    this.server.emit('crash:cashout', {
+      betId: payload.betId || '',
+      userId: payload.userId,
+      multiplier: parseFloat(payload.multiplier),
+      profit: parseFloat(payload.profit),
+    });
   }
 
   /**
@@ -371,5 +637,20 @@ export class CrashGateway
   @OnEvent('crash.crashed')
   handleCrashedEvent(payload: { crashPoint: string; gameNumber: number }): void {
     this.server.emit('crash:crashed', payload);
+  }
+
+  /**
+   * Send balance update to specific user (private)
+   */
+  @OnEvent('crash.balance_update')
+  handleBalanceUpdateEvent(payload: { userId: string; change: string; reason: string }): void {
+    const socketId = this.userToSocket.get(payload.userId);
+    if (socketId) {
+      // Send only to the specific user's socket (private)
+      this.server.to(socketId).emit('balance:update', {
+        change: payload.change,
+        reason: payload.reason,
+      });
+    }
   }
 }

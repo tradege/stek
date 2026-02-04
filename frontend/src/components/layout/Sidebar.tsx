@@ -69,9 +69,9 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', href: '/' },
   { id: 'crash', label: 'Crash', icon: 'crash', href: '/games/crash', badge: 'HOT' },
+  { id: 'plinko', label: 'Plinko', icon: 'plinko', href: '/games/plinko', badge: 'NEW' },
   { id: 'dice', label: 'Dice', icon: 'dice', href: '/games/dice' },
   { id: 'mines', label: 'Mines', icon: 'mines', href: '/games/mines' },
-  { id: 'plinko', label: 'Plinko', icon: 'plinko', href: '/games/plinko' },
 ];
 
 const secondaryNavItems: NavItem[] = [
@@ -83,6 +83,7 @@ const secondaryNavItems: NavItem[] = [
 
 interface SidebarProps {
   onClose?: () => void;
+  onToggleChat?: () => void;
 }
 
 /**

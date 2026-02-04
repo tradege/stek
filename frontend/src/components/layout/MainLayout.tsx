@@ -55,7 +55,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
-        <Sidebar onClose={() => setIsSidebarOpen(false)} />
+        <Sidebar onClose={() => setIsSidebarOpen(false)} onToggleChat={() => setIsChatOpen(prev => !prev)} />
       </aside>
 
       {/* Main Content Area */}
@@ -74,8 +74,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {children}
           </main>
 
-          {/* Chat Panel - Desktop */}
-          <aside className="hidden lg:block w-80 border-l border-white/10 p-4">
+          {/* Chat Panel - Desktop (toggleable) */}
+          <aside className={`hidden lg:block w-80 border-l border-white/10 p-4 transition-all duration-300 ${isChatOpen ? 'opacity-100' : 'lg:hidden'}`}>
             <ChatPanel />
           </aside>
         </div>

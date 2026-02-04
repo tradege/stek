@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,7 +59,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
     if (socket && isConnected && !isJoined) {
       socket.emit('chat:join', { room: 'global' });
       setIsJoined(true);
-
       // Request chat history
       socket.emit('chat:history', { room: 'global', limit: 50 });
     }
@@ -138,9 +138,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
   if (!isVisible) return null;
 
   return (
-    <div className="flex flex-col h-full bg-bg-card rounded-xl border border-white/10 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[700px] bg-bg-card rounded-xl border border-white/10 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <h3 className="font-semibold text-white">Live Chat</h3>
@@ -149,7 +149,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 hover:bg-white/10 rounded transition-colors lg:hidden"
+            className="p-1 hover:bg-white/10 rounded transition-colors"
           >
             <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -158,8 +158,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
         )}
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-white/10">
+      {/* Messages - Fixed height with scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {messages.length === 0 ? (
           <div className="text-center text-text-secondary text-sm py-8">
             No messages yet. Be the first to chat!
@@ -198,8 +198,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-3 border-t border-white/10">
+      {/* Input - Fixed at bottom */}
+      <div className="flex-shrink-0 p-3 border-t border-white/10 bg-bg-card">
         {isAuthenticated ? (
           <div className="flex gap-2">
             <input
