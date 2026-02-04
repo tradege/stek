@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './modules/auth/auth.module';
 import { CashierModule } from './modules/wallet/cashier.module';
+import { BotModule } from './modules/bot/bot.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -12,6 +14,9 @@ import { PrismaModule } from './prisma/prisma.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    
+    // Event Emitter for internal events
+    EventEmitterModule.forRoot(),
     
     // Rate limiting
     ThrottlerModule.forRoot([{
@@ -28,10 +33,8 @@ import { PrismaModule } from './prisma/prisma.module';
     // Cashier module (Deposit/Withdraw)
     CashierModule,
     
-    // TODO: Add more modules
-    // WalletModule,
-    // CrashModule,
-    // CommissionModule,
+    // Bot module (Ghost Protocol - Traffic Bots)
+    BotModule,
   ],
   controllers: [],
   providers: [],
