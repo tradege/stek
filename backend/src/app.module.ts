@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './modules/auth/auth.module';
 import { CashierModule } from './modules/wallet/cashier.module';
 import { BotModule } from './modules/bot/bot.module';
+import { AffiliateModule } from './modules/affiliate/affiliate.module';
 import { CrashModule } from './modules/crash/crash.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -39,6 +40,7 @@ import { PrismaModule } from './prisma/prisma.module';
     
     // Bot module (Ghost Protocol - Traffic Bots)
     BotModule,
+    AffiliateModule,
   ],
   controllers: [],
   providers: [],

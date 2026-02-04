@@ -12,6 +12,7 @@ import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CrashService, GameState } from './crash.service';
+import { JwtService } from '@nestjs/jwt';
 import Decimal from 'decimal.js';
 
 /**
@@ -22,65 +23,24 @@ interface PlaceBetPayload {
   autoCashoutAt?: number;
 }
 
-interface CashoutPayload {
-  // No payload needed - cashout at current multiplier
-}
-
 /**
  * Server-to-Client Events
  */
-interface TickPayload {
-  multiplier: string;
-  elapsed: number;
-}
-
 interface StateChangePayload {
   state: GameState;
   gameNumber: number;
   serverSeedHash: string;
   clientSeed: string;
   multiplier: string;
-  crashPoint?: string;  // Only revealed after crash
-  serverSeed?: string;  // Only revealed after crash
-}
-
-interface BetPlacedPayload {
-  oderId: string;
-  amount: string;
-}
-
-interface CashoutPayload {
-  multiplier: string;
-  profit: string;
-}
-
-interface CrashedPayload {
-  crashPoint: string;
-  gameNumber: number;
-}
-
-interface ErrorPayload {
-  message: string;
+  crashPoint?: string;
+  serverSeed?: string;
 }
 
 /**
  * Crash Game WebSocket Gateway
  * 
  * Handles real-time communication between clients and the Crash game.
- * 
- * Events:
- * - Client -> Server:
- *   - 'crash:place_bet' - Place a bet
- *   - 'crash:cashout' - Cash out current bet
- *   - 'crash:subscribe' - Subscribe to game updates
- * 
- * - Server -> Client:
- *   - 'crash:tick' - Multiplier update (every 100ms)
- *   - 'crash:state_change' - Game state changed
- *   - 'crash:bet_placed' - Bet was placed
- *   - 'crash:cashout' - Cashout successful
- *   - 'crash:crashed' - Game crashed
- *   - 'crash:error' - Error occurred
+ * Supports both authenticated users and guests (read-only mode).
  */
 @WebSocketGateway({
   namespace: '/crash',
@@ -100,10 +60,13 @@ export class CrashGateway
   // Map socket ID to user ID (for authenticated users)
   private socketToUser: Map<string, string> = new Map();
   private userToSocket: Map<string, string> = new Map();
+  // Track guest connections
+  private guestSockets: Set<string> = new Set();
 
   constructor(
     private readonly crashService: CrashService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly jwtService: JwtService,
   ) {}
 
   /**
@@ -117,12 +80,76 @@ export class CrashGateway
   }
 
   /**
-   * Handle new client connection
+   * Handle new client connection with GRACEFUL AUTH FALLBACK
    */
   handleConnection(client: Socket): void {
     this.logger.debug(`Client connected: ${client.id}`);
     
-    // Send current game state to new client
+    // Try to authenticate from handshake
+    let userId: string | null = null;
+    let isAuthenticated = false;
+
+    try {
+      // Extract token from auth payload OR headers
+      const authToken = 
+        client.handshake.auth?.token || 
+        client.handshake.headers?.authorization;
+
+      if (authToken) {
+        // Remove "Bearer " prefix if present
+        const token = authToken.replace(/^Bearer\s+/i, '');
+        
+        if (token && token !== 'undefined' && token !== 'null') {
+          try {
+            // Verify JWT token
+            const decoded = this.jwtService.verify(token, {
+              secret: process.env.JWT_SECRET || 'your-secret-key',
+            });
+            
+            userId = decoded.sub || decoded.userId || decoded.id;
+            
+            if (userId) {
+              // Associate socket with user
+              this.socketToUser.set(client.id, userId);
+              this.userToSocket.set(userId, client.id);
+              isAuthenticated = true;
+              
+              this.logger.log(`🔐 User ${userId} authenticated on socket ${client.id}`);
+              
+              // Notify client of successful auth
+              client.emit('auth:success', { 
+                userId,
+                message: 'Authenticated successfully' 
+              });
+            }
+          } catch (jwtError) {
+            // JWT verification failed - log but continue as guest
+            this.logger.warn(`⚠️ JWT verification failed for ${client.id}: ${jwtError.message}`);
+            
+            // Notify client of auth error (non-critical)
+            client.emit('auth:error', { 
+              message: 'Token invalid or expired',
+              critical: false 
+            });
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`❌ Auth error for ${client.id}: ${error.message}`);
+    }
+
+    // If not authenticated, mark as guest (read-only mode)
+    if (!isAuthenticated) {
+      this.guestSockets.add(client.id);
+      this.logger.debug(`👤 Guest connected: ${client.id}`);
+      
+      // Notify client they're in guest mode
+      client.emit('auth:guest', { 
+        message: 'Connected as guest (read-only mode)' 
+      });
+    }
+
+    // Send current game state to new client (both auth and guest)
     const currentRound = this.crashService.getCurrentRound();
     if (currentRound) {
       client.emit('crash:state_change', {
@@ -147,6 +174,9 @@ export class CrashGateway
       this.userToSocket.delete(userId);
       this.socketToUser.delete(client.id);
     }
+    
+    // Clean up guest tracking
+    this.guestSockets.delete(client.id);
   }
 
   // ============================================
@@ -154,26 +184,63 @@ export class CrashGateway
   // ============================================
 
   /**
-   * Authenticate a socket connection
+   * Handle join room request
+   */
+  @SubscribeMessage('crash:join')
+  handleJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { room?: string }
+  ): void {
+    const room = payload?.room || 'crash';
+    client.join(room);
+    
+    this.logger.debug(`Client ${client.id} joined room: ${room}`);
+    client.emit('room:joined', { room });
+  }
+
+  /**
+   * Authenticate a socket connection (manual auth after connect)
    */
   @SubscribeMessage('crash:auth')
   handleAuth(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { userId: string; token?: string }
+    @MessageBody() payload: { token?: string }
   ): void {
-    // In production, validate the token here
-    const { userId } = payload;
+    const { token } = payload;
     
-    this.socketToUser.set(client.id, userId);
-    this.userToSocket.set(userId, client.id);
-    
-    this.logger.debug(`User ${userId} authenticated on socket ${client.id}`);
-    
-    client.emit('crash:auth_success', { userId });
+    if (!token) {
+      client.emit('auth:error', { message: 'No token provided', critical: false });
+      return;
+    }
+
+    try {
+      const cleanToken = token.replace(/^Bearer\s+/i, '');
+      const decoded = this.jwtService.verify(cleanToken, {
+        secret: process.env.JWT_SECRET || 'your-secret-key',
+      });
+      
+      const userId = decoded.sub || decoded.userId || decoded.id;
+      
+      if (userId) {
+        // Remove from guests
+        this.guestSockets.delete(client.id);
+        
+        // Associate socket with user
+        this.socketToUser.set(client.id, userId);
+        this.userToSocket.set(userId, client.id);
+        
+        this.logger.log(`🔐 User ${userId} authenticated via message on socket ${client.id}`);
+        
+        client.emit('auth:success', { userId });
+      }
+    } catch (error) {
+      this.logger.warn(`⚠️ Auth message failed for ${client.id}: ${error.message}`);
+      client.emit('auth:error', { message: 'Invalid token', critical: false });
+    }
   }
 
   /**
-   * Place a bet
+   * Place a bet (requires authentication)
    */
   @SubscribeMessage('crash:place_bet')
   handlePlaceBet(
@@ -182,15 +249,21 @@ export class CrashGateway
   ): void {
     const userId = this.socketToUser.get(client.id);
     
+    // Check if user is authenticated
     if (!userId) {
-      client.emit('crash:error', { message: 'Not authenticated' });
+      client.emit('crash:error', { 
+        message: 'Authentication required to place bets. Please login.' 
+      });
       return;
     }
     
     const { amount, autoCashoutAt } = payload;
     
-    // TODO: Integrate with WalletService to deduct balance
-    // For now, just place the bet in the game
+    // Validate amount
+    if (!amount || amount <= 0) {
+      client.emit('crash:error', { message: 'Invalid bet amount' });
+      return;
+    }
     
     const result = this.crashService.placeBet(
       userId,
@@ -200,7 +273,7 @@ export class CrashGateway
     
     if (result.success) {
       client.emit('crash:bet_placed', {
-        oderId: result.bet!.id,
+        orderId: result.bet!.id,
         amount: result.bet!.amount.toFixed(2),
       });
     } else {
@@ -209,21 +282,22 @@ export class CrashGateway
   }
 
   /**
-   * Cash out current bet
+   * Cash out current bet (requires authentication)
    */
   @SubscribeMessage('crash:cashout')
   handleCashout(@ConnectedSocket() client: Socket): void {
     const userId = this.socketToUser.get(client.id);
     
     if (!userId) {
-      client.emit('crash:error', { message: 'Not authenticated' });
+      client.emit('crash:error', { 
+        message: 'Authentication required to cashout. Please login.' 
+      });
       return;
     }
     
     const result = this.crashService.cashout(userId);
     
     if (result.success) {
-      // TODO: Integrate with WalletService to credit winnings
       client.emit('crash:cashout_success', {
         profit: result.profit!.toFixed(2),
       });
@@ -273,7 +347,6 @@ export class CrashGateway
    */
   @OnEvent('crash.bet_placed')
   handleBetPlacedEvent(payload: { userId: string; amount: string }): void {
-    // Broadcast to all (for showing bet list)
     this.server.emit('crash:bet_placed', {
       userId: payload.userId,
       amount: payload.amount,
@@ -289,7 +362,6 @@ export class CrashGateway
     multiplier: string;
     profit: string;
   }): void {
-    // Broadcast to all (for showing cashout in bet list)
     this.server.emit('crash:cashout', payload);
   }
 
