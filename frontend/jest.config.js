@@ -7,7 +7,13 @@ const config = {
   },
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
+      tsconfig: {
+        jsx: 'react-jsx',
+        esModuleInterop: true,
+        allowJs: true,
+        module: 'commonjs',
+        moduleResolution: 'node',
+      },
     }],
   },
   testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
@@ -17,5 +23,4 @@ const config = {
     '!src/**/*.d.ts',
   ],
 };
-
 module.exports = config;

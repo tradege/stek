@@ -1,11 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 // Socket.io server URL
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
-const SOCKET_NAMESPACE = '/casino';
+const SOCKET_NAMESPACE = '/crash';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -36,33 +36,52 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  
+  // Refs to prevent double connection in React Strict Mode
+  const socketRef = useRef<Socket | null>(null);
+  const connectingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const connect = (token?: string) => {
-    // Get token from parameter or localStorage
-    const authToken = token || localStorage.getItem('auth_token');
+    // Prevent double connection
+    if (connectingRef.current) {
+      console.log('[Socket] Already connecting, skipping...');
+      return;
+    }
     
-    if (socket?.connected) {
+    if (socketRef.current?.connected) {
       console.log('[Socket] Already connected');
       return;
     }
-
+    
+    connectingRef.current = true;
+    
+    // Get token from parameter or localStorage
+    const authToken = token || localStorage.getItem('auth_token');
+    
     console.log('[Socket] Connecting to:', SOCKET_URL + SOCKET_NAMESPACE);
-
+    
     const newSocket = io(SOCKET_URL + SOCKET_NAMESPACE, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       auth: authToken ? { token: authToken } : undefined,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      timeout: 20000,
+      forceNew: false,
     });
+    
+    socketRef.current = newSocket;
 
     // Connection events
     newSocket.on('connect', () => {
       console.log('[Socket] Connected! ID:', newSocket.id);
-      setIsConnected(true);
-      setConnectionError(null);
+      if (mountedRef.current) {
+        setIsConnected(true);
+        setConnectionError(null);
+      }
+      connectingRef.current = false;
       
       // Join the crash game room
       newSocket.emit('join:room', { room: 'crash' });
@@ -70,26 +89,35 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     newSocket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
-      setIsConnected(false);
-      setIsAuthenticated(false);
+      if (mountedRef.current) {
+        setIsConnected(false);
+        setIsAuthenticated(false);
+      }
     });
 
     newSocket.on('connect_error', (error) => {
       console.error('[Socket] Connection error:', error.message);
-      setConnectionError(error.message);
-      setIsConnected(false);
+      if (mountedRef.current) {
+        setConnectionError(error.message);
+        setIsConnected(false);
+      }
+      connectingRef.current = false;
     });
 
     // Authentication response
     newSocket.on('auth:success', (data) => {
       console.log('[Socket] Authenticated:', data);
-      setIsAuthenticated(true);
+      if (mountedRef.current) {
+        setIsAuthenticated(true);
+      }
     });
 
     newSocket.on('auth:error', (error) => {
       console.error('[Socket] Auth error:', error);
-      setIsAuthenticated(false);
-      setConnectionError(error.message || 'Authentication failed');
+      if (mountedRef.current) {
+        setIsAuthenticated(false);
+        setConnectionError(error.message || 'Authentication failed');
+      }
     });
 
     // Room join confirmation
@@ -97,13 +125,19 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       console.log('[Socket] Joined room:', data.room);
     });
 
-    setSocket(newSocket);
+    if (mountedRef.current) {
+      setSocket(newSocket);
+    }
   };
 
   const disconnect = () => {
-    if (socket) {
+    connectingRef.current = false;
+    if (socketRef.current) {
       console.log('[Socket] Disconnecting...');
-      socket.disconnect();
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    if (mountedRef.current) {
       setSocket(null);
       setIsConnected(false);
       setIsAuthenticated(false);
@@ -112,9 +146,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   // Auto-connect on mount
   useEffect(() => {
+    mountedRef.current = true;
     connect();
 
     return () => {
+      mountedRef.current = false;
       disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

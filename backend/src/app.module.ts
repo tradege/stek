@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './modules/auth/auth.module';
 import { CashierModule } from './modules/wallet/cashier.module';
 import { BotModule } from './modules/bot/bot.module';
+import { CrashModule } from './modules/crash/crash.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -32,6 +33,9 @@ import { PrismaModule } from './prisma/prisma.module';
     
     // Cashier module (Deposit/Withdraw)
     CashierModule,
+    
+    // Crash Game module
+    CrashModule,
     
     // Bot module (Ghost Protocol - Traffic Bots)
     BotModule,

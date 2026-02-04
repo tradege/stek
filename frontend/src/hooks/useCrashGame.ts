@@ -200,9 +200,37 @@ export const useCrashGame = (): CrashGameState => {
       }
     };
 
+    // State change handler - handles WAITING, STARTING, RUNNING states from backend
+    const handleStateChange = (data: { state: string; gameNumber?: number; multiplier?: string; crashPoint?: string }) => {
+      console.log('[Crash] State change:', data.state, data);
+      
+      const gameIdStr = data.gameNumber?.toString() || '';
+      
+      if (data.state === 'WAITING') {
+        handleStarting({ countdown: 5, gameId: gameIdStr });
+      } else if (data.state === 'STARTING') {
+        handleStarting({ countdown: 3, gameId: gameIdStr });
+      } else if (data.state === 'RUNNING') {
+        handleStarted({ gameId: gameIdStr });
+        // Also update multiplier if provided
+        if (data.multiplier) {
+          const mult = parseFloat(data.multiplier);
+          if (!isNaN(mult)) {
+            targetMultiplierRef.current = mult;
+          }
+        }
+      } else if (data.state === 'CRASHED' && data.crashPoint) {
+        const cp = parseFloat(data.crashPoint);
+        if (!isNaN(cp)) {
+          handleCrashed({ crashPoint: cp, gameId: gameIdStr });
+        }
+      }
+    };
+
     // Subscribe to events
     socket.on('crash:tick', handleTick);
     socket.on('crash:crashed', handleCrashed);
+    socket.on('crash:state_change', handleStateChange);
     socket.on('crash:starting', handleStarting);
     socket.on('crash:started', handleStarted);
     socket.on('crash:bet_placed', handleBetPlaced);
@@ -215,6 +243,7 @@ export const useCrashGame = (): CrashGameState => {
       // Cleanup
       socket.off('crash:tick', handleTick);
       socket.off('crash:crashed', handleCrashed);
+      socket.off('crash:state_change', handleStateChange);
       socket.off('crash:starting', handleStarting);
       socket.off('crash:started', handleStarted);
       socket.off('crash:bet_placed', handleBetPlaced);
