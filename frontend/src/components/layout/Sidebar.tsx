@@ -281,11 +281,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                   href="/admin/dashboard"
                   data-testid="nav-admin"
                   onClick={handleNavClick}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 border border-yellow-400/20"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-[#1475e1] hover:text-yellow-300 hover:bg-yellow-400/10 border border-[#1475e1]/20"
                 >
                   {icons.admin}
                   <span className="font-medium">Admin Panel</span>
-                  <span className="px-2 py-0.5 text-[10px] bg-yellow-400/20 text-yellow-400 rounded-full font-semibold">ADMIN</span>
+                  <span className="px-2 py-0.5 text-[10px] bg-yellow-400/20 text-[#1475e1] rounded-full font-semibold">ADMIN</span>
                 </Link>
               </li>
             </>

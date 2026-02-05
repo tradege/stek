@@ -11,7 +11,7 @@ export default function AdminSettings() {
       </div>
 
       <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-12 text-center">
-        <Settings className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+        <Settings className="w-16 h-16 text-[#1475e1] mx-auto mb-4" />
         <h3 className="text-xl font-bold text-white mb-2">Site Configuration</h3>
         <p className="text-gray-400">Coming soon - Configure site settings and preferences</p>
       </div>

@@ -11,7 +11,7 @@ export default function AdminGames() {
       </div>
 
       <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-12 text-center">
-        <Gamepad2 className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+        <Gamepad2 className="w-16 h-16 text-[#1475e1] mx-auto mb-4" />
         <h3 className="text-xl font-bold text-white mb-2">Game Control Panel</h3>
         <p className="text-gray-400">Coming soon - Manage game settings, RTP, and house edge</p>
       </div>

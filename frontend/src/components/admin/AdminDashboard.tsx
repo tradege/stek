@@ -165,7 +165,7 @@ export default function AdminDashboard() {
           <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
             <div className="flex items-center justify-between mb-4">
               <span className="text-gray-400 text-sm">Real Users</span>
-              <span className="text-purple-400 text-xs px-2 py-1 bg-purple-400/10 rounded">USERS</span>
+              <span className="text-[#1475e1] text-xs px-2 py-1 bg-purple-400/10 rounded">USERS</span>
             </div>
             <div className="text-3xl font-bold text-white">
               {stats?.totalRealUsers || 0}

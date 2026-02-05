@@ -196,13 +196,13 @@ export default function AdminTransactionsPage() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">⏳</span>
               <div>
-                <p className="text-yellow-400 font-bold">{pendingCount} Pending Transaction{pendingCount > 1 ? 's' : ''}</p>
-                <p className="text-yellow-400/70 text-sm">Requires your approval</p>
+                <p className="text-[#1475e1] font-bold">{pendingCount} Pending Transaction{pendingCount > 1 ? 's' : ''}</p>
+                <p className="text-[#1475e1]/70 text-sm">Requires your approval</p>
               </div>
             </div>
             <button
               onClick={() => setFilterStatus('PENDING')}
-              className="px-4 py-2 bg-yellow-500 text-black font-bold rounded-lg hover:bg-yellow-400 transition-colors"
+              className="px-4 py-2 bg-yellow-500 text-black font-bold rounded-lg hover:bg-[#1475e1] transition-colors"
             >
               View Pending
             </button>
@@ -295,7 +295,7 @@ export default function AdminTransactionsPage() {
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                             t.status === 'CONFIRMED' ? 'bg-green-500/20 text-green-400' :
-                            t.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400 animate-pulse' :
+                            t.status === 'PENDING' ? 'bg-yellow-500/20 text-[#1475e1] animate-pulse' :
                             'bg-red-500/20 text-red-400'
                           }`}>
                             {t.status === 'PENDING' ? '⏳' : t.status === 'CONFIRMED' ? '✅' : '❌'} {t.status}

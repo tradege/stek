@@ -23,12 +23,12 @@ export default function AdminHeader() {
 
           {/* User Info */}
           <div className="flex items-center gap-3 px-4 py-2 bg-[#0f212e] rounded-lg border border-[#2f4553]">
-            <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#1475e1] rounded-full flex items-center justify-center">
               <User className="w-5 h-5 text-[#0f212e]" />
             </div>
             <div className="text-sm">
               <p className="text-white font-medium">{user?.username || 'Admin'}</p>
-              <p className="text-yellow-400 text-xs">{user?.role || 'ADMIN'}</p>
+              <p className="text-[#1475e1] text-xs">{user?.role || 'ADMIN'}</p>
             </div>
           </div>
 

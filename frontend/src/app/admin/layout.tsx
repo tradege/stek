@@ -24,7 +24,7 @@ export default function AdminLayout({
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0f212e]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-[#1475e1] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading Admin Panel...</p>
         </div>
       </div>

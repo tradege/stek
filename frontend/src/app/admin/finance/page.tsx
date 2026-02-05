@@ -95,7 +95,7 @@ export default function AdminFinance() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[#1475e1] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -107,7 +107,7 @@ export default function AdminFinance() {
           <p className="text-red-400 mb-4">{error}</p>
           <button
             onClick={fetchFinanceStats}
-            className="px-4 py-2 bg-yellow-400 text-[#0f212e] rounded-lg hover:bg-yellow-500"
+            className="px-4 py-2 bg-[#1475e1] text-[#0f212e] rounded-lg hover:bg-[#1475e1]/90"
           >
             Retry
           </button>
@@ -161,11 +161,11 @@ export default function AdminFinance() {
         <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-yellow-500/30 rounded-lg">
-              <DollarSign className="w-6 h-6 text-yellow-400" />
+              <DollarSign className="w-6 h-6 text-[#1475e1]" />
             </div>
             <div>
               <p className="text-gray-300 text-sm">Net Profit (House)</p>
-              <h3 className="text-3xl font-bold text-yellow-400">
+              <h3 className="text-3xl font-bold text-[#1475e1]">
                 ${financeData.netProfit.toLocaleString()}
               </h3>
             </div>
@@ -199,7 +199,7 @@ export default function AdminFinance() {
 
         <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
           <div className="flex items-center gap-3 mb-2">
-            <Percent className="w-5 h-5 text-yellow-400" />
+            <Percent className="w-5 h-5 text-[#1475e1]" />
             <p className="text-gray-400 text-sm">House Edge</p>
           </div>
           <h4 className="text-2xl font-bold text-white">
@@ -209,7 +209,7 @@ export default function AdminFinance() {
 
         <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
           <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="w-5 h-5 text-purple-400" />
+            <TrendingUp className="w-5 h-5 text-[#1475e1]" />
             <p className="text-gray-400 text-sm">RTP</p>
           </div>
           <h4 className="text-2xl font-bold text-white">
@@ -220,7 +220,7 @@ export default function AdminFinance() {
 
       <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
         <div className="flex items-center gap-3 mb-6">
-          <Calculator className="w-6 h-6 text-yellow-400" />
+          <Calculator className="w-6 h-6 text-[#1475e1]" />
           <h2 className="text-xl font-bold text-white">GGR Calculator</h2>
         </div>
 
@@ -231,7 +231,7 @@ export default function AdminFinance() {
               type="number"
               value={customCalc.bets}
               onChange={(e) => setCustomCalc({ ...customCalc, bets: e.target.value })}
-              className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#1475e1]"
               placeholder="Enter total bets amount"
             />
           </div>
@@ -242,7 +242,7 @@ export default function AdminFinance() {
               type="number"
               value={customCalc.wins}
               onChange={(e) => setCustomCalc({ ...customCalc, wins: e.target.value })}
-              className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#1475e1]"
               placeholder="Enter total wins amount"
             />
           </div>
@@ -250,7 +250,7 @@ export default function AdminFinance() {
 
         <button
           onClick={calculateGGR}
-          className="w-full bg-yellow-400 hover:bg-yellow-500 text-[#0f212e] font-bold py-3 rounded-lg transition-colors"
+          className="w-full bg-[#1475e1] hover:bg-[#1475e1]/90 text-[#0f212e] font-bold py-3 rounded-lg transition-colors"
         >
           Calculate GGR & Fees
         </button>
@@ -273,7 +273,7 @@ export default function AdminFinance() {
 
             <div className="bg-[#0f212e] border border-yellow-500/30 rounded-lg p-4">
               <p className="text-gray-400 text-sm mb-1">Net Profit</p>
-              <p className="text-2xl font-bold text-yellow-400">
+              <p className="text-2xl font-bold text-[#1475e1]">
                 ${customCalc.result.netProfit.toLocaleString()}
               </p>
             </div>
@@ -300,8 +300,8 @@ export default function AdminFinance() {
             <p><span className="text-red-400 font-bold">Provider Fee</span> = GGR × 8%</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-            <p><span className="text-yellow-400 font-bold">Net Profit</span> = GGR - Provider Fee</p>
+            <div className="w-2 h-2 bg-[#1475e1] rounded-full"></div>
+            <p><span className="text-[#1475e1] font-bold">Net Profit</span> = GGR - Provider Fee</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-blue-400 rounded-full"></div>

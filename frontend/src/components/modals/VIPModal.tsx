@@ -344,7 +344,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Tier 2</span>
-                            <span className="text-purple-400 font-medium">{tier.tier2Rate}</span>
+                            <span className="text-[#1475e1] font-medium">{tier.tier2Rate}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Tier 3</span>

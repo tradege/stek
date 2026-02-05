@@ -98,7 +98,7 @@ export default function AdminDashboard() {
       blue: 'from-blue-500/20 to-blue-600/20 border-blue-500/30',
       green: 'from-green-500/20 to-green-600/20 border-green-500/30',
       yellow: 'from-yellow-500/20 to-yellow-600/20 border-yellow-500/30',
-      purple: 'from-purple-500/20 to-purple-600/20 border-purple-500/30',
+      purple: 'from-purple-500/20 to-purple-600/20 border-[#1475e1]/30',
       red: 'from-red-500/20 to-red-600/20 border-red-500/30'
     };
 
@@ -133,7 +133,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[#1475e1] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
           <p className="text-red-400 mb-4">{error}</p>
           <button
             onClick={fetchDashboardStats}
-            className="px-4 py-2 bg-yellow-400 text-[#0f212e] rounded-lg hover:bg-yellow-500"
+            className="px-4 py-2 bg-[#1475e1] text-[#0f212e] rounded-lg hover:bg-[#1475e1]/90"
           >
             Retry
           </button>
@@ -231,11 +231,11 @@ export default function AdminDashboard() {
           <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-3 bg-yellow-500/20 rounded-lg">
-                <DollarSign className="w-6 h-6 text-yellow-400" />
+                <DollarSign className="w-6 h-6 text-[#1475e1]" />
               </div>
               <div>
                 <p className="text-gray-400 text-sm">Net Profit (House)</p>
-                <h3 className="text-2xl font-bold text-yellow-400">
+                <h3 className="text-2xl font-bold text-[#1475e1]">
                   ${stats.netProfit.toLocaleString()}
                 </h3>
               </div>

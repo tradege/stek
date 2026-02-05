@@ -171,7 +171,7 @@ export default function AdminUsersPage() {
       case "SUSPENDED":
         return <span className="px-2 py-1 text-xs rounded-full bg-warning-muted text-warning-primary">Suspended</span>;
       case "PENDING_APPROVAL":
-        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400 animate-pulse">⏳ Pending Approval</span>;
+        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-[#1475e1] animate-pulse">⏳ Pending Approval</span>;
       case "PENDING_VERIFICATION":
         return <span className="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400">📧 Awaiting Verification</span>;
       default:

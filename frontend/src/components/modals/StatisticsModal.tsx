@@ -187,7 +187,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
                   <p className="text-xl font-bold text-yellow-400">{formatCurrency(stats.biggestWin)}</p>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-[#1475e1]/20">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🚀</span>
                     <div>
@@ -195,7 +195,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
                       <p className="text-text-secondary text-sm">Best cashout</p>
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-purple-400">{stats.biggestMultiplier.toFixed(2)}x</p>
+                  <p className="text-xl font-bold text-[#1475e1]">{stats.biggestMultiplier.toFixed(2)}x</p>
                 </div>
               </div>
 

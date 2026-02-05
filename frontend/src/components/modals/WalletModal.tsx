@@ -70,7 +70,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                       onClick={() => setActiveTab(tab.id as any)}
                       className={`px-4 py-2 font-medium transition-colors ${
                         activeTab === tab.id
-                          ? 'text-purple-400 border-b-2 border-purple-400'
+                          ? 'text-[#1475e1] border-b-2 border-purple-400'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -144,12 +144,12 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                             <div className="bg-slate-700 rounded-lg p-4 font-mono text-sm text-white break-all">
                               TXyz123...abc789
                             </div>
-                            <button className="mt-2 text-purple-400 hover:text-purple-300 text-sm">
+                            <button className="mt-2 text-[#1475e1] hover:text-purple-300 text-sm">
                               📋 Copy Address
                             </button>
                           </div>
                           <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
-                            <p className="text-yellow-400 text-sm">
+                            <p className="text-[#1475e1] text-sm">
                               ⚠️ Only send USDT to this address. Sending other assets may result in permanent loss.
                             </p>
                           </div>

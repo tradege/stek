@@ -33,7 +33,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
       case 'ADMIN':
         return 'text-red-500';
       case 'MODERATOR':
-        return 'text-purple-500';
+        return 'text-blue-500';
       case 'VIP':
         return 'text-yellow-500';
       default:
@@ -46,9 +46,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
       case 'ADMIN':
         return <span className="px-1.5 py-0.5 text-[10px] bg-red-500/20 text-red-400 rounded mr-1">ADMIN</span>;
       case 'MODERATOR':
-        return <span className="px-1.5 py-0.5 text-[10px] bg-purple-500/20 text-purple-400 rounded mr-1">MOD</span>;
+        return <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-[#1475e1] rounded mr-1">MOD</span>;
       case 'VIP':
-        return <span className="px-1.5 py-0.5 text-[10px] bg-yellow-500/20 text-yellow-400 rounded mr-1">VIP</span>;
+        return <span className="px-1.5 py-0.5 text-[10px] bg-yellow-500/20 text-[#1475e1] rounded mr-1">VIP</span>;
       default:
         return null;
     }

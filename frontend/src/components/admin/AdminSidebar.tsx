@@ -65,7 +65,7 @@ export default function AdminSidebar() {
             <Shield className="w-6 h-6 text-[#0a1a24]" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-yellow-400">StakePro</h2>
+            <h2 className="text-xl font-bold text-[#1475e1]">StakePro</h2>
             <p className="text-xs text-gray-500">Admin Panel</p>
           </div>
         </div>
@@ -102,7 +102,7 @@ export default function AdminSidebar() {
               className={`
                 flex items-center gap-3 px-4 py-3 rounded-lg transition-all
                 ${isActive
-                  ? 'bg-gradient-to-r from-yellow-400/20 to-yellow-600/20 border border-yellow-400/30 text-yellow-400'
+                  ? 'bg-gradient-to-r from-yellow-400/20 to-yellow-600/20 border border-[#1475e1]/30 text-[#1475e1]'
                   : 'text-gray-400 hover:bg-[#1a2c38] hover:text-white'
                 }
               `}
@@ -113,7 +113,7 @@ export default function AdminSidebar() {
                 <p className="text-xs opacity-70">{item.description}</p>
               </div>
               {isActive && (
-                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-[#1475e1] rounded-full animate-pulse"></div>
               )}
             </Link>
           );
