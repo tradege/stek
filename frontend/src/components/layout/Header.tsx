@@ -267,6 +267,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-white font-medium truncate">{user.username}</p>
                         <p className="text-text-secondary text-xs truncate">{user.email}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full font-semibold">
+                            👑 VIP {user.vipLevel || 0}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {user.xp || 0} XP
+                          </span>
+                        </div>
                       </div>
                       <Link
                         href="/affiliates"
