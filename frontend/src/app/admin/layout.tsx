@@ -1,41 +1,47 @@
 'use client';
 
-import MainLayout from '@/components/layout/MainLayout';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import AdminHeader from '@/components/admin/AdminHeader';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  // Extra client-side protection (Double Check)
   useEffect(() => {
-    if (!isLoading && user?.role !== 'ADMIN') {
+    if (!isLoading && (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN'))) {
       router.push('/');
     }
   }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto mb-4"></div>
-            <p className="text-text-secondary">Loading Admin Panel...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen bg-[#0f212e]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading Admin Panel...</p>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
-  if (user?.role !== 'ADMIN') {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
     return null;
   }
 
   return (
-    <MainLayout>
-      {children}
-    </MainLayout>
+    <div className="flex min-h-screen bg-[#0f212e]">
+      <AdminSidebar />
+      <main className="flex-1 p-8 overflow-y-auto">
+        <AdminHeader />
+        {children}
+      </main>
+    </div>
   );
 }

@@ -1,312 +1,269 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { 
+  DollarSign, 
+  Users, 
+  TrendingUp, 
+  Activity,
+  ArrowUp,
+  ArrowDown,
+  CreditCard,
+  Gamepad2
+} from 'lucide-react';
 
 interface DashboardStats {
+  totalRevenue: number;
   totalUsers: number;
   activeUsers: number;
+  totalGGR: number;
+  providerFees: number;
+  netProfit: number;
   totalDeposits: number;
   totalWithdrawals: number;
-  totalBets: number;
-  houseProfit: number;
+  activeSessions: number;
 }
 
-interface RecentUser {
-  id: string;
-  username: string;
-  email: string;
-  createdAt: string;
-  ipAddress: string | null;
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
-
-export default function AdminDashboardPage() {
-  const { user, token } = useAuth();
-  const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRevenue: 0,
+    totalUsers: 0,
+    activeUsers: 0,
+    totalGGR: 0,
+    providerFees: 0,
+    netProfit: 0,
+    totalDeposits: 0,
+    totalWithdrawals: 0,
+    activeSessions: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.role !== 'ADMIN') {
-      router.push('/');
-      return;
-    }
-    fetchDashboardData();
-  }, [user, router]);
+    fetchDashboardStats();
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardStats = async () => {
     try {
-      setLoading(true);
+      // TODO: Implement actual API call
+      // const response = await fetch('/api/admin/dashboard/stats');
+      // const data = await response.json();
+      // setStats(data);
       
-      // Fetch stats
-      const statsResponse = await fetch(`${API_URL}/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      
-      // Fetch recent users
-      const usersResponse = await fetch(`${API_URL}/admin/users/recent`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
-      } else {
-        // Mock data
+      // Mock data for now
+      setTimeout(() => {
         setStats({
-          totalUsers: 156,
-          activeUsers: 42,
-          totalDeposits: 125000,
-          totalWithdrawals: 85000,
-          totalBets: 450000,
-          houseProfit: 22500,
+          totalRevenue: 125430.50,
+          totalUsers: 1247,
+          activeUsers: 89,
+          totalGGR: 45230.75,
+          providerFees: 3618.46, // 8% of GGR
+          netProfit: 41612.29,
+          totalDeposits: 234500,
+          totalWithdrawals: 109069.50,
+          activeSessions: 12
         });
-      }
-
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        setRecentUsers(usersData);
-      } else {
-        // Mock data
-        setRecentUsers([
-          { id: '1', username: 'player123', email: 'player123@email.com', createdAt: new Date().toISOString(), ipAddress: '192.168.1.100' },
-          { id: '2', username: 'gambler99', email: 'gambler99@email.com', createdAt: new Date(Date.now() - 3600000).toISOString(), ipAddress: '10.0.0.50' },
-          { id: '3', username: 'lucky_star', email: 'lucky@email.com', createdAt: new Date(Date.now() - 7200000).toISOString(), ipAddress: '172.16.0.25' },
-          { id: '4', username: 'crypto_whale', email: 'whale@email.com', createdAt: new Date(Date.now() - 86400000).toISOString(), ipAddress: '192.168.2.1' },
-          { id: '5', username: 'newbie2024', email: 'newbie@email.com', createdAt: new Date(Date.now() - 172800000).toISOString(), ipAddress: '10.10.10.10' },
-        ]);
-      }
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
-    } finally {
+        setLoading(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
       setLoading(false);
     }
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const StatCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    trend, 
+    trendValue, 
+    color = 'blue' 
+  }: {
+    title: string;
+    value: string | number;
+    icon: any;
+    trend?: 'up' | 'down';
+    trendValue?: string;
+    color?: 'blue' | 'green' | 'yellow' | 'purple' | 'red';
+  }) => {
+    const colorClasses = {
+      blue: 'from-blue-500/20 to-blue-600/20 border-blue-500/30',
+      green: 'from-green-500/20 to-green-600/20 border-green-500/30',
+      yellow: 'from-yellow-500/20 to-yellow-600/20 border-yellow-500/30',
+      purple: 'from-purple-500/20 to-purple-600/20 border-purple-500/30',
+      red: 'from-red-500/20 to-red-600/20 border-red-500/30'
+    };
+
+    return (
+      <div className={`bg-gradient-to-br ${colorClasses[color]} border rounded-lg p-6`}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-gray-400 text-sm mb-1">{title}</p>
+            <h3 className="text-2xl font-bold text-white">{value}</h3>
+          </div>
+          <div className={`p-3 bg-${color}-500/20 rounded-lg`}>
+            <Icon className={`w-6 h-6 text-${color}-400`} />
+          </div>
+        </div>
+        {trend && (
+          <div className="flex items-center gap-1 text-sm">
+            {trend === 'up' ? (
+              <ArrowUp className="w-4 h-4 text-green-400" />
+            ) : (
+              <ArrowDown className="w-4 h-4 text-red-400" />
+            )}
+            <span className={trend === 'up' ? 'text-green-400' : 'text-red-400'}>
+              {trendValue}%
+            </span>
+            <span className="text-gray-500">vs last month</span>
+          </div>
+        )}
+      </div>
+    );
   };
 
-  if (user?.role !== 'ADMIN') {
-    return null;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
-          <p className="text-text-secondary">Welcome back, {user?.username}</p>
-        </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-white mb-2">Dashboard Overview</h1>
+        <p className="text-gray-400">Welcome back! Here's what's happening with your casino.</p>
+      </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary"></div>
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Revenue"
+          value={`$${stats.totalRevenue.toLocaleString()}`}
+          icon={DollarSign}
+          trend="up"
+          trendValue="12.5"
+          color="green"
+        />
+        <StatCard
+          title="Total Users"
+          value={stats.totalUsers.toLocaleString()}
+          icon={Users}
+          trend="up"
+          trendValue="8.2"
+          color="blue"
+        />
+        <StatCard
+          title="Active Users"
+          value={stats.activeUsers}
+          icon={Activity}
+          color="purple"
+        />
+        <StatCard
+          title="Active Sessions"
+          value={stats.activeSessions}
+          icon={Gamepad2}
+          color="yellow"
+        />
+      </div>
+
+      {/* Finance Stats */}
+      <div>
+        <h2 className="text-xl font-bold text-white mb-4">Financial Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-green-500/20 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-green-400" />
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm">Gross Gaming Revenue (GGR)</p>
+                <h3 className="text-2xl font-bold text-green-400">
+                  ${stats.totalGGR.toLocaleString()}
+                </h3>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500">
+              Total player losses - player wins
+            </div>
           </div>
-        ) : (
-          <>
-            {/* Latest Registrations Widget */}
-            <div className="bg-gradient-to-r from-accent-primary/10 to-accent-secondary/10 rounded-xl p-6 border border-accent-primary/30 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent-primary/20 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Latest Registrations</h2>
-                    <p className="text-text-secondary text-sm">Last 5 users who joined</p>
-                  </div>
-                </div>
-                <Link 
-                  href="/admin/users"
-                  className="px-4 py-2 bg-accent-primary text-black rounded-lg hover:bg-accent-primary/90 transition-colors text-sm font-medium"
-                >
-                  View All Users
-                </Link>
+
+          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-500/20 rounded-lg">
+                <CreditCard className="w-6 h-6 text-red-400" />
               </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="px-4 py-3 text-left text-text-secondary text-sm font-medium">User</th>
-                      <th className="px-4 py-3 text-left text-text-secondary text-sm font-medium">Email</th>
-                      <th className="px-4 py-3 text-left text-text-secondary text-sm font-medium">IP Address</th>
-                      <th className="px-4 py-3 text-left text-text-secondary text-sm font-medium">Joined</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentUsers.map((u) => (
-                      <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center">
-                              <span className="text-accent-primary text-sm font-bold">{u.username[0].toUpperCase()}</span>
-                            </div>
-                            <span className="text-white font-medium">{u.username}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-text-secondary">{u.email}</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 bg-white/10 rounded text-text-secondary text-sm font-mono">
-                            {u.ipAddress || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-text-secondary text-sm">{formatDate(u.createdAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div>
+                <p className="text-gray-400 text-sm">Provider Fees (8%)</p>
+                <h3 className="text-2xl font-bold text-red-400">
+                  ${stats.providerFees.toLocaleString()}
+                </h3>
               </div>
             </div>
+            <div className="text-sm text-gray-500">
+              8% of GGR paid to game providers
+            </div>
+          </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-text-secondary text-sm">Total Users</p>
-                    <p className="text-2xl font-bold text-white">{stats?.totalUsers.toLocaleString()}</p>
-                  </div>
-                </div>
+          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-yellow-500/20 rounded-lg">
+                <DollarSign className="w-6 h-6 text-yellow-400" />
               </div>
-
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-text-secondary text-sm">Active Now</p>
-                    <p className="text-2xl font-bold text-green-400">{stats?.activeUsers}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-accent-primary/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-text-secondary text-sm">Total Deposits</p>
-                    <p className="text-2xl font-bold text-accent-primary">${stats?.totalDeposits.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-text-secondary text-sm">Total Withdrawals</p>
-                    <p className="text-2xl font-bold text-orange-400">${stats?.totalWithdrawals.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-text-secondary text-sm">Total Bets</p>
-                    <p className="text-2xl font-bold text-purple-400">${stats?.totalBets.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-text-secondary text-sm">House Profit</p>
-                    <p className="text-2xl font-bold text-yellow-400">${stats?.houseProfit.toLocaleString()}</p>
-                  </div>
-                </div>
+              <div>
+                <p className="text-gray-400 text-sm">Net Profit (House)</p>
+                <h3 className="text-2xl font-bold text-yellow-400">
+                  ${stats.netProfit.toLocaleString()}
+                </h3>
               </div>
             </div>
+            <div className="text-sm text-gray-500">
+              GGR - Provider Fees = Your profit
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Link href="/admin/users" className="bg-bg-card rounded-xl p-6 border border-white/10 hover:border-accent-primary/50 transition-colors group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-accent-primary/20 flex items-center justify-center group-hover:bg-accent-primary/30 transition-colors">
-                    <svg className="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold">User Management</h3>
-                    <p className="text-text-secondary text-sm">View and manage users</p>
-                  </div>
-                </div>
-              </Link>
-
-              <Link href="/admin/transactions" className="bg-bg-card rounded-xl p-6 border border-white/10 hover:border-accent-primary/50 transition-colors group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
-                    <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold">Transactions</h3>
-                    <p className="text-text-secondary text-sm">View all transactions</p>
-                  </div>
-                </div>
-              </Link>
-
-              <div className="bg-bg-card rounded-xl p-6 border border-white/10 hover:border-accent-primary/50 transition-colors group cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
-                    <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold">Settings</h3>
-                    <p className="text-text-secondary text-sm">Configure platform</p>
-                  </div>
-                </div>
+      {/* Deposits & Withdrawals */}
+      <div>
+        <h2 className="text-xl font-bold text-white mb-4">Transaction Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Total Deposits</p>
+                <h3 className="text-2xl font-bold text-white">
+                  ${stats.totalDeposits.toLocaleString()}
+                </h3>
+              </div>
+              <div className="p-3 bg-green-500/20 rounded-lg">
+                <ArrowDown className="w-6 h-6 text-green-400" />
               </div>
             </div>
-          </>
-        )}
+            <div className="h-2 bg-[#0f212e] rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 rounded-full" style={{ width: '75%' }}></div>
+            </div>
+          </div>
+
+          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Total Withdrawals</p>
+                <h3 className="text-2xl font-bold text-white">
+                  ${stats.totalWithdrawals.toLocaleString()}
+                </h3>
+              </div>
+              <div className="p-3 bg-red-500/20 rounded-lg">
+                <ArrowUp className="w-6 h-6 text-red-400" />
+              </div>
+            </div>
+            <div className="h-2 bg-[#0f212e] rounded-full overflow-hidden">
+              <div className="h-full bg-red-500 rounded-full" style={{ width: '45%' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
