@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 
 interface GameCardProps {
@@ -11,7 +11,9 @@ interface GameCardProps {
   isLive?: boolean;
   isComingSoon?: boolean;
   isHot?: boolean;
+  isNew?: boolean;
   gradient?: string;
+  players?: number;
 }
 
 const GameCard: React.FC<GameCardProps> = ({
@@ -22,8 +24,26 @@ const GameCard: React.FC<GameCardProps> = ({
   isLive = false,
   isComingSoon = false,
   isHot = false,
+  isNew = false,
   gradient = 'from-purple-600 via-blue-600 to-cyan-500',
+  players,
 }) => {
+  const [isActive, setIsActive] = useState(false);
+
+  const handleMouseDown = () => {
+    if (!isComingSoon) {
+      setIsActive(true);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsActive(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsActive(false);
+  };
+
   const cardContent = (
     <div
       className={`
@@ -31,8 +51,19 @@ const GameCard: React.FC<GameCardProps> = ({
         bg-gradient-to-br ${gradient}
         border border-white/10
         transition-all duration-300 ease-out
-        ${!isComingSoon ? 'hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 cursor-pointer' : 'opacity-70 cursor-not-allowed'}
+        ${!isComingSoon 
+          ? `hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 cursor-pointer ${isActive ? 'scale-95 shadow-inner' : ''}` 
+          : 'opacity-70 cursor-not-allowed'}
       `}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={handleMouseDown}
+      onTouchEnd={handleMouseUp}
+      role="button"
+      tabIndex={isComingSoon ? -1 : 0}
+      aria-disabled={isComingSoon}
+      aria-label={`${title} game${isComingSoon ? ' - Coming Soon' : ''}`}
     >
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-20">
@@ -40,20 +71,32 @@ const GameCard: React.FC<GameCardProps> = ({
         <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%)]" />
       </div>
 
+      {/* Active State Overlay */}
+      {isActive && (
+        <div className="absolute inset-0 bg-white/10 z-10 transition-opacity duration-150" />
+      )}
+
       {/* Card Content */}
       <div className="relative p-6 h-48 flex flex-col items-center justify-center">
         {/* Live Badge */}
         {isLive && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full shadow-lg shadow-green-500/30">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
             <span className="text-xs font-bold text-white">LIVE</span>
           </div>
         )}
 
         {/* Hot Badge */}
-        {isHot && (
-          <div className="absolute top-3 right-3 px-2 py-1 bg-orange-500/90 rounded-full">
+        {isHot && !isNew && (
+          <div className="absolute top-3 right-3 px-2 py-1 bg-orange-500/90 rounded-full shadow-lg shadow-orange-500/30">
             <span className="text-xs font-bold text-white">🔥 HOT</span>
+          </div>
+        )}
+
+        {/* New Badge */}
+        {isNew && (
+          <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/90 rounded-full shadow-lg shadow-blue-500/30 animate-pulse">
+            <span className="text-xs font-bold text-white">✨ NEW</span>
           </div>
         )}
 
@@ -64,26 +107,39 @@ const GameCard: React.FC<GameCardProps> = ({
           </div>
         )}
 
+        {/* Players Count */}
+        {players !== undefined && players > 0 && !isComingSoon && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/40 rounded-full backdrop-blur-sm">
+            <span className="text-xs text-gray-300">👥</span>
+            <span className="text-xs font-medium text-white">{players.toLocaleString()}</span>
+          </div>
+        )}
+
         {/* Icon or Image */}
-        <div className="mb-4 text-5xl">
+        <div className="mb-4 text-5xl transform transition-transform duration-300 group-hover:scale-110">
           {icon ? (
             icon
           ) : image ? (
             <img src={image} alt={title} className="w-16 h-16 object-contain" />
           ) : (
-            <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center">
+            <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
               <span className="text-3xl">🎮</span>
             </div>
           )}
         </div>
 
         {/* Title */}
-        <h3 className="text-xl font-bold text-white text-center">{title}</h3>
+        <h3 className="text-xl font-bold text-white text-center drop-shadow-lg">{title}</h3>
 
         {/* Play Button - Shows on Hover */}
         {!isComingSoon && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="px-6 py-3 bg-cyan-500 rounded-xl font-bold text-white transform scale-90 group-hover:scale-100 transition-transform duration-300 shadow-lg shadow-cyan-500/50">
+            <div className={`
+              px-6 py-3 bg-cyan-500 rounded-xl font-bold text-white 
+              transform transition-all duration-300 
+              shadow-lg shadow-cyan-500/50
+              ${isActive ? 'scale-90 bg-cyan-600' : 'scale-90 group-hover:scale-100'}
+            `}>
               Play Now
             </div>
           </div>
@@ -91,8 +147,8 @@ const GameCard: React.FC<GameCardProps> = ({
 
         {/* Coming Soon Overlay */}
         {isComingSoon && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-            <div className="px-4 py-2 bg-gray-800/80 rounded-lg">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+            <div className="px-4 py-2 bg-gray-800/80 rounded-lg border border-gray-700/50">
               <span className="text-sm font-medium text-gray-300">Coming Soon</span>
             </div>
           </div>
@@ -101,14 +157,20 @@ const GameCard: React.FC<GameCardProps> = ({
     </div>
   );
 
+  // Wrap with Link only if link exists and not coming soon
   if (link && !isComingSoon) {
     return (
-      <Link href={link} className="block">
+      <Link 
+        href={link} 
+        className="block focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded-2xl"
+        prefetch={true}
+      >
         {cardContent}
       </Link>
     );
   }
 
+  // Return non-clickable card for coming soon
   return cardContent;
 };
 
