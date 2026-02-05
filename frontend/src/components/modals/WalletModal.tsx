@@ -14,7 +14,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'deposit' | 'withdraw' | 'history'>('overview');
 
-  const primaryBalance = user?.wallets?.find(w => w.currency === 'USDT');
+  const primaryBalance = user?.balance?.find(w => w.currency === 'USDT');
 
   return (
     <Transition appear show={isOpen} as={Fragment}>

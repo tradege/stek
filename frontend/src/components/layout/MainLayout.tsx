@@ -55,7 +55,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
-        <Sidebar onClose={() => setIsSidebarOpen(false)} onToggleChat={() => setIsChatOpen(prev => !prev)} />
+        <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </aside>
 
       {/* Main Content Area */}

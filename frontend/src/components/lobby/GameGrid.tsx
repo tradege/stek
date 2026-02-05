@@ -105,13 +105,22 @@ export default function GameGrid({ category, limit }: GameGridProps) {
 
   // Get game link
   const getGameLink = (game: Game) => {
-    // Internal games (Crash, Plinko, etc.)
-    if (game.provider.slug === 'internal') {
+    // Internal games (Crash, Plinko, Dice, Mines)
+    if (game.category === 'CRASH') {
       return `/games/${game.slug}`;
     }
     
-    // External games - for now, just show the slug
-    // Later we can implement a launch modal or redirect
+    // Slots games
+    if (game.category === 'SLOTS') {
+      return `/games/slots/${game.slug}`;
+    }
+    
+    // Live Casino games
+    if (game.category === 'LIVE_CASINO') {
+      return `/games/live/${game.slug}`;
+    }
+    
+    // Fallback
     return `/games/${game.slug}`;
   };
 
