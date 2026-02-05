@@ -58,11 +58,13 @@ export interface GameFilters {
 }
 
 export interface GamesResponse {
-  games: Game[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  data: Game[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface LaunchGameResponse {
