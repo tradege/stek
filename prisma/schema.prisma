@@ -479,6 +479,8 @@ model GameProvider {
   id              String      @id @default(uuid())
   name            String      @unique
   slug            String      @unique  // e.g., "pragmatic"
+  aggregatorId    String?     // ID on aggregator platform (if using aggregator)
+  aggregatorName  String?     // Name of aggregator (e.g., "SoftSwiss", "SoftGamings")
   apiUrl          String?
   apiKey          String?
   apiSecret       String?
@@ -506,6 +508,8 @@ model Game {
   name            String
   slug            String        @unique
   category        GameCategory
+  subcategory     String?       // e.g., "Video Slots", "Classic Slots", "Megaways"
+  tags            String[]      @default([])  // For search and filtering
   
   // Metadata
   thumbnail       String?
@@ -515,6 +519,9 @@ model Game {
   volatility      Volatility?
   minBet          Decimal?      @db.Decimal(18, 8)
   maxBet          Decimal?      @db.Decimal(18, 8)
+  
+  // Statistics
+  playCount       Int           @default(0)  // Number of times played
   
   // Flags
   isActive        Boolean       @default(true)
