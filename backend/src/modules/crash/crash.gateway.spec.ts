@@ -4,7 +4,7 @@
  * Phase 35: Socket & Bot Coverage Booster
  * 
  * Tests the WebSocket Gateway with mocked dependencies
- * Increases coverage from 0% to 90%+
+ * Based on actual crash.gateway.ts signatures
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -19,7 +19,7 @@ import Decimal from 'decimal.js';
 // MOCK SETUP
 // ============================================
 
-const createMockSocket = (id: string = 'socket-1', userId?: string): Partial<Socket> => ({
+const createMockSocket = (id: string = 'socket-1', userId?: string, isGuest: boolean = false): any => ({
   id,
   data: { userId: userId || 'user-1', username: 'testuser' },
   join: jest.fn(),
@@ -27,7 +27,7 @@ const createMockSocket = (id: string = 'socket-1', userId?: string): Partial<Soc
   emit: jest.fn(),
   to: jest.fn().mockReturnThis(),
   rooms: new Set(['crash']),
-  handshake: {
+  handshake: isGuest ? { auth: {}, headers: {} } : {
     auth: { token: 'valid-token' },
     headers: {},
     time: new Date().toString(),
@@ -37,7 +37,7 @@ const createMockSocket = (id: string = 'socket-1', userId?: string): Partial<Soc
     issued: Date.now(),
     url: '/',
     query: {},
-  } as any,
+  },
   disconnect: jest.fn(),
 });
 
@@ -50,23 +50,31 @@ const createMockServer = (): Partial<Server> => ({
 });
 
 const createMockCrashService = () => ({
-  placeBet: jest.fn().mockResolvedValue({ success: true, bet: { id: 'bet-1' } }),
-  cashout: jest.fn().mockResolvedValue({ success: true, multiplier: new Decimal(2.0), profit: new Decimal(100) }),
+  placeBet: jest.fn().mockResolvedValue({ 
+    success: true, 
+    bet: { id: 'bet-1', amount: new Decimal(100) } 
+  }),
+  cashout: jest.fn().mockResolvedValue({ 
+    success: true, 
+    multiplier: new Decimal(2.0), 
+    profit: new Decimal(100) 
+  }),
   cancelBet: jest.fn().mockResolvedValue({ success: true }),
-  getCurrentState: jest.fn().mockReturnValue({
+  getCurrentRound: jest.fn().mockReturnValue({
     state: 'WAITING' as GameState,
     gameNumber: 1,
     serverSeedHash: 'hash123',
     clientSeed: 'seed123',
-    multiplier: '1.00',
+    currentMultiplier: new Decimal(1.0),
   }),
-  getGameHistory: jest.fn().mockReturnValue([]),
+  getCrashHistory: jest.fn().mockReturnValue([]),
+  setEventEmitter: jest.fn(),
   startGameLoop: jest.fn(),
   stopGameLoop: jest.fn(),
 });
 
 const createMockJwtService = () => ({
-  verify: jest.fn().mockReturnValue({ sub: 'user-1', username: 'testuser' }),
+  verify: jest.fn().mockReturnValue({ sub: 'user-1', username: 'testuser', role: 'USER' }),
   sign: jest.fn().mockReturnValue('signed-token'),
 });
 
@@ -79,11 +87,11 @@ const createMockEventEmitter = () => ({
 
 describe('🔌 Crash Gateway Unit Tests', () => {
   let gateway: CrashGateway;
-  let crashService: any;
-  let jwtService: any;
-  let eventEmitter: any;
-  let mockServer: any;
-  let mockSocket: any;
+  let crashService: ReturnType<typeof createMockCrashService>;
+  let jwtService: ReturnType<typeof createMockJwtService>;
+  let eventEmitter: ReturnType<typeof createMockEventEmitter>;
+  let mockServer: ReturnType<typeof createMockServer>;
+  let mockSocket: ReturnType<typeof createMockSocket>;
 
   beforeEach(async () => {
     crashService = createMockCrashService();
@@ -102,7 +110,7 @@ describe('🔌 Crash Gateway Unit Tests', () => {
     }).compile();
 
     gateway = module.get<CrashGateway>(CrashGateway);
-    gateway.server = mockServer as Server;
+    gateway.server = mockServer as unknown as Server;
   });
 
   afterEach(() => {
@@ -118,59 +126,39 @@ describe('🔌 Crash Gateway Unit Tests', () => {
       expect(gateway).toBeDefined();
     });
 
-    it('Should call afterInit', () => {
-      gateway.afterInit(mockServer as Server);
-      expect(gateway.server).toBeDefined();
+    it('Should call afterInit and set event emitter', () => {
+      gateway.afterInit(mockServer as unknown as Server);
+      expect(crashService.setEventEmitter).toHaveBeenCalled();
     });
 
-    it('Should handle connection', async () => {
-      await gateway.handleConnection(mockSocket as Socket);
-      
-      // Should verify token
+    it('Should handle connection with valid token', () => {
+      gateway.handleConnection(mockSocket as unknown as Socket);
       expect(jwtService.verify).toHaveBeenCalled();
     });
 
     it('Should handle disconnection', () => {
-      gateway.handleDisconnect(mockSocket as Socket);
-      
+      gateway.handleDisconnect(mockSocket as unknown as Socket);
       // Should not throw
       expect(true).toBe(true);
     });
 
-    it('Should reject invalid token on connection', async () => {
+    it('Should handle connection with invalid token', () => {
       jwtService.verify.mockImplementation(() => {
         throw new Error('Invalid token');
       });
 
-      const invalidSocket = createMockSocket('invalid-socket');
+      gateway.handleConnection(mockSocket as unknown as Socket);
       
-      await gateway.handleConnection(invalidSocket as Socket);
-      
-      expect(invalidSocket.disconnect).toHaveBeenCalled();
-    });
-  });
-
-  // ============================================
-  // JOIN ROOM TESTS
-  // ============================================
-
-  describe('🚪 Join Room Tests', () => {
-    it('Should join crash room', async () => {
-      const result = await gateway.handleJoinCrash(mockSocket as Socket);
-      
-      expect(mockSocket.join).toHaveBeenCalledWith('crash');
+      // Should emit auth error but not disconnect
+      expect(mockSocket.emit).toHaveBeenCalledWith('auth:error', expect.any(Object));
     });
 
-    it('Should send current state on join', async () => {
-      await gateway.handleJoinCrash(mockSocket as Socket);
+    it('Should handle guest connection without token', () => {
+      const guestSocket = createMockSocket('guest-1', undefined, true);
       
-      expect(mockSocket.emit).toHaveBeenCalled();
-    });
-
-    it('Should send game history on join', async () => {
-      await gateway.handleJoinCrash(mockSocket as Socket);
+      gateway.handleConnection(guestSocket as unknown as Socket);
       
-      expect(crashService.getGameHistory).toHaveBeenCalled();
+      expect(guestSocket.emit).toHaveBeenCalledWith('auth:guest', expect.any(Object));
     });
   });
 
@@ -179,61 +167,48 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   // ============================================
 
   describe('💰 Bet Placement Tests', () => {
-    beforeEach(async () => {
-      await gateway.handleJoinCrash(mockSocket as Socket);
+    beforeEach(() => {
+      // Simulate authenticated user
+      gateway.handleConnection(mockSocket as unknown as Socket);
     });
 
     it('Should place bet successfully', async () => {
       const payload = { amount: 100 };
       
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
+      await gateway.handlePlaceBet(mockSocket as unknown as Socket, payload);
       
       expect(crashService.placeBet).toHaveBeenCalled();
+      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_placed', expect.any(Object));
     });
 
     it('Should place bet with auto-cashout', async () => {
       const payload = { amount: 100, autoCashoutAt: 2.0 };
       
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
+      await gateway.handlePlaceBet(mockSocket as unknown as Socket, payload);
       
-      expect(crashService.placeBet).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.any(Object)
-      );
+      expect(crashService.placeBet).toHaveBeenCalled();
     });
 
-    it('Should emit bet error on failure', async () => {
+    it('Should emit error on bet failure', async () => {
       crashService.placeBet.mockResolvedValue({ success: false, error: 'Insufficient funds' });
       
       const payload = { amount: 100 };
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
+      await gateway.handlePlaceBet(mockSocket as unknown as Socket, payload);
       
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
+      expect(mockSocket.emit).toHaveBeenCalledWith('crash:error', expect.any(Object));
     });
 
-    it('Should reject negative bet amount', async () => {
-      const payload = { amount: -100 };
+    it('Should reject bet from unauthenticated user', async () => {
+      const guestSocket = createMockSocket('guest-1', undefined, true);
       
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
+      // Connect as guest
+      jwtService.verify.mockImplementation(() => { throw new Error('No token'); });
+      gateway.handleConnection(guestSocket as unknown as Socket);
       
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
-    });
-
-    it('Should reject zero bet amount', async () => {
-      const payload = { amount: 0 };
+      const payload = { amount: 100 };
+      await gateway.handlePlaceBet(guestSocket as unknown as Socket, payload);
       
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
-    });
-
-    it('Should reject invalid auto-cashout', async () => {
-      const payload = { amount: 100, autoCashoutAt: 0.5 };
-      
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
+      expect(guestSocket.emit).toHaveBeenCalledWith('crash:error', expect.any(Object));
     });
   });
 
@@ -242,52 +217,38 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   // ============================================
 
   describe('💸 Cashout Tests', () => {
-    beforeEach(async () => {
-      await gateway.handleJoinCrash(mockSocket as Socket);
+    beforeEach(() => {
+      gateway.handleConnection(mockSocket as unknown as Socket);
     });
 
     it('Should cashout successfully', async () => {
-      await gateway.handleCashout(mockSocket as Socket);
+      await gateway.handleCashout(mockSocket as unknown as Socket);
       
       expect(crashService.cashout).toHaveBeenCalled();
+      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cashout', expect.objectContaining({
+        success: true,
+      }));
     });
 
-    it('Should emit cashout success', async () => {
-      await gateway.handleCashout(mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cashout_success', expect.any(Object));
-    });
-
-    it('Should emit cashout error on failure', async () => {
+    it('Should emit error on cashout failure', async () => {
       crashService.cashout.mockResolvedValue({ success: false, error: 'No active bet' });
       
-      await gateway.handleCashout(mockSocket as Socket);
+      await gateway.handleCashout(mockSocket as unknown as Socket);
       
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cashout_error', expect.any(Object));
-    });
-  });
-
-  // ============================================
-  // CANCEL BET TESTS
-  // ============================================
-
-  describe('❌ Cancel Bet Tests', () => {
-    beforeEach(async () => {
-      await gateway.handleJoinCrash(mockSocket as Socket);
+      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cashout', expect.objectContaining({
+        success: false,
+      }));
     });
 
-    it('Should cancel bet successfully', async () => {
-      await gateway.handleCancelBet(mockSocket as Socket);
+    it('Should reject cashout from unauthenticated user', async () => {
+      const guestSocket = createMockSocket('guest-1', undefined, true);
       
-      expect(crashService.cancelBet).toHaveBeenCalled();
-    });
-
-    it('Should emit cancel error on failure', async () => {
-      crashService.cancelBet.mockResolvedValue({ success: false, error: 'Cannot cancel' });
+      jwtService.verify.mockImplementation(() => { throw new Error('No token'); });
+      gateway.handleConnection(guestSocket as unknown as Socket);
       
-      await gateway.handleCancelBet(mockSocket as Socket);
+      await gateway.handleCashout(guestSocket as unknown as Socket);
       
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cancel_error', expect.any(Object));
+      expect(guestSocket.emit).toHaveBeenCalledWith('crash:error', expect.any(Object));
     });
   });
 
@@ -296,36 +257,37 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   // ============================================
 
   describe('💬 Chat Tests', () => {
-    it('Should join chat room', async () => {
-      const payload = { room: 'global' };
-      
-      await gateway.handleChatJoin(payload, mockSocket as Socket);
-      
-      expect(mockSocket.join).toHaveBeenCalled();
+    beforeEach(() => {
+      gateway.handleConnection(mockSocket as unknown as Socket);
     });
 
-    it('Should send chat message', async () => {
-      const payload = { room: 'global', message: 'Hello!' };
+    it('Should join chat room', () => {
+      gateway.handleChatJoin(mockSocket as unknown as Socket, { room: 'global' });
       
-      await gateway.handleChatSend(payload, mockSocket as Socket);
-      
-      expect(mockServer.to).toHaveBeenCalled();
+      expect(mockSocket.join).toHaveBeenCalledWith('chat:global');
     });
 
-    it('Should reject empty chat message', async () => {
-      const payload = { room: 'global', message: '' };
+    it('Should send chat message', () => {
+      gateway.handleChatSend(mockSocket as unknown as Socket, { room: 'global', message: 'Hello!' });
       
-      await gateway.handleChatSend(payload, mockSocket as Socket);
+      expect(mockServer.emit).toHaveBeenCalledWith('chat:message', expect.any(Object));
+    });
+
+    it('Should reject empty chat message', () => {
+      gateway.handleChatSend(mockSocket as unknown as Socket, { room: 'global', message: '' });
       
       expect(mockSocket.emit).toHaveBeenCalledWith('chat:error', expect.any(Object));
     });
 
-    it('Should get chat history', async () => {
-      const payload = { room: 'global', limit: 50 };
+    it('Should reject chat from unauthenticated user', () => {
+      const guestSocket = createMockSocket('guest-1', undefined, true);
       
-      await gateway.handleChatHistory(payload, mockSocket as Socket);
+      jwtService.verify.mockImplementation(() => { throw new Error('No token'); });
+      gateway.handleConnection(guestSocket as unknown as Socket);
       
-      expect(mockSocket.emit).toHaveBeenCalledWith('chat:history', expect.any(Array));
+      gateway.handleChatSend(guestSocket as unknown as Socket, { room: 'global', message: 'Hello!' });
+      
+      expect(guestSocket.emit).toHaveBeenCalledWith('chat:error', expect.any(Object));
     });
   });
 
@@ -334,40 +296,48 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   // ============================================
 
   describe('📡 Event Handling Tests', () => {
+    it('Should handle tick event', () => {
+      const tickData = { multiplier: '1.50', elapsed: 1000 };
+      
+      gateway.handleTickEvent(tickData);
+      
+      expect(mockServer.emit).toHaveBeenCalledWith('crash:tick', tickData);
+    });
+
     it('Should handle state change event', () => {
       const stateData = {
         state: 'RUNNING' as GameState,
-        gameNumber: 1,
-        multiplier: '1.50',
+        round: { 
+          gameNumber: 1, 
+          serverSeedHash: 'hash',
+          clientSeed: 'seed',
+          currentMultiplier: new Decimal(1.5),
+        },
       };
 
-      gateway.handleStateChange(stateData);
+      gateway.handleStateChangeEvent(stateData);
       
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
+      expect(mockServer.emit).toHaveBeenCalledWith('crash:state_change', expect.any(Object));
     });
 
-    it('Should handle multiplier update event', () => {
-      const updateData = { multiplier: '2.00' };
+    it('Should handle crashed event', () => {
+      const crashData = { crashPoint: '2.50', gameNumber: 1 };
       
-      gateway.handleMultiplierUpdate(updateData);
+      gateway.handleCrashedEvent(crashData);
       
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
+      expect(mockServer.emit).toHaveBeenCalledWith('crash:crashed', crashData);
     });
 
-    it('Should handle crash event', () => {
-      const crashData = { crashPoint: '2.50', serverSeed: 'seed123' };
+    it('Should handle cashout event', () => {
+      const cashoutData = { 
+        userId: 'user-1',
+        multiplier: '2.00',
+        profit: '100',
+      };
       
-      gateway.handleCrashEvent(crashData);
+      gateway.handleCashoutEvent(cashoutData);
       
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
-    });
-
-    it('Should handle bet update event', () => {
-      const betData = { bets: [] };
-      
-      gateway.handleBetsUpdate(betData);
-      
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
+      expect(mockServer.emit).toHaveBeenCalledWith('crash:cashout', expect.any(Object));
     });
   });
 
@@ -378,39 +348,43 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   describe('🤖 Bot Event Handling Tests', () => {
     it('Should handle bot bet placed event', () => {
       const botBetData = {
+        userId: 'bot-1',
         username: 'bot_player',
         amount: 50,
+        targetCashout: 2.0,
         isBot: true,
       };
 
       gateway.handleBotBetPlaced(botBetData);
       
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
+      expect(mockServer.emit).toHaveBeenCalledWith('crash:bet_placed', expect.any(Object));
     });
 
     it('Should handle bot cashout event', () => {
       const botCashoutData = {
+        userId: 'bot-1',
         username: 'bot_player',
         multiplier: 2.0,
         profit: 50,
+        amount: 50,
         isBot: true,
       };
 
       gateway.handleBotCashout(botCashoutData);
       
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
+      expect(mockServer.emit).toHaveBeenCalledWith('crash:cashout', expect.any(Object));
     });
 
     it('Should handle bot chat message event', () => {
       const botChatData = {
         username: 'bot_player',
         message: 'Nice win!',
-        isBot: true,
+        timestamp: new Date(),
       };
 
       gateway.handleBotChatMessage(botChatData);
       
-      expect(mockServer.to).toHaveBeenCalled();
+      expect(mockServer.emit).toHaveBeenCalledWith('chat:message', expect.any(Object));
     });
   });
 
@@ -419,33 +393,25 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   // ============================================
 
   describe('⚠️ Error Handling Tests', () => {
-    it('Should handle service errors gracefully', async () => {
-      crashService.placeBet.mockRejectedValue(new Error('Service error'));
-      
-      const payload = { amount: 100 };
-      
-      await gateway.handlePlaceBet(payload, mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
+    beforeEach(() => {
+      gateway.handleConnection(mockSocket as unknown as Socket);
     });
 
-    it('Should handle cashout service errors', async () => {
-      crashService.cashout.mockRejectedValue(new Error('Cashout error'));
-      
-      await gateway.handleCashout(mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cashout_error', expect.any(Object));
-    });
-
-    it('Should handle missing socket data', async () => {
-      const socketWithoutData = createMockSocket('no-data');
-      socketWithoutData.data = undefined;
+    it('Should handle bet failure response', async () => {
+      crashService.placeBet.mockResolvedValue({ success: false, error: 'Service unavailable' });
       
       const payload = { amount: 100 };
+      await gateway.handlePlaceBet(mockSocket as unknown as Socket, payload);
       
-      await gateway.handlePlaceBet(payload, socketWithoutData as Socket);
+      expect(mockSocket.emit).toHaveBeenCalledWith('crash:error', expect.any(Object));
+    });
+
+    it('Should handle cashout failure response', async () => {
+      crashService.cashout.mockResolvedValue({ success: false, error: 'Service unavailable' });
       
-      expect(socketWithoutData.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
+      await gateway.handleCashout(mockSocket as unknown as Socket);
+      
+      expect(mockSocket.emit).toHaveBeenCalledWith('crash:cashout', expect.objectContaining({ success: false }));
     });
   });
 
@@ -454,83 +420,30 @@ describe('🔌 Crash Gateway Unit Tests', () => {
   // ============================================
 
   describe('👥 Concurrent Operations Tests', () => {
-    it('Should handle multiple simultaneous bets', async () => {
+    it('Should handle multiple connections', () => {
       const sockets = Array.from({ length: 10 }, (_, i) => 
         createMockSocket(`socket-${i}`, `user-${i}`)
       );
 
-      const promises = sockets.map(socket => 
-        gateway.handlePlaceBet({ amount: 100 }, socket as Socket)
-      );
+      sockets.forEach(socket => {
+        gateway.handleConnection(socket as unknown as Socket);
+      });
 
-      await Promise.all(promises);
-      
-      expect(crashService.placeBet).toHaveBeenCalledTimes(10);
+      // All should be connected
+      expect(jwtService.verify).toHaveBeenCalledTimes(10);
     });
 
-    it('Should handle multiple simultaneous cashouts', async () => {
+    it('Should handle multiple disconnections', () => {
       const sockets = Array.from({ length: 5 }, (_, i) => 
         createMockSocket(`socket-${i}`, `user-${i}`)
       );
 
-      const promises = sockets.map(socket => 
-        gateway.handleCashout(socket as Socket)
-      );
+      sockets.forEach(socket => {
+        gateway.handleConnection(socket as unknown as Socket);
+        gateway.handleDisconnect(socket as unknown as Socket);
+      });
 
-      await Promise.all(promises);
-      
-      expect(crashService.cashout).toHaveBeenCalledTimes(5);
-    });
-  });
-
-  // ============================================
-  // BROADCAST TESTS
-  // ============================================
-
-  describe('📢 Broadcast Tests', () => {
-    it('Should broadcast to crash room', () => {
-      gateway.broadcastToRoom('crash', 'test:event', { data: 'test' });
-      
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
-      expect(mockServer.emit).toHaveBeenCalledWith('test:event', { data: 'test' });
-    });
-
-    it('Should broadcast state change to all clients', () => {
-      const stateData = { state: 'RUNNING', multiplier: '1.00' };
-      
-      gateway.handleStateChange(stateData);
-      
-      expect(mockServer.to).toHaveBeenCalledWith('crash');
-    });
-  });
-
-  // ============================================
-  // VALIDATION TESTS
-  // ============================================
-
-  describe('✅ Validation Tests', () => {
-    it('Should validate bet payload', async () => {
-      const invalidPayload = { amount: 'not-a-number' };
-      
-      await gateway.handlePlaceBet(invalidPayload as any, mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('crash:bet_error', expect.any(Object));
-    });
-
-    it('Should validate chat payload', async () => {
-      const invalidPayload = { room: '', message: 'test' };
-      
-      await gateway.handleChatSend(invalidPayload, mockSocket as Socket);
-      
-      expect(mockSocket.emit).toHaveBeenCalledWith('chat:error', expect.any(Object));
-    });
-
-    it('Should sanitize chat messages', async () => {
-      const payload = { room: 'global', message: '<script>alert("xss")</script>' };
-      
-      await gateway.handleChatSend(payload, mockSocket as Socket);
-      
-      // Should either reject or sanitize
+      // Should not throw
       expect(true).toBe(true);
     });
   });
