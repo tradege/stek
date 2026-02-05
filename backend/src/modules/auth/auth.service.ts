@@ -32,6 +32,10 @@ export interface SafeUser {
   displayName: string | null;
   avatarUrl: string | null;
   createdAt: Date;
+  // VIP System
+  vipLevel: number;
+  totalWagered: string;
+  xp: number;
 }
 
 export interface UserWithBalance extends SafeUser {
@@ -275,6 +279,10 @@ export class AuthService {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
+      // VIP System
+      vipLevel: user.vipLevel,
+      totalWagered: user.totalWagered.toString(),
+      xp: user.xp,
     };
   }
 

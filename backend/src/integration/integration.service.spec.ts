@@ -519,4 +519,58 @@ describe('🎯 IntegrationService - Bad Cop Tests (Error Handlers)', () => {
       expect(result.status).toBe('OK');
     });
   });
+
+  describe('🔐 authenticate - Seamless Wallet Authentication', () => {
+    it('5.1 - Should authenticate with valid token', async () => {
+      const result = await service.authenticate('valid-token-123');
+
+      expect(result).toMatchObject({
+        success: true,
+        userId: 'user_from_token',
+        balance: 0,
+        currency: 'USDT',
+        message: 'Authenticated successfully (mock)',
+      });
+    });
+
+    it('5.2 - Should authenticate with different token formats', async () => {
+      const tokens = [
+        'jwt-token-abc123',
+        'bearer-xyz789',
+        'session-token-def456',
+      ];
+
+      for (const token of tokens) {
+        const result = await service.authenticate(token);
+        expect(result.success).toBe(true);
+        expect(result.userId).toBe('user_from_token');
+      }
+    });
+
+    it('5.3 - Should return consistent structure', async () => {
+      const result = await service.authenticate('test-token');
+
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('userId');
+      expect(result).toHaveProperty('balance');
+      expect(result).toHaveProperty('currency');
+      expect(result).toHaveProperty('message');
+    });
+
+    it('5.4 - Should handle empty token gracefully', async () => {
+      const result = await service.authenticate('');
+
+      expect(result).toMatchObject({
+        success: true,
+        userId: 'user_from_token',
+      });
+    });
+
+    it('5.5 - Should handle long tokens', async () => {
+      const longToken = 'a'.repeat(1000);
+      const result = await service.authenticate(longToken);
+
+      expect(result.success).toBe(true);
+    });
+  });
 });

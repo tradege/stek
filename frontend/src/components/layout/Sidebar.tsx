@@ -1,7 +1,8 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import VIPModal from '@/components/modals/VIPModal';
 
 // Icons (using simple SVG placeholders - replace with your icon library)
 const icons = {
@@ -103,6 +104,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
   const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>('casino');
+  const [isVIPModalOpen, setIsVIPModalOpen] = useState(false);
   
   const handleNavClick = () => {
     // Close sidebar on mobile when navigating
@@ -245,12 +247,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
           <button 
             data-testid="vip-learn-more"
+            onClick={() => setIsVIPModalOpen(true)}
             className="w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors"
           >
             Learn More
           </button>
         </div>
       </div>
+      
+      {/* VIP Modal */}
+      <VIPModal isOpen={isVIPModalOpen} onClose={() => setIsVIPModalOpen(false)} />
     </aside>
   );
 };

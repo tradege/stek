@@ -16,6 +16,10 @@ export interface User {
   displayName: string | null;
   avatarUrl: string | null;
   createdAt: string;
+  // VIP System
+  vipLevel: number;
+  totalWagered: string;
+  xp: number;
 }
 
 export interface UserBalance {

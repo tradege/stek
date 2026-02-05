@@ -54,7 +54,11 @@ describe('🔐 AuthService - Unit Tests', () => {
     twoFactorEnabled: false,
     twoFactorSecret: null,
     lastLoginIp: null,
-      isBot: false,
+    isBot: false,
+    // VIP System
+    vipLevel: 0,
+    totalWagered: new Decimal(0),
+    xp: 0,
   };
 
   const mockWallet = {

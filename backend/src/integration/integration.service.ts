@@ -302,4 +302,20 @@ export class IntegrationService {
     };
     return currencyMap[currency.toUpperCase()] || Currency.USDT;
   }
+
+  /**
+   * Authenticate user session for Seamless Wallet
+   */
+  async authenticate(token: string): Promise<any> {
+    this.logger.log(`Authenticating token: ${token}`);
+    
+    return {
+      success: true,
+      userId: 'user_from_token',
+      balance: 0,
+      currency: 'USDT',
+      message: 'Authenticated successfully (mock)',
+    };
+  }
+
 }

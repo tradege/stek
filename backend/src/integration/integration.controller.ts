@@ -75,4 +75,15 @@ export class IntegrationController {
       timestamp: new Date().toISOString(),
     };
   }
+
+  /**
+   * Authenticate user session for Seamless Wallet
+   * POST /api/integration/authenticate
+   */
+  @Post('authenticate')
+  @HttpCode(HttpStatus.OK)
+  async authenticate(@Body() body: { token: string }): Promise<any> {
+    this.logger.log(`Authentication request with token: ${body.token}`);
+    return this.integrationService.authenticate(body.token);
+  }
 }

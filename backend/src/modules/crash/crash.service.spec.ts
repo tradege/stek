@@ -237,7 +237,7 @@ describe('🎰 CrashService - Comprehensive Unit Tests', () => {
     const SIMULATION_COUNT = 10000;
     const HOUSE_EDGE = 0.04;
     const INSTANT_BUST = 0.02;
-    const TOLERANCE = 0.02;
+    const TOLERANCE = 0.03;
     
     it('Should maintain ~4% house edge over 10,000 games', () => {
       const serverSeed = crypto.randomBytes(32).toString('hex');

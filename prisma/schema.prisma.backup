@@ -72,11 +72,6 @@ model User {
   lastLoginAt       DateTime?
   lastLoginIp       String?
   
-  // VIP System
-  vipLevel          Int         @default(0)  // 0-10 VIP levels
-  totalWagered      Decimal     @default(0) @db.Decimal(18, 8)  // Total amount wagered for VIP
-  xp                Int         @default(0)  // Experience points for gamification
-  
   // Timestamps
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -92,8 +87,6 @@ model User {
   vaultDeposits     VaultDeposit[]
   sessions          UserSession[]
   gameSessions      GameSession[] @relation("GameSessions")
-  chatMessages      ChatMessage[] @relation("UserChatMessages")
-  statistics        Statistic[]   @relation("UserStatistics")
   
   @@index([parentId])
   @@index([role])
@@ -450,12 +443,10 @@ model AuditLog {
 // --- ENUMS ---
 enum GameCategory {
   SLOTS
-  LIVE_CASINO
+  LIVE
   CRASH
   SPORTS
-  TABLE_GAMES
-  ORIGINALS
-  VIRTUAL_SPORTS
+  TABLE
 }
 
 enum Volatility {
@@ -556,54 +547,4 @@ model GameSession {
   @@index([userId])
   @@index([gameId])
   @@index([status])
-}
-
-// ============================================
-// CHAT SYSTEM
-// ============================================
-
-model ChatMessage {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation("UserChatMessages", fields: [userId], references: [id], onDelete: Cascade)
-  
-  message     String
-  isSystem    Boolean   @default(false)
-  
-  createdAt   DateTime  @default(now())
-  
-  @@index([userId])
-  @@index([createdAt])
-}
-
-// ============================================
-// STATISTICS SYSTEM
-// ============================================
-
-enum StatisticType {
-  TOTAL_WAGERED
-  TOTAL_WON
-  TOTAL_LOST
-  GAMES_PLAYED
-  WIN_RATE
-  BIGGEST_WIN
-  BIGGEST_LOSS
-  PROFIT_LOSS
-}
-
-model Statistic {
-  id          String        @id @default(uuid())
-  userId      String
-  user        User          @relation("UserStatistics", fields: [userId], references: [id], onDelete: Cascade)
-  
-  type        StatisticType
-  value       Decimal       @db.Decimal(18, 8)
-  gameType    String?       // e.g., "crash", "plinko", "slots"
-  
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  
-  @@unique([userId, type, gameType])
-  @@index([userId])
-  @@index([type])
 }
