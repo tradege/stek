@@ -5,30 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { getGameBySlug, launchGame, type Game } from '@/services/game.service';
 import { useAuth } from '@/contexts/AuthContext';
-
-// GameIframe Component
-function GameIframe({ url, onClose }: { url: string; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black">
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-10 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
-      >
-        ✕ Close Game
-      </button>
-
-      {/* Game Iframe */}
-      <iframe
-        src={url}
-        className="w-full h-full border-0"
-        allow="autoplay; fullscreen; payment"
-        allowFullScreen
-        title="Game"
-      />
-    </div>
-  );
-}
+import GameIframe from '@/components/game/GameIframe';
 
 export default function GamePage() {
   const params = useParams();
@@ -124,7 +101,17 @@ export default function GamePage() {
 
   // Game iframe is open
   if (gameUrl) {
-    return <GameIframe url={gameUrl} onClose={handleCloseGame} />;
+    return (
+      <GameIframe
+        url={gameUrl}
+        gameName={game.name}
+        onClose={handleCloseGame}
+        onError={(error) => {
+          setError(error);
+          setGameUrl(null);
+        }}
+      />
+    );
   }
 
   // Game details page
