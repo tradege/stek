@@ -3,6 +3,10 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import VIPModal from '@/components/modals/VIPModal';
+import WalletModal from '@/components/modals/WalletModal';
+import StatisticsModal from '@/components/modals/StatisticsModal';
+import SettingsModal from '@/components/modals/SettingsModal';
+import ChatSidebar from '@/components/chat/ChatSidebar';
 
 // Icons (using simple SVG placeholders - replace with your icon library)
 const icons = {
@@ -94,7 +98,6 @@ const secondaryNavItems: NavItem[] = [
 
 interface SidebarProps {
   onClose?: () => void;
-  onToggleChat?: () => void;
 }
 
 /**
@@ -105,6 +108,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
   const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>('casino');
   const [isVIPModalOpen, setIsVIPModalOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
   const handleNavClick = () => {
     // Close sidebar on mobile when navigating
@@ -216,26 +223,46 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </div>
         
         <ul data-testid="nav-account-list" className="space-y-1 px-2">
-          {secondaryNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <li key={item.id}>
-                <Link
-                  href={item.href}
-                  data-testid={`nav-${item.id}`}
-                  onClick={handleNavClick}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
-                      : 'text-text-secondary hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {icons[item.icon]}
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
+          <li>
+            <button
+              data-testid="nav-wallet"
+              onClick={() => setIsWalletModalOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
+            >
+              {icons.wallet}
+              <span className="font-medium">Wallet</span>
+            </button>
+          </li>
+          <li>
+            <button
+              data-testid="nav-chat"
+              onClick={() => setIsChatOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
+            >
+              {icons.chat}
+              <span className="font-medium">Chat</span>
+            </button>
+          </li>
+          <li>
+            <button
+              data-testid="nav-stats"
+              onClick={() => setIsStatsModalOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
+            >
+              {icons.stats}
+              <span className="font-medium">Statistics</span>
+            </button>
+          </li>
+          <li>
+            <button
+              data-testid="nav-settings"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
+            >
+              {icons.settings}
+              <span className="font-medium">Settings</span>
+            </button>
+          </li>
         </ul>
       </nav>
       
@@ -255,8 +282,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </div>
       </div>
       
-      {/* VIP Modal */}
+      {/* Modals */}
       <VIPModal isOpen={isVIPModalOpen} onClose={() => setIsVIPModalOpen(false)} />
+      <WalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
+      <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />
+      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
+      <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </aside>
   );
 };
