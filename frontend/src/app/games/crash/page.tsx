@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useEffect, Component, ReactNode, ErrorInfo } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
+
 import LiveBets from '@/components/games/LiveBets';
 import { useSocket } from '@/contexts/SocketContext';
 
@@ -116,8 +116,7 @@ export default function CrashGamePage() {
   };
 
   return (
-    <MainLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
         {/* Page Header */}
         <div>
           <h1 className="text-2xl font-bold text-white">Crash Game</h1>
@@ -173,6 +172,5 @@ export default function CrashGamePage() {
 
         {/* Recent Crashes History is shown inside CrashGamePanel */}
       </div>
-    </MainLayout>
   );
 }

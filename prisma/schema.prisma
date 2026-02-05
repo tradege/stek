@@ -86,6 +86,7 @@ model User {
   receivedTips      Tip[]       @relation("TipReceiver")
   vaultDeposits     VaultDeposit[]
   sessions          UserSession[]
+  gameSessions      GameSession[] @relation("GameSessions")
   
   @@index([parentId])
   @@index([role])
@@ -372,7 +373,7 @@ enum GameType {
   BLACKJACK
   ROULETTE
   BACCARAT
-  // Add more games as needed
+  EXTERNAL  // For external provider games
 }
 
 // ============================================
@@ -433,4 +434,117 @@ model AuditLog {
   @@index([action])
   @@index([entityType])
   @@index([createdAt])
+}
+
+// ============================================
+// EXTERNAL GAME AGGREGATOR SYSTEM
+// ============================================
+
+// --- ENUMS ---
+enum GameCategory {
+  SLOTS
+  LIVE
+  CRASH
+  SPORTS
+  TABLE
+}
+
+enum Volatility {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  ERROR
+}
+
+// --- MODELS ---
+
+// Game Provider (e.g., Pragmatic Play, Evolution, etc.)
+model GameProvider {
+  id              String      @id @default(uuid())
+  name            String      @unique
+  slug            String      @unique  // e.g., "pragmatic"
+  apiUrl          String?
+  apiKey          String?
+  apiSecret       String?
+  isActive        Boolean     @default(true)
+  isLive          Boolean     @default(false)  // Live casino provider
+  ipWhitelist     String[]    // Array of allowed IPs for callbacks
+  config          Json?       // Provider specific settings
+  
+  games           Game[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([slug])
+  @@index([isActive])
+}
+
+// Game Catalog
+model Game {
+  id              String        @id @default(uuid())
+  providerId      String
+  provider        GameProvider  @relation(fields: [providerId], references: [id])
+  
+  externalId      String        // ID on provider side
+  name            String
+  slug            String        @unique
+  category        GameCategory
+  
+  // Metadata
+  thumbnail       String?
+  banner          String?
+  description     String?
+  rtp             Decimal?      @db.Decimal(5, 2)  // Return to Player %
+  volatility      Volatility?
+  minBet          Decimal?      @db.Decimal(18, 8)
+  maxBet          Decimal?      @db.Decimal(18, 8)
+  
+  // Flags
+  isActive        Boolean       @default(true)
+  isNew           Boolean       @default(false)
+  isHot           Boolean       @default(false)
+  isFeatured      Boolean       @default(false)
+  sortOrder       Int           @default(0)
+  
+  sessions        GameSession[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@unique([providerId, externalId])
+  @@index([category])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([slug])
+}
+
+// Game Session (for tracking external game rounds)
+model GameSession {
+  id                  String        @id @default(uuid())
+  userId              String
+  user                User          @relation("GameSessions", fields: [userId], references: [id])
+  gameId              String
+  game                Game          @relation(fields: [gameId], references: [id])
+  
+  externalSessionId   String?       @unique
+  currency            String        @default("USDT")
+  status              SessionStatus @default(ACTIVE)
+  
+  totalBet            Decimal       @default(0) @db.Decimal(18, 8)
+  totalWin            Decimal       @default(0) @db.Decimal(18, 8)
+  
+  startedAt           DateTime      @default(now())
+  endedAt             DateTime?
+  
+  @@index([userId])
+  @@index([gameId])
+  @@index([status])
 }

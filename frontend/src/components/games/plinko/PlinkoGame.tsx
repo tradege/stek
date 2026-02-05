@@ -3,8 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-// ============ MULTIPLIER TABLES (4% House Edge - 96% RTP) ============
-// Mathematically verified using binomial distribution
+// ============ MULTIPLIER TABLES (Mathematically verified using binomial distribution) ============
 const MULTIPLIERS: Record<string, Record<number, number[]>> = {
   LOW: {
     8: [5.43, 2.04, 1.07, 0.97, 0.48, 0.97, 1.07, 2.04, 5.43],
@@ -43,40 +42,241 @@ const MULTIPLIERS: Record<string, Record<number, number[]>> = {
 
 // ============ ENHANCED PHYSICS CONSTANTS ============
 const PHYSICS = {
-  GRAVITY: 0.4,           // Increased for more realistic fall
-  BOUNCE_FACTOR: 0.75,    // More bouncy
+  GRAVITY: 0.4,
+  BOUNCE_FACTOR: 0.75,
   FRICTION: 0.99,
   BALL_RADIUS: 10,
   PIN_RADIUS: 5,
   TRAIL_LENGTH: 12,
   JITTER: 2.0,
-  TERMINAL_VELOCITY: 12,  // Max fall speed
+  TERMINAL_VELOCITY: 12,
 };
 
 // ============ VISUAL CONSTANTS ============
 const VISUALS = {
-  // Bucket colors based on risk level (gradient from edges to center)
   BUCKET_GRADIENTS: {
     LOW: {
-      high: '#00ff88',    // Green for high multipliers
-      mid: '#ffcc00',     // Yellow for mid
-      low: '#666666',     // Gray for low
+      high: '#00ff88',
+      mid: '#ffcc00',
+      low: '#666666',
     },
     MEDIUM: {
-      high: '#ff6600',    // Orange for high
-      mid: '#ffcc00',     // Yellow for mid
-      low: '#444444',     // Dark gray for low
+      high: '#ff6600',
+      mid: '#ffcc00',
+      low: '#444444',
     },
     HIGH: {
-      high: '#ff0055',    // Red/Pink for high
-      mid: '#ff6600',     // Orange for mid
-      low: '#333333',     // Very dark for low
+      high: '#ff0055',
+      mid: '#ff6600',
+      low: '#333333',
     },
   },
   GLOW_INTENSITY: 20,
   PIN_GLOW: '#00ffff',
   BALL_COLORS: ['#ffcc00', '#ff9900', '#ff6600'],
 };
+
+// ============ SOUND SYSTEM ============
+class SoundManager {
+  private audioContext: AudioContext | null = null;
+  private sounds: Map<string, AudioBuffer> = new Map();
+  private enabled: boolean = true;
+  private volume: number = 0.5;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      this.initAudioContext();
+    }
+  }
+
+  private initAudioContext() {
+    try {
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    } catch (e) {
+      console.warn('Web Audio API not supported');
+    }
+  }
+
+  private ensureContext() {
+    if (this.audioContext?.state === 'suspended') {
+      this.audioContext.resume();
+    }
+  }
+
+  // Generate synthetic sounds using Web Audio API
+  playPinHit() {
+    if (!this.enabled || !this.audioContext) return;
+    this.ensureContext();
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    // High-pitched click sound
+    oscillator.frequency.setValueAtTime(800 + Math.random() * 400, this.audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.05);
+    
+    gainNode.gain.setValueAtTime(this.volume * 0.3, this.audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);
+
+    oscillator.start(this.audioContext.currentTime);
+    oscillator.stop(this.audioContext.currentTime + 0.05);
+  }
+
+  playBallDrop() {
+    if (!this.enabled || !this.audioContext) return;
+    this.ensureContext();
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    // Whoosh sound
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(this.volume * 0.4, this.audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+
+    oscillator.start(this.audioContext.currentTime);
+    oscillator.stop(this.audioContext.currentTime + 0.2);
+  }
+
+  playBucketLand(multiplier: number) {
+    if (!this.enabled || !this.audioContext) return;
+    this.ensureContext();
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    // Different sound based on multiplier
+    if (multiplier >= 10) {
+      // Big win - ascending tone
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.3);
+      gainNode.gain.setValueAtTime(this.volume * 0.6, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + 0.4);
+    } else if (multiplier >= 2) {
+      // Medium win
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(500, this.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.15);
+      gainNode.gain.setValueAtTime(this.volume * 0.5, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + 0.2);
+    } else {
+      // Regular land - thud sound
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(this.volume * 0.4, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + 0.1);
+    }
+  }
+
+  playWin(isJackpot: boolean = false) {
+    if (!this.enabled || !this.audioContext) return;
+    this.ensureContext();
+
+    // Play a chord for win
+    const frequencies = isJackpot ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25, 783.99];
+    
+    frequencies.forEach((freq, i) => {
+      setTimeout(() => {
+        if (!this.audioContext) return;
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+        
+        gainNode.gain.setValueAtTime(this.volume * 0.4, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.5);
+      }, i * 100);
+    });
+  }
+
+  playLose() {
+    if (!this.enabled || !this.audioContext) return;
+    this.ensureContext();
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    // Descending tone for loss
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(150, this.audioContext.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(this.volume * 0.3, this.audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+
+    oscillator.start(this.audioContext.currentTime);
+    oscillator.stop(this.audioContext.currentTime + 0.2);
+  }
+
+  playButtonClick() {
+    if (!this.enabled || !this.audioContext) return;
+    this.ensureContext();
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime);
+    
+    gainNode.gain.setValueAtTime(this.volume * 0.2, this.audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);
+
+    oscillator.start(this.audioContext.currentTime);
+    oscillator.stop(this.audioContext.currentTime + 0.05);
+  }
+
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+  }
+
+  setVolume(volume: number) {
+    this.volume = Math.max(0, Math.min(1, volume));
+  }
+
+  isEnabled() {
+    return this.enabled;
+  }
+
+  getVolume() {
+    return this.volume;
+  }
+}
+
+// Create singleton sound manager
+const soundManager = new SoundManager();
 
 type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -93,6 +293,7 @@ interface Ball {
   multiplier: number;
   payout: number;
   startTime: number;
+  lastPinHit: number; // Track last pin hit for sound throttling
 }
 
 const PlinkoGame: React.FC = () => {
@@ -109,6 +310,8 @@ const PlinkoGame: React.FC = () => {
   const [lastResult, setLastResult] = useState<{ multiplier: number; payout: number } | null>(null);
   const [history, setHistory] = useState<{ multiplier: number; payout: number; isWin: boolean }[]>([]);
   const [highlightedBucket, setHighlightedBucket] = useState<number | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundVolume, setSoundVolume] = useState(0.5);
   
   // Canvas dimensions
   const CANVAS_WIDTH = 800;
@@ -118,20 +321,26 @@ const PlinkoGame: React.FC = () => {
   // Get multipliers for current settings
   const multipliers = MULTIPLIERS[risk][rows] || [];
   const numBuckets = rows + 1;
+
+  // Update sound settings
+  useEffect(() => {
+    soundManager.setEnabled(soundEnabled);
+    soundManager.setVolume(soundVolume);
+  }, [soundEnabled, soundVolume]);
   
   // Get bucket color based on multiplier and risk level
   const getBucketColor = useCallback((mult: number, index: number, total: number): string => {
     const colors = VISUALS.BUCKET_GRADIENTS[risk];
     const distFromCenter = Math.abs(index - (total - 1) / 2) / ((total - 1) / 2);
     
-    if (mult >= 50) return '#ff0055';      // Jackpot red
-    if (mult >= 20) return '#ff3366';      // High red
-    if (mult >= 10) return '#ff6633';      // Orange-red
-    if (mult >= 5) return '#ff9900';       // Orange
-    if (mult >= 2) return '#ffcc00';       // Yellow
-    if (mult >= 1) return '#00cc66';       // Green
-    if (mult >= 0.5) return '#0099cc';     // Blue
-    return '#666666';                       // Gray for very low
+    if (mult >= 50) return '#ff0055';
+    if (mult >= 20) return '#ff3366';
+    if (mult >= 10) return '#ff6633';
+    if (mult >= 5) return '#ff9900';
+    if (mult >= 2) return '#ffcc00';
+    if (mult >= 1) return '#00cc66';
+    if (mult >= 0.5) return '#0099cc';
+    return '#666666';
   }, [risk]);
 
   // Get bucket glow color
@@ -164,6 +373,16 @@ const PlinkoGame: React.FC = () => {
     }
     return pins;
   }, [rows]);
+
+  // Helper function to shade colors
+  const shadeColor = (color: string, percent: number): string => {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, Math.min(255, (num >> 16) + amt));
+    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+    const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+    return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
+  };
   
   // Draw the game with enhanced visuals
   const draw = useCallback(() => {
@@ -193,8 +412,6 @@ const PlinkoGame: React.FC = () => {
       const x = startX + index * bucketWidth;
       const color = getBucketColor(mult, index, numBuckets);
       const isHighlighted = highlightedBucket === index;
-      const isEdge = index === 0 || index === numBuckets - 1;
-      const isNearEdge = index === 1 || index === numBuckets - 2;
       
       // Bucket glow effect for high multipliers
       if (mult >= 5 || isHighlighted) {
@@ -353,17 +570,7 @@ const PlinkoGame: React.FC = () => {
     }
   }, [getPinPositions, multipliers, numBuckets, rows, highlightedBucket, lastResult, betAmount, risk, getBucketColor, getBucketGlow]);
   
-  // Helper function to shade colors
-  const shadeColor = (color: string, percent: number): string => {
-    const num = parseInt(color.replace('#', ''), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = Math.max(0, Math.min(255, (num >> 16) + amt));
-    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
-    const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
-    return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
-  };
-  
-  // Enhanced physics update with realistic gravity
+  // Enhanced physics update with realistic gravity and sound
   const updatePhysics = useCallback(() => {
     const pins = getPinPositions();
     const bucketY = 60 + rows * PIN_GAP + 25;
@@ -419,6 +626,13 @@ const PlinkoGame: React.FC = () => {
             ball.vx += direction === 1 ? 2.5 : -2.5;
             ball.pathIndex++;
           }
+
+          // Play pin hit sound (throttled to avoid too many sounds)
+          const now = Date.now();
+          if (now - ball.lastPinHit > 50) {
+            soundManager.playPinHit();
+            ball.lastPinHit = now;
+          }
         }
       });
       
@@ -443,6 +657,9 @@ const PlinkoGame: React.FC = () => {
         const relativeX = ball.x - startX;
         ball.bucketIndex = Math.floor(relativeX / bucketWidth);
         ball.bucketIndex = Math.max(0, Math.min(numBuckets - 1, ball.bucketIndex));
+        
+        // Play bucket land sound
+        soundManager.playBucketLand(ball.multiplier);
         
         // Trigger bucket highlight
         setHighlightedBucket(ball.bucketIndex);
@@ -491,6 +708,9 @@ const PlinkoGame: React.FC = () => {
     setIsPlaying(true);
     setLastResult(null);
     
+    // Play button click sound
+    soundManager.playButtonClick();
+    
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000'}/games/plinko/play`, {
         method: 'POST',
@@ -512,6 +732,9 @@ const PlinkoGame: React.FC = () => {
       
       const result = await response.json();
       
+      // Play ball drop sound
+      soundManager.playBallDrop();
+      
       // Create ball with physics
       const newBall: Ball = {
         x: CANVAS_WIDTH / 2 + (Math.random() - 0.5) * 10,
@@ -526,6 +749,7 @@ const PlinkoGame: React.FC = () => {
         multiplier: result.multiplier,
         payout: result.payout,
         startTime: Date.now(),
+        lastPinHit: 0,
       };
       
       ballsRef.current.push(newBall);
@@ -538,6 +762,14 @@ const PlinkoGame: React.FC = () => {
           { multiplier: result.multiplier, payout: result.payout, isWin: result.payout > betAmount },
           ...prev.slice(0, 9),
         ]);
+        
+        // Play win/lose sound
+        if (result.payout > betAmount) {
+          soundManager.playWin(result.multiplier >= 50);
+        } else {
+          soundManager.playLose();
+        }
+        
         refreshUser();
         setIsPlaying(false);
       }, animationTime);
@@ -578,9 +810,27 @@ const PlinkoGame: React.FC = () => {
               <span className="px-3 py-1.5 bg-green-500/20 text-green-400 text-sm font-bold rounded-full border border-green-500/30 animate-pulse">
                 ● LIVE
               </span>
-              <span className="px-3 py-1.5 bg-cyan-500/20 text-cyan-400 text-xs font-medium rounded-full border border-cyan-500/30">
-                4% Edge
-              </span>
+              {/* Sound toggle button */}
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={`p-2 rounded-full transition-all ${
+                  soundEnabled 
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                    : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                }`}
+                title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}
+              >
+                {soundEnabled ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
           
@@ -616,14 +866,20 @@ const PlinkoGame: React.FC = () => {
               </div>
               <button
                 data-testid="bet-2x"
-                onClick={() => setBetAmount(prev => prev * 2)}
+                onClick={() => {
+                  soundManager.playButtonClick();
+                  setBetAmount(prev => prev * 2);
+                }}
                 className="px-4 py-2 bg-[#1a1f2e] border border-gray-700/50 rounded-xl text-white hover:bg-[#252b3d] transition-all font-medium"
               >
                 2x
               </button>
               <button
                 data-testid="bet-half"
-                onClick={() => setBetAmount(prev => Math.max(0.1, prev / 2))}
+                onClick={() => {
+                  soundManager.playButtonClick();
+                  setBetAmount(prev => Math.max(0.1, prev / 2));
+                }}
                 className="px-4 py-2 bg-[#1a1f2e] border border-gray-700/50 rounded-xl text-white hover:bg-[#252b3d] transition-all font-medium"
               >
                 ½
@@ -639,7 +895,10 @@ const PlinkoGame: React.FC = () => {
                 <button
                   key={r}
                   data-testid={`risk-${r.toLowerCase()}`}
-                  onClick={() => setRisk(r)}
+                  onClick={() => {
+                    soundManager.playButtonClick();
+                    setRisk(r);
+                  }}
                   className={`flex-1 py-3 font-bold transition-all ${
                     risk === r
                       ? r === 'LOW'
@@ -712,6 +971,23 @@ const PlinkoGame: React.FC = () => {
               <span className="text-white font-bold text-lg">
                 ${(parseFloat(user.balance?.find(b => b.currency === 'USDT')?.available || '0')).toFixed(2)}
               </span>
+            </div>
+          )}
+
+          {/* Sound Volume Control */}
+          {soundEnabled && (
+            <div>
+              <label className="block text-sm text-gray-400 mb-2 font-medium">
+                SOUND VOLUME: <span className="text-cyan-400">{Math.round(soundVolume * 100)}%</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={soundVolume * 100}
+                onChange={(e) => setSoundVolume(Number(e.target.value) / 100)}
+                className="w-full h-2 bg-[#1a1f2e] rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              />
             </div>
           )}
           

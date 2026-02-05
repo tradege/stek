@@ -241,11 +241,11 @@ export class BotService implements OnModuleInit {
    * Handle tick events for cashout decisions
    */
   @OnEvent('crash.tick')
-  handleTick(data: { multiplier: number }) {
+  handleTick(data: { multiplier: string | number }) {
     if (!this.isEnabled) return;
     
-    this.currentMultiplier = data.multiplier;
-    this.checkBotCashouts(data.multiplier);
+    this.currentMultiplier = typeof data.multiplier === "string" ? parseFloat(data.multiplier) : data.multiplier;
+    this.checkBotCashouts(this.currentMultiplier);
   }
 
   /**

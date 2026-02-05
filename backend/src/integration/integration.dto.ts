@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
+import { IsString, IsNumber, IsEnum, IsOptional, Min, MaxLength } from 'class-validator';
 
 export class BalanceRequestDto {
   @IsString()
@@ -34,13 +34,16 @@ export class TransactionRequestDto {
   type: TransactionType;
 
   @IsString()
+  @MaxLength(500)
   gameId: string;
 
   @IsString()
+  @MaxLength(255)
   transactionId: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(255)
   roundId?: string;
 
   @IsString()

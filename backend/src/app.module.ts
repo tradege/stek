@@ -11,6 +11,7 @@ import { CrashModule } from './modules/crash/crash.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PlinkoModule } from './modules/plinko/plinko.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { GamesModule } from './modules/games/games.module';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { PrismaModule } from './prisma/prisma.module';
     // Rate limiting
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute
-      limit: 100, // 100 requests per minute
+      limit: 500, // 100 requests per minute
     }]),
     
     // Database
@@ -51,6 +52,9 @@ import { PrismaModule } from './prisma/prisma.module';
     
     // External Game Provider Integration
     IntegrationModule,
+    
+    // Games Catalog API
+    GamesModule,
   ],
   controllers: [],
   providers: [],

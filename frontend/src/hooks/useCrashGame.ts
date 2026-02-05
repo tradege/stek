@@ -51,6 +51,7 @@ interface CrashGameState {
 /**
  * useCrashGame - The main hook for Crash game logic
  * Handles all socket events and game state management
+ * FIXED: Added countdown timer and improved multiplier sync
  */
 export const useCrashGame = (): CrashGameState => {
   const { socket, isConnected } = useSocket();
@@ -77,15 +78,51 @@ export const useCrashGame = (): CrashGameState => {
   const animationRef = useRef<number | null>(null);
   const targetMultiplierRef = useRef(1.00);
   const lastUpdateTimeRef = useRef(Date.now());
+  
+  // Countdown timer ref
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Smooth multiplier animation
+  // FIXED: Local countdown timer that decrements every second
+  useEffect(() => {
+    // Clear any existing timer
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    
+    // Only run countdown when waiting and countdown > 0
+    if ((gameState === 'WAITING' || gameState === 'STARTING') && countdown > 0) {
+      countdownTimerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            // Clear timer when reaching 0
+            if (countdownTimerRef.current) {
+              clearInterval(countdownTimerRef.current);
+              countdownTimerRef.current = null;
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, [gameState, countdown > 0]); // Only re-run when gameState changes or countdown starts
+
+  // FIXED: Improved smooth multiplier animation with direct updates
   const animateMultiplier = useCallback(() => {
     const now = Date.now();
     const elapsed = now - lastUpdateTimeRef.current;
     
-    // Interpolate towards target multiplier
+    // Interpolate towards target multiplier - faster interpolation
     const diff = targetMultiplierRef.current - currentMultiplier;
-    const step = diff * Math.min(elapsed / 50, 1); // Smooth interpolation
+    const step = diff * Math.min(elapsed / 30, 1); // Faster interpolation (30ms instead of 50ms)
     
     if (Math.abs(diff) > 0.001) {
       setCurrentMultiplier(prev => {
@@ -105,12 +142,14 @@ export const useCrashGame = (): CrashGameState => {
   useEffect(() => {
     if (!socket) return;
 
-    // Game tick - multiplier update
-    const handleTick = (data: { multiplier: number | string; gameId?: string }) => {
+    // FIXED: Game tick - multiplier update with immediate display update
+    const handleTick = (data: { multiplier: number | string; gameId?: string; elapsed?: number }) => {
       // Parse multiplier - could be string or number from backend
       const mult = typeof data.multiplier === 'string' ? parseFloat(data.multiplier) : data.multiplier;
       if (!isNaN(mult)) {
         targetMultiplierRef.current = mult;
+        // FIXED: Also update current multiplier directly for immediate display
+        setCurrentMultiplier(mult);
       }
       
       if (data.gameId) {
@@ -120,6 +159,7 @@ export const useCrashGame = (): CrashGameState => {
       if (gameState !== 'RUNNING') {
         setGameState('RUNNING');
         setCrashPoint(null);
+        setCountdown(0); // Clear countdown when running
       }
       
       // Update potential win if bet is placed
@@ -143,11 +183,16 @@ export const useCrashGame = (): CrashGameState => {
         }
         
         // Cancel animation
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+        }
         
         setGameState('CRASHED');
         setCrashPoint(cp);
         setCurrentMultiplier(cp);
         targetMultiplierRef.current = cp;
+        setCountdown(0);
         
         // Update history
         setRecentCrashes(prev => { if (prev.length > 0 && prev[0] === cp) { return prev; } return [cp, ...prev].slice(0, 10); });
@@ -162,13 +207,13 @@ export const useCrashGame = (): CrashGameState => {
       }
     };
 
-    // Game starting (countdown)
+    // FIXED: Game starting (countdown) - properly set initial countdown
     const handleStarting = (data: { countdown: number; gameId?: string; gameNumber?: number }) => {
       console.log('[Crash] Game starting in:', data.countdown);
       const gid = data.gameId || data.gameNumber?.toString() || '';
       
       setGameState('WAITING');
-      setCountdown(data.countdown);
+      setCountdown(data.countdown); // This will trigger the countdown timer effect
       setGameId(gid);
       setCurrentMultiplier(1.00);
       targetMultiplierRef.current = 1.00;
@@ -191,10 +236,12 @@ export const useCrashGame = (): CrashGameState => {
       setCountdown(0);
       lastUpdateTimeRef.current = Date.now();
       
+      // Cancel any existing animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      
       // Start animation loop
-      // Animation cleanup moved to separate useEffect
-      // if (animationRef.current) {
-        // cancelAnimationFrame(animationRef.current);
       animationRef.current = requestAnimationFrame(animateMultiplier);
     };
 
@@ -243,7 +290,7 @@ export const useCrashGame = (): CrashGameState => {
       }
     };
 
-    // State change handler - handles WAITING, STARTING, RUNNING, CRASHED states from backend
+    // FIXED: State change handler - handles WAITING, STARTING, RUNNING, CRASHED states from backend
     const handleStateChange = (data: { state: string; gameNumber?: number; multiplier?: string; crashPoint?: string }) => {
       console.log('[Crash] State change:', data.state, data);
       
@@ -260,6 +307,7 @@ export const useCrashGame = (): CrashGameState => {
           const mult = parseFloat(data.multiplier);
           if (!isNaN(mult)) {
             targetMultiplierRef.current = mult;
+            setCurrentMultiplier(mult);
           }
         }
       } else if (data.state === 'CRASHED' && data.crashPoint) {
@@ -271,6 +319,7 @@ export const useCrashGame = (): CrashGameState => {
           setCrashPoint(cp);
           setCurrentMultiplier(cp);
           targetMultiplierRef.current = cp;
+          setCountdown(0);
           // History is updated by crash:crashed event, not here
         }
       }
@@ -317,6 +366,11 @@ export const useCrashGame = (): CrashGameState => {
       socket.off('balance:update', handleBalanceUpdate);
       socket.off('crash:history', handleHistory);
       
+      // Cancel animation on cleanup
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
     };
   }, [socket, gameState, betStatus, currentBet, animateMultiplier]);
 
@@ -327,6 +381,11 @@ export const useCrashGame = (): CrashGameState => {
     }
     
     return () => {
+      // Cleanup animation on unmount
+      if (animationRef.current && gameState !== 'RUNNING') {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
     };
   }, [gameState, animateMultiplier]);
 

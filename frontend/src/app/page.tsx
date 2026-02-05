@@ -167,6 +167,7 @@ export default function Home() {
                 />
                 <GameCard
                   title="Dice"
+                  link="/games/dice"
                   icon={<DiceIcon />}
                   isComingSoon={true}
                   gradient="from-green-600 via-emerald-600 to-teal-600"
@@ -179,6 +180,7 @@ export default function Home() {
                 />
                 <GameCard
                   title="Mines"
+                  link="/games/mines"
                   icon={<MinesIcon />}
                   isComingSoon={true}
                   gradient="from-yellow-600 via-orange-600 to-red-600"
@@ -201,30 +203,35 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <GameCard
                   title="Gates of Olympus"
+                  link="/games/slots/gates-of-olympus"
                   icon={<span className="text-5xl">⚡</span>}
                   isComingSoon={true}
                   gradient="from-yellow-500 via-amber-600 to-orange-700"
                 />
                 <GameCard
                   title="Sweet Bonanza"
+                  link="/games/slots/sweet-bonanza"
                   icon={<span className="text-5xl">🍬</span>}
                   isComingSoon={true}
                   gradient="from-pink-500 via-rose-600 to-red-600"
                 />
                 <GameCard
                   title="Book of Dead"
+                  link="/games/slots/book-of-dead"
                   icon={<span className="text-5xl">📖</span>}
                   isComingSoon={true}
                   gradient="from-amber-700 via-yellow-800 to-orange-900"
                 />
                 <GameCard
                   title="Starburst"
+                  link="/games/slots/starburst"
                   icon={<span className="text-5xl">💎</span>}
                   isComingSoon={true}
                   gradient="from-purple-600 via-violet-600 to-indigo-700"
                 />
                 <GameCard
                   title="Big Bass Bonanza"
+                  link="/games/slots/big-bass-bonanza"
                   icon={<span className="text-5xl">🐟</span>}
                   isComingSoon={true}
                   gradient="from-blue-500 via-cyan-600 to-teal-600"

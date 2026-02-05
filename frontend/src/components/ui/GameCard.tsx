@@ -1,8 +1,6 @@
-'use client';
-
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+"use client";
+import React, { useState } from "react";
+import Link from "next/link";
 
 interface GameCardProps {
   title: string;
@@ -26,162 +24,133 @@ const GameCard: React.FC<GameCardProps> = ({
   isComingSoon = false,
   isHot = false,
   isNew = false,
-  gradient = 'from-purple-600 via-blue-600 to-cyan-500',
+  gradient = "from-purple-600 via-blue-600 to-cyan-500",
   players,
 }) => {
-  const [isActive, setIsActive] = useState(false);
-  const router = useRouter();
+  const [isHovered, setIsHovered] = useState(false);
+  const testId = title.toLowerCase().replace(/\s+/g, "-");
 
-  const handleMouseDown = () => {
-    if (!isComingSoon) {
-      setIsActive(true);
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsActive(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsActive(false);
-  };
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (link && !isComingSoon) {
-      e.preventDefault();
-      router.push(link);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.key === 'Enter' || e.key === ' ') && link && !isComingSoon) {
-      e.preventDefault();
-      router.push(link);
-    }
-  };
-
-  // Generate testid from title
-  const testId = title.toLowerCase().replace(/\s+/g, '-');
-
-  const cardContent = (
-    <div
-      data-testid={`game-card-${testId}`}
-      className={`
-        relative group overflow-hidden rounded-2xl
-        bg-gradient-to-br ${gradient}
-        border border-white/10
-        transition-all duration-300 ease-out
-        ${!isComingSoon 
-          ? `hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 cursor-pointer ${isActive ? 'scale-95 shadow-inner' : ''}` 
-          : 'opacity-70 cursor-not-allowed'}
-      `}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onTouchStart={handleMouseDown}
-      onTouchEnd={handleMouseUp}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      tabIndex={isComingSoon ? -1 : 0}
-      aria-disabled={isComingSoon}
-      aria-label={`${title} game${isComingSoon ? ' - Coming Soon' : ''}`}
-    >
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
+  const cardInner = (
+    <>
+      {/* Animated background particles */}
+      <div className="absolute inset-0 opacity-20 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%)]" />
+        {isHovered && (
+          <>
+            <div className="particle" style={{ left: '10%', top: '20%', animationDelay: '0s' }} />
+            <div className="particle" style={{ left: '30%', top: '60%', animationDelay: '0.5s' }} />
+            <div className="particle" style={{ left: '70%', top: '30%', animationDelay: '1s' }} />
+            <div className="particle" style={{ left: '90%', top: '70%', animationDelay: '1.5s' }} />
+          </>
+        )}
       </div>
 
-      {/* Active State Overlay */}
-      {isActive && (
-        <div data-testid={`game-card-${testId}-active`} className="absolute inset-0 bg-white/10 z-10 transition-opacity duration-150 pointer-events-none" />
+      {/* Glow effect on hover */}
+      {isHovered && !isComingSoon && (
+        <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/20 to-transparent animate-fade-in" />
       )}
 
-      {/* Card Content */}
-      <div className="relative p-6 h-48 flex flex-col items-center justify-center pointer-events-none">
-        {/* Live Badge */}
+      <div className="relative p-6 h-48 flex flex-col items-center justify-center">
+        {/* Live badge with pulse animation */}
         {isLive && (
-          <div data-testid={`game-card-${testId}-live-badge`} className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full shadow-lg shadow-green-500/30">
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full animate-badge-pulse">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
             <span className="text-xs font-bold text-white">LIVE</span>
           </div>
         )}
 
-        {/* Hot Badge */}
+        {/* Hot badge with glow */}
         {isHot && !isNew && (
-          <div data-testid={`game-card-${testId}-hot-badge`} className="absolute top-3 right-3 px-2 py-1 bg-orange-500/90 rounded-full shadow-lg shadow-orange-500/30">
+          <div className="absolute top-3 right-3 px-2 py-1 bg-orange-500/90 rounded-full hover-glow-yellow">
             <span className="text-xs font-bold text-white">🔥 HOT</span>
           </div>
         )}
 
-        {/* New Badge */}
+        {/* New badge with pulse */}
         {isNew && (
-          <div data-testid={`game-card-${testId}-new-badge`} className="absolute top-3 right-3 px-2 py-1 bg-blue-500/90 rounded-full shadow-lg shadow-blue-500/30 animate-pulse">
+          <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/90 rounded-full animate-badge-pulse">
             <span className="text-xs font-bold text-white">✨ NEW</span>
           </div>
         )}
 
-        {/* Coming Soon Badge */}
+        {/* Coming Soon badge */}
         {isComingSoon && (
-          <div data-testid={`game-card-${testId}-soon-badge`} className="absolute top-3 right-3 px-2 py-1 bg-gray-600/90 rounded-full">
+          <div className="absolute top-3 right-3 px-2 py-1 bg-gray-600/90 rounded-full">
             <span className="text-xs font-bold text-white">SOON</span>
           </div>
         )}
 
-        {/* Players Count */}
-        {players !== undefined && players > 0 && !isComingSoon && (
-          <div data-testid={`game-card-${testId}-players`} className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/40 rounded-full backdrop-blur-sm">
-            <span className="text-xs text-gray-300">👥</span>
-            <span className="text-xs font-medium text-white">{players.toLocaleString()}</span>
+        {/* Icon with animation */}
+        <div className={`mb-4 text-5xl transform transition-all duration-500 ${
+          isHovered ? 'scale-125 animate-icon-bounce' : 'scale-100'
+        }`}>
+          {icon || <span>🎮</span>}
+        </div>
+
+        {/* Title with shimmer on hover */}
+        <h3 className={`text-xl font-bold text-white text-center drop-shadow-lg transition-all duration-300 ${
+          isHovered && !isComingSoon ? 'text-shimmer' : ''
+        }`}>
+          {title}
+        </h3>
+
+        {/* Players count */}
+        {players && players > 0 && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-gray-300">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <span>{players} playing</span>
           </div>
         )}
 
-        {/* Icon or Image */}
-        <div data-testid={`game-card-${testId}-icon`} className="mb-4 text-5xl transform transition-transform duration-300 group-hover:scale-110">
-          {icon ? (
-            icon
-          ) : image ? (
-            <img src={image} alt={title} className="w-16 h-16 object-contain" />
-          ) : (
-            <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <span className="text-3xl">🎮</span>
-            </div>
-          )}
-        </div>
-
-        {/* Title */}
-        <h3 data-testid={`game-card-${testId}-title`} className="text-xl font-bold text-white text-center drop-shadow-lg">{title}</h3>
-
-        {/* Play Button - Shows on Hover */}
-        {!isComingSoon && (
-          <div data-testid={`game-card-${testId}-play-overlay`} className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div 
-              data-testid={`game-card-${testId}-play-btn`}
-              className={`
-                px-6 py-3 bg-cyan-500 rounded-xl font-bold text-white 
-                transform transition-all duration-300 
-                shadow-lg shadow-cyan-500/50
-                ${isActive ? 'scale-90 bg-cyan-600' : 'scale-90 group-hover:scale-100'}
-              `}
-            >
+        {/* Play Now overlay with animation */}
+        {!isComingSoon && isHovered && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 animate-fade-in">
+            <div className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-white shadow-lg transform hover:scale-105 transition-transform btn-pulse-glow">
               Play Now
             </div>
           </div>
         )}
 
-        {/* Coming Soon Overlay */}
+        {/* Coming Soon overlay */}
         {isComingSoon && (
-          <div data-testid={`game-card-${testId}-coming-soon-overlay`} className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
-            <div className="px-4 py-2 bg-gray-800/80 rounded-lg border border-gray-700/50">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <div className="px-4 py-2 bg-gray-800/80 rounded-lg backdrop-blur-sm">
               <span className="text-sm font-medium text-gray-300">Coming Soon</span>
             </div>
           </div>
         )}
       </div>
-    </div>
+
+      {/* Bottom shine effect */}
+      {isHovered && !isComingSoon && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-fade-in" />
+      )}
+    </>
   );
 
-  return cardContent;
+  // Allow links for both active games and coming soon games
+  if (link) {
+    return (
+      <Link 
+        href={link}
+        data-testid={`game-card-${testId}`}
+        className={`block relative group overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} border border-white/10 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 hover-lift ${isComingSoon ? "opacity-80" : ""}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {cardInner}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      data-testid={`game-card-${testId}`}
+      className={`relative group overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} border border-white/10 opacity-70 cursor-not-allowed`}
+    >
+      {cardInner}
+    </div>
+  );
 };
 
 export default GameCard;

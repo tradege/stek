@@ -381,7 +381,7 @@ export class CrashGateway
       oddsNumber: 0,
       userId: payload.userId,
       username: payload.username,
-      multiplier: payload.multiplier.toFixed(2),
+      multiplier: (typeof payload.multiplier === "number" ? payload.multiplier : parseFloat(payload.multiplier)).toFixed(2),
       profit: payload.profit.toFixed(2),
       isBot: true,
     });
