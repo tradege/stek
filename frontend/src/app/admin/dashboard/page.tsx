@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   DollarSign, 
   Users, 
@@ -27,6 +28,7 @@ interface DashboardStats {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function AdminDashboard() {
+  const { token } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalUsers: 0,
@@ -42,28 +44,37 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDashboardStats();
-  }, []);
+    if (token) {
+      fetchDashboardStats();
+    }
+  }, [token]);
 
   const fetchDashboardStats = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const authToken = token || localStorage.getItem('auth_token');
+      if (!authToken) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch dashboard stats');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
       setStats(data);
       setLoading(false);
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Failed to fetch dashboard stats:', error);
-      setError('Failed to load dashboard stats');
+      setError(error.message || 'Failed to load dashboard stats');
       setLoading(false);
     }
   };

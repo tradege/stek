@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { DollarSign, TrendingUp, TrendingDown, Calculator, Users, Percent } from 'lucide-react';
 
 interface FinanceData {
@@ -16,6 +17,7 @@ interface FinanceData {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function AdminFinance() {
+  const { token } = useAuth();
   const [financeData, setFinanceData] = useState<FinanceData>({
     totalGGR: 0,
     providerFees: 0,
@@ -27,6 +29,7 @@ export default function AdminFinance() {
   });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [customCalc, setCustomCalc] = useState({
     bets: '',
@@ -35,27 +38,37 @@ export default function AdminFinance() {
   });
 
   useEffect(() => {
-    fetchFinanceStats();
-  }, []);
+    if (token) {
+      fetchFinanceStats();
+    }
+  }, [token]);
 
   const fetchFinanceStats = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const authToken = token || localStorage.getItem('auth_token');
+      if (!authToken) {
+        throw new Error('No authentication token found');
+      }
+
       const response = await fetch(`${API_URL}/admin/finance/stats`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
         },
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch finance stats');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
       setFinanceData(data);
       setLoading(false);
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Failed to fetch finance stats:', error);
+      setError(error.message || 'Failed to load finance stats');
       setLoading(false);
     }
   };
@@ -83,6 +96,22 @@ export default function AdminFinance() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={fetchFinanceStats}
+            className="px-4 py-2 bg-yellow-400 text-[#0f212e] rounded-lg hover:bg-yellow-500"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
