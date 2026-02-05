@@ -13,22 +13,52 @@ interface FinanceData {
   rtp: number;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
 export default function AdminFinance() {
   const [financeData, setFinanceData] = useState<FinanceData>({
-    totalGGR: 45230.75,
-    providerFees: 3618.46,
-    netProfit: 41612.29,
-    totalBets: 234500,
-    totalWins: 189269.25,
-    houseEdge: 19.3,
-    rtp: 80.7
+    totalGGR: 0,
+    providerFees: 0,
+    netProfit: 0,
+    totalBets: 0,
+    totalWins: 0,
+    houseEdge: 0,
+    rtp: 0
   });
+
+  const [loading, setLoading] = useState(true);
 
   const [customCalc, setCustomCalc] = useState({
     bets: '',
     wins: '',
     result: null as any
   });
+
+  useEffect(() => {
+    fetchFinanceStats();
+  }, []);
+
+  const fetchFinanceStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/admin/finance/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch finance stats');
+      }
+      
+      const data = await response.json();
+      setFinanceData(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch finance stats:', error);
+      setLoading(false);
+    }
+  };
 
   const calculateGGR = () => {
     const bets = parseFloat(customCalc.bets) || 0;
@@ -48,6 +78,14 @@ export default function AdminFinance() {
       }
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

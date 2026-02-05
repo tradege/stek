@@ -24,6 +24,8 @@ interface DashboardStats {
   activeSessions: number;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
@@ -37,6 +39,7 @@ export default function AdminDashboard() {
     activeSessions: 0
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -44,28 +47,23 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      // TODO: Implement actual API call
-      // const response = await fetch('/api/admin/dashboard/stats');
-      // const data = await response.json();
-      // setStats(data);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
-      // Mock data for now
-      setTimeout(() => {
-        setStats({
-          totalRevenue: 125430.50,
-          totalUsers: 1247,
-          activeUsers: 89,
-          totalGGR: 45230.75,
-          providerFees: 3618.46, // 8% of GGR
-          netProfit: 41612.29,
-          totalDeposits: 234500,
-          totalWithdrawals: 109069.50,
-          activeSessions: 12
-        });
-        setLoading(false);
-      }, 1000);
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard stats');
+      }
+      
+      const data = await response.json();
+      setStats(data);
+      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
+      setError('Failed to load dashboard stats');
       setLoading(false);
     }
   };
@@ -129,6 +127,22 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={fetchDashboardStats}
+            className="px-4 py-2 bg-yellow-400 text-[#0f212e] rounded-lg hover:bg-yellow-500"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -143,16 +157,12 @@ export default function AdminDashboard() {
           title="Total Revenue"
           value={`$${stats.totalRevenue.toLocaleString()}`}
           icon={DollarSign}
-          trend="up"
-          trendValue="12.5"
           color="green"
         />
         <StatCard
           title="Total Users"
           value={stats.totalUsers.toLocaleString()}
           icon={Users}
-          trend="up"
-          trendValue="8.2"
           color="blue"
         />
         <StatCard
