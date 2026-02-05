@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import VIPModal from '@/components/modals/VIPModal';
 import WalletModal from '@/components/modals/WalletModal';
 import StatisticsModal from '@/components/modals/StatisticsModal';
@@ -71,6 +72,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  admin: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  ),
 };
 
 interface NavItem {
@@ -106,6 +112,7 @@ interface SidebarProps {
  */
 const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>('casino');
   const [isVIPModalOpen, setIsVIPModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -263,6 +270,26 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
               <span className="font-medium">Settings</span>
             </button>
           </li>
+          {/* Admin Link - Only visible to ADMIN users */}
+          {user?.role === 'ADMIN' && (
+            <>
+              <li>
+                <div className="my-2 mx-3 border-t border-white/10" />
+              </li>
+              <li>
+                <Link
+                  href="/admin/dashboard"
+                  data-testid="nav-admin"
+                  onClick={handleNavClick}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 border border-yellow-400/20"
+                >
+                  {icons.admin}
+                  <span className="font-medium">Admin Panel</span>
+                  <span className="px-2 py-0.5 text-[10px] bg-yellow-400/20 text-yellow-400 rounded-full font-semibold">ADMIN</span>
+                </Link>
+              </li>
+            </>
+          )}
         </ul>
       </nav>
       
