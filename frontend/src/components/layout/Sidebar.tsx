@@ -56,6 +56,16 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
   ),
+  casino: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  sports: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
 };
 
 interface NavItem {
@@ -92,6 +102,7 @@ interface SidebarProps {
  */
 const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
+  const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>('casino');
   
   const handleNavClick = () => {
     // Close sidebar on mobile when navigating
@@ -101,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   };
   
   return (
-    <aside className="h-full flex flex-col bg-bg-card">
+    <aside data-testid="sidebar" className="h-full flex flex-col bg-bg-card">
       {/* Logo + Close Button */}
       <div className="p-4 lg:p-6 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -109,13 +120,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             <span className="text-xl font-bold text-black">S</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">StakePro</h1>
+            <h1 data-testid="logo-text" className="text-xl font-bold text-white">StakePro</h1>
             <p className="text-xs text-text-secondary">Crypto Casino</p>
           </div>
         </div>
         {/* Close button - mobile only */}
         {onClose && (
           <button
+            data-testid="sidebar-close"
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden"
           >
@@ -124,8 +136,38 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         )}
       </div>
       
+      {/* Casino / Sports Toggle */}
+      <div className="px-4 py-3 border-b border-white/10">
+        <div className="flex rounded-lg overflow-hidden bg-white/5">
+          <button
+            data-testid="nav-casino"
+            onClick={() => setActiveSection('casino')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all ${
+              activeSection === 'casino'
+                ? 'bg-accent-primary text-black'
+                : 'text-text-secondary hover:text-white'
+            }`}
+          >
+            {icons.casino}
+            Casino
+          </button>
+          <button
+            data-testid="nav-sports"
+            onClick={() => setActiveSection('sports')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all ${
+              activeSection === 'sports'
+                ? 'bg-accent-primary text-black'
+                : 'text-text-secondary hover:text-white'
+            }`}
+          >
+            {icons.sports}
+            Sports
+          </button>
+        </div>
+      </div>
+      
       {/* Main Navigation */}
-      <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+      <nav data-testid="main-nav" className="flex-1 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
         {/* Games Section */}
         <div className="px-4 mb-2">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
@@ -133,13 +175,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </span>
         </div>
         
-        <ul className="space-y-1 px-2">
+        <ul data-testid="nav-games-list" className="space-y-1 px-2">
           {mainNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
             return (
               <li key={item.id}>
                 <Link
                   href={item.href}
+                  data-testid={`nav-${item.id}`}
                   onClick={handleNavClick}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                     isActive
@@ -150,7 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                   {icons[item.icon]}
                   <span className="flex-1 font-medium">{item.label}</span>
                   {item.badge && (
-                    <span className="px-2 py-0.5 text-[10px] bg-accent-primary/20 text-accent-primary rounded-full font-semibold">
+                    <span data-testid={`badge-${item.id}`} className="px-2 py-0.5 text-[10px] bg-accent-primary/20 text-accent-primary rounded-full font-semibold">
                       {item.badge}
                     </span>
                   )}
@@ -170,13 +213,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </span>
         </div>
         
-        <ul className="space-y-1 px-2">
+        <ul data-testid="nav-account-list" className="space-y-1 px-2">
           {secondaryNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <li key={item.id}>
                 <Link
                   href={item.href}
+                  data-testid={`nav-${item.id}`}
                   onClick={handleNavClick}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                     isActive
@@ -195,11 +239,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       
       {/* VIP Banner */}
       <div className="p-4 border-t border-white/10">
-        <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
+        <div data-testid="vip-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
           <div className="text-2xl mb-2">👑</div>
           <p className="text-sm font-semibold text-accent-primary">VIP Program</p>
           <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
-          <button className="w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors">
+          <button 
+            data-testid="vip-learn-more"
+            className="w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors"
+          >
             Learn More
           </button>
         </div>

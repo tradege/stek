@@ -44,8 +44,12 @@ const GameCard: React.FC<GameCardProps> = ({
     setIsActive(false);
   };
 
+  // Generate testid from title
+  const testId = title.toLowerCase().replace(/\s+/g, '-');
+
   const cardContent = (
     <div
+      data-testid={`game-card-${testId}`}
       className={`
         relative group overflow-hidden rounded-2xl
         bg-gradient-to-br ${gradient}
@@ -73,14 +77,14 @@ const GameCard: React.FC<GameCardProps> = ({
 
       {/* Active State Overlay */}
       {isActive && (
-        <div className="absolute inset-0 bg-white/10 z-10 transition-opacity duration-150" />
+        <div data-testid={`game-card-${testId}-active`} className="absolute inset-0 bg-white/10 z-10 transition-opacity duration-150" />
       )}
 
       {/* Card Content */}
       <div className="relative p-6 h-48 flex flex-col items-center justify-center">
         {/* Live Badge */}
         {isLive && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full shadow-lg shadow-green-500/30">
+          <div data-testid={`game-card-${testId}-live-badge`} className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full shadow-lg shadow-green-500/30">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
             <span className="text-xs font-bold text-white">LIVE</span>
           </div>
@@ -88,35 +92,35 @@ const GameCard: React.FC<GameCardProps> = ({
 
         {/* Hot Badge */}
         {isHot && !isNew && (
-          <div className="absolute top-3 right-3 px-2 py-1 bg-orange-500/90 rounded-full shadow-lg shadow-orange-500/30">
+          <div data-testid={`game-card-${testId}-hot-badge`} className="absolute top-3 right-3 px-2 py-1 bg-orange-500/90 rounded-full shadow-lg shadow-orange-500/30">
             <span className="text-xs font-bold text-white">🔥 HOT</span>
           </div>
         )}
 
         {/* New Badge */}
         {isNew && (
-          <div className="absolute top-3 right-3 px-2 py-1 bg-blue-500/90 rounded-full shadow-lg shadow-blue-500/30 animate-pulse">
+          <div data-testid={`game-card-${testId}-new-badge`} className="absolute top-3 right-3 px-2 py-1 bg-blue-500/90 rounded-full shadow-lg shadow-blue-500/30 animate-pulse">
             <span className="text-xs font-bold text-white">✨ NEW</span>
           </div>
         )}
 
         {/* Coming Soon Badge */}
         {isComingSoon && (
-          <div className="absolute top-3 right-3 px-2 py-1 bg-gray-600/90 rounded-full">
+          <div data-testid={`game-card-${testId}-soon-badge`} className="absolute top-3 right-3 px-2 py-1 bg-gray-600/90 rounded-full">
             <span className="text-xs font-bold text-white">SOON</span>
           </div>
         )}
 
         {/* Players Count */}
         {players !== undefined && players > 0 && !isComingSoon && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/40 rounded-full backdrop-blur-sm">
+          <div data-testid={`game-card-${testId}-players`} className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/40 rounded-full backdrop-blur-sm">
             <span className="text-xs text-gray-300">👥</span>
             <span className="text-xs font-medium text-white">{players.toLocaleString()}</span>
           </div>
         )}
 
         {/* Icon or Image */}
-        <div className="mb-4 text-5xl transform transition-transform duration-300 group-hover:scale-110">
+        <div data-testid={`game-card-${testId}-icon`} className="mb-4 text-5xl transform transition-transform duration-300 group-hover:scale-110">
           {icon ? (
             icon
           ) : image ? (
@@ -129,17 +133,20 @@ const GameCard: React.FC<GameCardProps> = ({
         </div>
 
         {/* Title */}
-        <h3 className="text-xl font-bold text-white text-center drop-shadow-lg">{title}</h3>
+        <h3 data-testid={`game-card-${testId}-title`} className="text-xl font-bold text-white text-center drop-shadow-lg">{title}</h3>
 
         {/* Play Button - Shows on Hover */}
         {!isComingSoon && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className={`
-              px-6 py-3 bg-cyan-500 rounded-xl font-bold text-white 
-              transform transition-all duration-300 
-              shadow-lg shadow-cyan-500/50
-              ${isActive ? 'scale-90 bg-cyan-600' : 'scale-90 group-hover:scale-100'}
-            `}>
+          <div data-testid={`game-card-${testId}-play-overlay`} className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div 
+              data-testid={`game-card-${testId}-play-btn`}
+              className={`
+                px-6 py-3 bg-cyan-500 rounded-xl font-bold text-white 
+                transform transition-all duration-300 
+                shadow-lg shadow-cyan-500/50
+                ${isActive ? 'scale-90 bg-cyan-600' : 'scale-90 group-hover:scale-100'}
+              `}
+            >
               Play Now
             </div>
           </div>
@@ -147,7 +154,7 @@ const GameCard: React.FC<GameCardProps> = ({
 
         {/* Coming Soon Overlay */}
         {isComingSoon && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+          <div data-testid={`game-card-${testId}-coming-soon-overlay`} className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
             <div className="px-4 py-2 bg-gray-800/80 rounded-lg border border-gray-700/50">
               <span className="text-sm font-medium text-gray-300">Coming Soon</span>
             </div>
@@ -162,6 +169,7 @@ const GameCard: React.FC<GameCardProps> = ({
     return (
       <Link 
         href={link} 
+        data-testid={`game-card-${testId}-link`}
         className="block focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded-2xl"
         prefetch={true}
       >

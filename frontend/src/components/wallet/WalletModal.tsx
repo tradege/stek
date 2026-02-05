@@ -153,9 +153,10 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div data-testid="wallet-modal" className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
+        data-testid="wallet-backdrop"
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
@@ -164,8 +165,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       <div className="relative w-full max-w-lg mx-4 bg-bg-card rounded-xl border border-white/10 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 sticky top-0 bg-bg-card z-10">
-          <h2 className="text-xl font-bold text-white">Wallet</h2>
+          <h2 data-testid="wallet-title" className="text-xl font-bold text-white">Wallet</h2>
           <button
+            data-testid="wallet-close-btn"
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
@@ -178,6 +180,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
         {/* Tabs */}
         <div className="flex border-b border-white/10">
           <button
+            data-testid="wallet-deposit-tab"
             onClick={() => { setActiveTab('deposit'); setMessage(null); }}
             className={`flex-1 py-4 text-center font-medium transition-colors ${
               activeTab === 'deposit'
@@ -188,6 +191,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
             Deposit
           </button>
           <button
+            data-testid="wallet-withdraw-tab"
             onClick={() => { setActiveTab('withdraw'); setMessage(null); }}
             className={`flex-1 py-4 text-center font-medium transition-colors ${
               activeTab === 'withdraw'
@@ -204,10 +208,11 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
           {/* Currency Selector */}
           <div className="mb-6">
             <label className="block text-sm text-text-secondary mb-2">Select Currency</label>
-            <div className="flex gap-2">
+            <div data-testid="currency-selector" className="flex gap-2">
               {currencies.map((currency) => (
                 <button
                   key={currency}
+                  data-testid={`currency-${currency.toLowerCase()}`}
                   onClick={() => setSelectedCurrency(currency)}
                   className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
                     selectedCurrency === currency
@@ -223,7 +228,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
           {/* Message */}
           {message && (
-            <div className={`mb-4 p-4 rounded-lg ${
+            <div data-testid="wallet-message" className={`mb-4 p-4 rounded-lg ${
               message.type === 'success' 
                 ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
                 : 'bg-red-500/20 text-red-400 border border-red-500/30'
@@ -234,21 +239,21 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
           {activeTab === 'deposit' ? (
             /* Deposit Tab */
-            <div className="space-y-4">
+            <div data-testid="deposit-content" className="space-y-4">
               {/* Deposit Address */}
               {depositAddress && (
-                <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                <div data-testid="deposit-address-section" className="p-4 bg-white/5 rounded-lg border border-white/10">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm text-text-secondary">
                       {depositAddress.network} Address
                     </span>
-                    <span className="text-xs text-accent-primary bg-accent-primary/10 px-2 py-1 rounded">
+                    <span data-testid="min-deposit" className="text-xs text-accent-primary bg-accent-primary/10 px-2 py-1 rounded">
                       Min: {depositAddress.minDeposit} {selectedCurrency}
                     </span>
                   </div>
                   
                   {/* Real QR Code */}
-                  <div className="flex justify-center mb-4">
+                  <div data-testid="qr-code" className="flex justify-center mb-4">
                     <div className="p-3 bg-white rounded-xl shadow-lg">
                       <QRCodeSVG 
                         value={depositAddress.address} 
@@ -266,12 +271,14 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                     <label className="text-xs text-text-secondary">Deposit Address</label>
                     <div className="flex items-center gap-2 bg-bg-main p-3 rounded-lg border border-white/10">
                       <input
+                        data-testid="deposit-address-input"
                         type="text"
                         value={depositAddress.address}
                         readOnly
                         className="flex-1 bg-transparent text-white font-mono text-sm outline-none truncate"
                       />
                       <button
+                        data-testid="copy-address-btn"
                         onClick={() => copyToClipboard(depositAddress.address)}
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${
                           copied 
@@ -285,7 +292,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                   </div>
                   
                   {/* Network Warning */}
-                  <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <div data-testid="network-warning" className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                     <p className="text-xs text-yellow-400">
                       ⚠️ Only send <span className="font-bold">{selectedCurrency}</span> on the <span className="font-bold">{depositAddress.network}</span> network. Sending other assets may result in permanent loss.
                     </p>
@@ -297,6 +304,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               <div>
                 <label className="block text-sm text-text-secondary mb-2">Amount Sent</label>
                 <input
+                  data-testid="deposit-amount-input"
                   type="number"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
@@ -309,6 +317,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               <div>
                 <label className="block text-sm text-text-secondary mb-2">Transaction Hash (TXID)</label>
                 <input
+                  data-testid="tx-hash-input"
                   type="text"
                   value={txHash}
                   onChange={(e) => setTxHash(e.target.value)}
@@ -319,6 +328,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
               {/* Submit Button */}
               <button
+                data-testid="deposit-submit-btn"
                 onClick={handleDeposit}
                 disabled={isLoading || !txHash || !depositAmount}
                 className="w-full py-4 bg-accent-primary text-black font-bold rounded-lg hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-glow-cyan"
@@ -332,11 +342,12 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
             </div>
           ) : (
             /* Withdraw Tab */
-            <div className="space-y-4">
+            <div data-testid="withdraw-content" className="space-y-4">
               {/* Amount Input */}
               <div>
                 <label className="block text-sm text-text-secondary mb-2">Amount</label>
                 <input
+                  data-testid="withdraw-amount-input"
                   type="number"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
@@ -352,6 +363,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               <div>
                 <label className="block text-sm text-text-secondary mb-2">Your {selectedCurrency} Wallet Address</label>
                 <input
+                  data-testid="wallet-address-input"
                   type="text"
                   value={walletAddress}
                   onChange={(e) => setWalletAddress(e.target.value)}
@@ -361,7 +373,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Network Info */}
-              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <div data-testid="withdraw-network-warning" className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <p className="text-sm text-yellow-400">
                   ⚠️ Make sure you're using the correct network:
                   <br />
@@ -375,6 +387,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
               {/* Submit Button */}
               <button
+                data-testid="withdraw-submit-btn"
                 onClick={handleWithdraw}
                 disabled={isLoading || !withdrawAmount || !walletAddress}
                 className="w-full py-4 bg-accent-danger text-white font-bold rounded-lg hover:bg-accent-danger/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

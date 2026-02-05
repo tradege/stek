@@ -563,7 +563,7 @@ const PlinkoGame: React.FC = () => {
   }, [isPlaying, betAmount, rows, risk, user, token]);
   
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-4 bg-[#0a0e17] min-h-screen">
+    <div data-testid="plinko-game" className="flex flex-col lg:flex-row gap-6 p-4 bg-[#0a0e17] min-h-screen">
       {/* Game Canvas */}
       <div className="flex-1">
         <div className="bg-gradient-to-b from-[#111827] to-[#0d1117] rounded-2xl p-4 border border-gray-800/50">
@@ -586,6 +586,7 @@ const PlinkoGame: React.FC = () => {
           
           <canvas
             ref={canvasRef}
+            data-testid="plinko-canvas"
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
             className="w-full max-w-[800px] mx-auto rounded-xl border border-gray-800/30" 
@@ -605,6 +606,7 @@ const PlinkoGame: React.FC = () => {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
                   type="number"
+                  data-testid="bet-amount-input"
                   value={betAmount}
                   onChange={(e) => setBetAmount(Math.max(0.1, Number(e.target.value)))}
                   className="w-full bg-[#1a1f2e] border border-gray-700/50 rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
@@ -613,12 +615,14 @@ const PlinkoGame: React.FC = () => {
                 />
               </div>
               <button
+                data-testid="bet-2x"
                 onClick={() => setBetAmount(prev => prev * 2)}
                 className="px-4 py-2 bg-[#1a1f2e] border border-gray-700/50 rounded-xl text-white hover:bg-[#252b3d] transition-all font-medium"
               >
                 2x
               </button>
               <button
+                data-testid="bet-half"
                 onClick={() => setBetAmount(prev => Math.max(0.1, prev / 2))}
                 className="px-4 py-2 bg-[#1a1f2e] border border-gray-700/50 rounded-xl text-white hover:bg-[#252b3d] transition-all font-medium"
               >
@@ -634,6 +638,7 @@ const PlinkoGame: React.FC = () => {
               {(['LOW', 'MEDIUM', 'HIGH'] as RiskLevel[]).map((r) => (
                 <button
                   key={r}
+                  data-testid={`risk-${r.toLowerCase()}`}
                   onClick={() => setRisk(r)}
                   className={`flex-1 py-3 font-bold transition-all ${
                     risk === r
@@ -654,11 +659,12 @@ const PlinkoGame: React.FC = () => {
           {/* Rows Slider */}
           <div>
             <label className="block text-sm text-gray-400 mb-2 font-medium">
-              ROWS: <span className="text-cyan-400">{rows}</span>
+              ROWS: <span data-testid="rows-display" className="text-cyan-400">{rows}</span>
             </label>
             <div className="relative">
               <input
                 type="range"
+                data-testid="rows-slider"
                 min="8"
                 max="16"
                 value={rows}
@@ -677,6 +683,7 @@ const PlinkoGame: React.FC = () => {
           
           {/* Bet Button */}
           <button
+            data-testid="bet-button"
             onClick={placeBet}
             disabled={isPlaying || !user || betAmount > (parseFloat(user?.balance?.find(b => b.currency === 'USDT')?.available || '0'))}
             className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
