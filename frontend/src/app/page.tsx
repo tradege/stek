@@ -2,66 +2,8 @@
 
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import GameCard from '@/components/ui/GameCard';
+import GameGrid from '@/components/lobby/GameGrid';
 import Link from 'next/link';
-
-// Rocket Icon Component
-const RocketIcon = () => (
-  <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12.5 2C9.64 2 7.5 4.14 7.5 7c0 1.45.59 2.76 1.55 3.71L4.5 15.26V22h6.74l4.55-4.55c.95.96 2.26 1.55 3.71 1.55 2.86 0 5-2.14 5-5 0-5.52-4.48-10-10-10zm7 10c0 1.66-1.34 3-3 3-.79 0-1.51-.31-2.04-.82l-1.42 1.42L11.59 20H6.5v-5.09l4.4-4.4c.51-.51.82-1.23.82-2.01 0-1.66 1.34-3 3-3 3.31 0 6 2.69 6 6z"/>
-    <circle cx="17" cy="8" r="2"/>
-    <path d="M2 22l3-3 2 2-3 3z"/>
-  </svg>
-);
-
-// Plinko Icon Component
-const PlinkoIcon = () => (
-  <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="12" cy="3" r="2"/>
-    <circle cx="6" cy="7" r="1.5"/>
-    <circle cx="12" cy="7" r="1.5"/>
-    <circle cx="18" cy="7" r="1.5"/>
-    <circle cx="4" cy="11" r="1.5"/>
-    <circle cx="9" cy="11" r="1.5"/>
-    <circle cx="15" cy="11" r="1.5"/>
-    <circle cx="20" cy="11" r="1.5"/>
-    <circle cx="6" cy="15" r="1.5"/>
-    <circle cx="12" cy="15" r="1.5"/>
-    <circle cx="18" cy="15" r="1.5"/>
-    <rect x="2" y="19" width="4" height="3" rx="1"/>
-    <rect x="7" y="19" width="4" height="3" rx="1"/>
-    <rect x="13" y="19" width="4" height="3" rx="1"/>
-    <rect x="18" y="19" width="4" height="3" rx="1"/>
-  </svg>
-);
-
-// Mines Icon Component
-const MinesIcon = () => (
-  <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/>
-    <circle cx="12" cy="12" r="4"/>
-    <line x1="12" y1="2" x2="12" y2="6" stroke="currentColor" strokeWidth="2"/>
-    <line x1="12" y1="18" x2="12" y2="22" stroke="currentColor" strokeWidth="2"/>
-    <line x1="2" y1="12" x2="6" y2="12" stroke="currentColor" strokeWidth="2"/>
-    <line x1="18" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="2"/>
-    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" stroke="currentColor" strokeWidth="2"/>
-    <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" stroke="currentColor" strokeWidth="2"/>
-    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" stroke="currentColor" strokeWidth="2"/>
-    <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" stroke="currentColor" strokeWidth="2"/>
-  </svg>
-);
-
-// Dice Icon Component
-const DiceIcon = () => (
-  <svg className="w-16 h-16 text-white" viewBox="0 0 24 24" fill="currentColor">
-    <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" strokeWidth="2"/>
-    <circle cx="8" cy="8" r="1.5"/>
-    <circle cx="12" cy="12" r="1.5"/>
-    <circle cx="16" cy="16" r="1.5"/>
-    <circle cx="8" cy="16" r="1.5"/>
-    <circle cx="16" cy="8" r="1.5"/>
-  </svg>
-);
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'casino' | 'sports'>('casino');
@@ -144,149 +86,35 @@ export default function Home() {
         {/* Casino Content */}
         {activeTab === 'casino' && (
           <>
-            {/* Stake Originals Section */}
+            {/* Live Lobby - All Games */}
             <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center">
-                  <span className="text-xl">⭐</span>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Stake Originals</h2>
-                  <p className="text-gray-400 text-sm">Exclusive games with the best odds</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <GameCard
-                  title="Crash"
-                  icon={<RocketIcon />}
-                  link="/games/crash"
-                  isLive={true}
-                  isHot={true}
-                  gradient="from-orange-600 via-red-600 to-pink-600"
-                />
-                <GameCard
-                  title="Dice"
-                  link="/games/dice"
-                  icon={<DiceIcon />}
-                  isComingSoon={true}
-                  gradient="from-green-600 via-emerald-600 to-teal-600"
-                />
-                <GameCard
-                  title="Plinko"
-                  icon={<PlinkoIcon />}
-                  link="/games/plinko"
-                  gradient="from-blue-600 via-indigo-600 to-purple-600"
-                />
-                <GameCard
-                  title="Mines"
-                  link="/games/mines"
-                  icon={<MinesIcon />}
-                  isComingSoon={true}
-                  gradient="from-yellow-600 via-orange-600 to-red-600"
-                />
-              </div>
-            </section>
-
-            {/* Slots Section */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <span className="text-xl">🎰</span>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Popular Slots</h2>
-                  <p className="text-gray-400 text-sm">Top-rated slot games from leading providers</p>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center">
+                    <span className="text-xl">🎰</span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                      Lobby
+                      <span className="text-gray-400 text-sm font-normal">(Live Games)</span>
+                    </h2>
+                    <p className="text-gray-400 text-sm">All available games from our providers</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <GameCard
-                  title="Gates of Olympus"
-                  link="/games/slots/gates-of-olympus"
-                  icon={<span className="text-5xl">⚡</span>}
-                  isComingSoon={true}
-                  gradient="from-yellow-500 via-amber-600 to-orange-700"
-                />
-                <GameCard
-                  title="Sweet Bonanza"
-                  link="/games/slots/sweet-bonanza"
-                  icon={<span className="text-5xl">🍬</span>}
-                  isComingSoon={true}
-                  gradient="from-pink-500 via-rose-600 to-red-600"
-                />
-                <GameCard
-                  title="Book of Dead"
-                  link="/games/slots/book-of-dead"
-                  icon={<span className="text-5xl">📖</span>}
-                  isComingSoon={true}
-                  gradient="from-amber-700 via-yellow-800 to-orange-900"
-                />
-                <GameCard
-                  title="Starburst"
-                  link="/games/slots/starburst"
-                  icon={<span className="text-5xl">💎</span>}
-                  isComingSoon={true}
-                  gradient="from-purple-600 via-violet-600 to-indigo-700"
-                />
-                <GameCard
-                  title="Big Bass Bonanza"
-                  link="/games/slots/big-bass-bonanza"
-                  icon={<span className="text-5xl">🐟</span>}
-                  isComingSoon={true}
-                  gradient="from-blue-500 via-cyan-600 to-teal-600"
-                />
-              </div>
-            </section>
-
-            {/* Live Casino Section */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-rose-500 rounded-xl flex items-center justify-center">
-                  <span className="text-xl">🃏</span>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Live Casino</h2>
-                  <p className="text-gray-400 text-sm">Real dealers, real action</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <GameCard
-                  title="Blackjack"
-                  icon={<span className="text-5xl">🃏</span>}
-                  isComingSoon={true}
-                  gradient="from-green-700 via-emerald-800 to-teal-900"
-                />
-                <GameCard
-                  title="Roulette"
-                  icon={<span className="text-5xl">🎡</span>}
-                  isComingSoon={true}
-                  gradient="from-red-700 via-rose-800 to-pink-900"
-                />
-                <GameCard
-                  title="Baccarat"
-                  icon={<span className="text-5xl">💰</span>}
-                  isComingSoon={true}
-                  gradient="from-amber-600 via-yellow-700 to-orange-800"
-                />
-                <GameCard
-                  title="Poker"
-                  icon={<span className="text-5xl">♠️</span>}
-                  isComingSoon={true}
-                  gradient="from-slate-600 via-gray-700 to-zinc-800"
-                />
-              </div>
+              {/* THE DYNAMIC GRID */}
+              <GameGrid />
             </section>
           </>
         )}
 
-        {/* Sports Content */}
+        {/* Sports Content (Coming Soon) */}
         {activeTab === 'sports' && (
-          <section className="text-center py-16">
-            <div className="inline-block p-8 bg-bg-card border border-white/10 rounded-3xl">
-              <span className="text-6xl mb-4 block">⚽</span>
-              <h2 className="text-2xl font-bold text-white mb-2">Sports Betting Coming Soon!</h2>
+          <section className="text-center py-20">
+            <div className="inline-block p-12 bg-bg-card border border-white/10 rounded-3xl">
+              <div className="text-6xl mb-4">⚽</div>
+              <h3 className="text-2xl font-bold text-white mb-3">Sports Betting Coming Soon!</h3>
               <p className="text-gray-400 max-w-md mx-auto">
                 We're working hard to bring you the best sports betting experience. 
                 Stay tuned for live odds, in-play betting, and more!

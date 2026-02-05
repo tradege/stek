@@ -1,0 +1,135 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getAllGames, Game } from '@/services/game.service';
+import GameCard from '@/components/ui/GameCard';
+
+interface GameGridProps {
+  category?: string;
+  limit?: number;
+}
+
+export default function GameGrid({ category, limit }: GameGridProps) {
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadGames = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const filters: any = {
+          isActive: true,
+        };
+        
+        if (category) {
+          filters.category = category;
+        }
+        
+        if (limit) {
+          filters.limit = limit;
+        }
+        
+        const response = await getAllGames(filters);
+        setGames(response.games || []);
+      } catch (err) {
+        console.error('Failed to load games:', err);
+        setError('Failed to load games. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadGames();
+  }, [category, limit]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {[...Array(10)].map((_, i) => (
+          <div
+            key={i}
+            className="h-48 rounded-2xl bg-bg-card border border-white/10 animate-pulse"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block px-6 py-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+          <p className="text-red-400 font-medium">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (games.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block px-6 py-4 bg-bg-card border border-white/10 rounded-xl">
+          <p className="text-gray-400">No games available</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Map game category to icon
+  const getGameIcon = (game: Game) => {
+    if (game.slug === 'crash') return '🚀';
+    if (game.slug === 'plinko') return '🎯';
+    if (game.slug === 'dice') return '🎲';
+    if (game.slug === 'mines') return '💣';
+    if (game.category === 'SLOTS') return '🎰';
+    if (game.category === 'LIVE_CASINO') return '🎴';
+    return '🎮';
+  };
+
+  // Map game category to gradient
+  const getGameGradient = (game: Game) => {
+    if (game.slug === 'crash') return 'from-orange-600 to-red-600';
+    if (game.slug === 'plinko') return 'from-purple-600 to-pink-600';
+    if (game.slug === 'dice') return 'from-blue-600 to-cyan-600';
+    if (game.slug === 'mines') return 'from-gray-700 to-gray-900';
+    if (game.category === 'SLOTS') return 'from-yellow-600 to-orange-600';
+    if (game.category === 'LIVE_CASINO') return 'from-green-600 to-emerald-600';
+    return 'from-indigo-600 to-purple-600';
+  };
+
+  // Get game link
+  const getGameLink = (game: Game) => {
+    // Internal games (Crash, Plinko, etc.)
+    if (game.provider.slug === 'internal') {
+      return `/games/${game.slug}`;
+    }
+    
+    // External games - for now, just show the slug
+    // Later we can implement a launch modal or redirect
+    return `/games/${game.slug}`;
+  };
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      {games.map((game) => (
+        <GameCard
+          key={game.id}
+          title={game.name}
+          icon={getGameIcon(game)}
+          gradient={getGameGradient(game)}
+          link={getGameLink(game)}
+          isLive={game.category === 'LIVE_CASINO'}
+          isHot={game.isHot}
+          isNew={game.isNew}
+          isComingSoon={!game.isActive}
+        />
+      ))}
+    </div>
+  );
+}
