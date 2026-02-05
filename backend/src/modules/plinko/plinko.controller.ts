@@ -7,12 +7,25 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { IsNumber, IsEnum, Min, Max, IsNotEmpty } from 'class-validator';
 import { PlinkoService, RiskLevel } from './plinko.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+// DTO with proper validation decorators
 class PlayPlinkoDto {
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(0.01)
   betAmount: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(8)
+  @Max(16)
   rows: number;
+
+  @IsEnum(['LOW', 'MEDIUM', 'HIGH'])
+  @IsNotEmpty()
   risk: RiskLevel;
 }
 
