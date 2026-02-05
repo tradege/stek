@@ -332,7 +332,7 @@ describe('📱 Mobile Responsiveness Tests', () => {
 
     it('Should have readable base font size', () => {
       cy.get('body').should('have.css', 'font-size').and((fontSize) => {
-        expect(parseInt(fontSize)).to.be.at.least(14);
+        expect(parseInt(fontSize as unknown as string)).to.be.at.least(14);
       });
     });
 
