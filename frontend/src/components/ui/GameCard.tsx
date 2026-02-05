@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface GameCardProps {
   title: string;
@@ -29,6 +30,7 @@ const GameCard: React.FC<GameCardProps> = ({
   players,
 }) => {
   const [isActive, setIsActive] = useState(false);
+  const router = useRouter();
 
   const handleMouseDown = () => {
     if (!isComingSoon) {
@@ -42,6 +44,20 @@ const GameCard: React.FC<GameCardProps> = ({
 
   const handleMouseLeave = () => {
     setIsActive(false);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (link && !isComingSoon) {
+      e.preventDefault();
+      router.push(link);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === 'Enter' || e.key === ' ') && link && !isComingSoon) {
+      e.preventDefault();
+      router.push(link);
+    }
   };
 
   // Generate testid from title
@@ -64,24 +80,25 @@ const GameCard: React.FC<GameCardProps> = ({
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleMouseDown}
       onTouchEnd={handleMouseUp}
-      role="button"
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       tabIndex={isComingSoon ? -1 : 0}
       aria-disabled={isComingSoon}
       aria-label={`${title} game${isComingSoon ? ' - Coming Soon' : ''}`}
     >
       {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-20">
+      <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
         <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%)]" />
       </div>
 
       {/* Active State Overlay */}
       {isActive && (
-        <div data-testid={`game-card-${testId}-active`} className="absolute inset-0 bg-white/10 z-10 transition-opacity duration-150" />
+        <div data-testid={`game-card-${testId}-active`} className="absolute inset-0 bg-white/10 z-10 transition-opacity duration-150 pointer-events-none" />
       )}
 
       {/* Card Content */}
-      <div className="relative p-6 h-48 flex flex-col items-center justify-center">
+      <div className="relative p-6 h-48 flex flex-col items-center justify-center pointer-events-none">
         {/* Live Badge */}
         {isLive && (
           <div data-testid={`game-card-${testId}-live-badge`} className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 bg-green-500/90 rounded-full shadow-lg shadow-green-500/30">
@@ -164,21 +181,6 @@ const GameCard: React.FC<GameCardProps> = ({
     </div>
   );
 
-  // Wrap with Link only if link exists and not coming soon
-  if (link && !isComingSoon) {
-    return (
-      <Link 
-        href={link} 
-        data-testid={`game-card-${testId}-link`}
-        className="block focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded-2xl"
-        prefetch={true}
-      >
-        {cardContent}
-      </Link>
-    );
-  }
-
-  // Return non-clickable card for coming soon
   return cardContent;
 };
 
