@@ -1,0 +1,17 @@
+{
+  "validUser": {
+    "email": "test@stakepro.com",
+    "password": "Test123!@#",
+    "username": "testuser"
+  },
+  "adminUser": {
+    "email": "admin@stakepro.com",
+    "password": "Admin123!@#",
+    "username": "admin"
+  },
+  "newUser": {
+    "email": "newuser@stakepro.com",
+    "password": "NewUser123!@#",
+    "username": "newuser"
+  }
+}
