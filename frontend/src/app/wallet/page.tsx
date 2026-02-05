@@ -55,7 +55,7 @@ export default function WalletPage() {
         <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-8 mb-8 shadow-2xl">
           <div className="text-white/80 text-sm mb-2">Total Balance</div>
           <div className="text-5xl font-bold text-white mb-4">
-            ₮ {primaryBalance?.balance?.toFixed(2) || '0.00'}
+            ₮ {primaryBalance?.available ? parseFloat(primaryBalance.available).toFixed(2) : '0.00'}
           </div>
           <div className="text-white/60 text-sm">USDT</div>
           
