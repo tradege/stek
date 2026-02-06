@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useSocket } from '@/contexts/SocketContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect, useRef } from 'react';
 
-interface ChatMessage {
+interface Message {
   id: string;
-  userId: string;
   username: string;
   role: 'ADMIN' | 'MODERATOR' | 'VIP' | 'USER';
   message: string;
@@ -18,28 +15,18 @@ interface ChatPanelProps {
   onClose?: () => void;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
-  const { socket, isConnected } = useSocket();
-  const { user, isAuthenticated } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isJoined, setIsJoined] = useState(false);
+export default function ChatPanel({ onClose }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Role colors
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'text-red-500';
-      case 'MODERATOR':
-        return 'text-blue-500';
-      case 'VIP':
-        return 'text-yellow-500';
-      default:
-        return 'text-white';
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -48,149 +35,105 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
       case 'MODERATOR':
         return <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-[#1475e1] rounded mr-1">MOD</span>;
       case 'VIP':
-        return <span className="px-1.5 py-0.5 text-[10px] bg-yellow-500/20 text-[#1475e1] rounded mr-1">VIP</span>;
+        return <span className="px-1.5 py-0.5 text-[10px] bg-yellow-500/20 text-yellow-400 rounded mr-1">VIP</span>;
       default:
         return null;
     }
   };
 
-  // Join chat room on mount
-  useEffect(() => {
-    if (socket && isConnected && !isJoined) {
-      socket.emit('chat:join', { room: 'global' });
-      setIsJoined(true);
-      // Request chat history
-      socket.emit('chat:history', { room: 'global', limit: 50 });
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'text-red-400';
+      case 'MODERATOR':
+        return 'text-[#1475e1]';
+      case 'VIP':
+        return 'text-yellow-400';
+      default:
+        return 'text-text-secondary';
     }
-  }, [socket, isConnected, isJoined]);
-
-  // Listen for chat events
-  useEffect(() => {
-    if (!socket) return;
-
-    // New message received
-    const handleMessage = (data: ChatMessage) => {
-      setMessages((prev) => [...prev.slice(-99), { ...data, timestamp: new Date(data.timestamp) }]);
-    };
-
-    // Chat history received
-    const handleHistory = (data: { messages: ChatMessage[] }) => {
-      setMessages(data.messages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })));
-    };
-
-    // System message
-    const handleSystem = (data: { message: string }) => {
-      setMessages((prev) => [
-        ...prev.slice(-99),
-        {
-          id: `sys-${Date.now()}`,
-          userId: 'system',
-          username: 'System',
-          role: 'ADMIN',
-          message: data.message,
-          timestamp: new Date(),
-        },
-      ]);
-    };
-
-    socket.on('chat:message', handleMessage);
-    socket.on('chat:history', handleHistory);
-    socket.on('chat:system', handleSystem);
-
-    return () => {
-      socket.off('chat:message', handleMessage);
-      socket.off('chat:history', handleHistory);
-      socket.off('chat:system', handleSystem);
-    };
-  }, [socket]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Send message
-  const sendMessage = () => {
-    if (!inputValue.trim() || !socket || !isAuthenticated) return;
-
-    socket.emit('chat:send', {
-      room: 'global',
-      message: inputValue.trim(),
-    });
-
-    setInputValue('');
-    inputRef.current?.focus();
   };
 
-  // Handle key press
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+
+    const message: Message = {
+      id: Date.now().toString(),
+      username: 'You',
+      role: 'USER',
+      message: newMessage,
+      timestamp: new Date(),
+    };
+
+    setMessages([...messages, message]);
+    setNewMessage('');
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSendMessage();
     }
   };
 
-  // Format time
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  if (!isVisible) return null;
-
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[700px] bg-bg-card rounded-xl border border-white/10 overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <h3 className="font-semibold text-white">Live Chat</h3>
-          <span className="text-xs text-text-secondary">({messages.length})</span>
+    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[700px] bg-[#1a2c38]/75 backdrop-blur-2xl rounded-2xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] overflow-hidden transition-all duration-300">
+      {/* Header - Professional Glass */}
+      <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-green-500 animate-ping opacity-75" />
+          </div>
+          <h3 className="font-bold text-white text-lg tracking-tight">Live Chat</h3>
+          <span className="text-xs text-text-secondary bg-white/5 px-2 py-1 rounded-full backdrop-blur-sm">
+            {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+          </span>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 hover:bg-white/10 rounded transition-colors"
+            className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 group backdrop-blur-sm"
+            aria-label="Close chat"
           >
-            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-text-secondary group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         )}
       </div>
 
-      {/* Messages - Fixed height with scroll */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {/* Messages Area - Transparent with subtle gradient */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-transparent via-black/5 to-transparent">
         {messages.length === 0 ? (
-          <div className="text-center text-text-secondary text-sm py-8">
-            No messages yet. Be the first to chat!
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-[#1475e1]/20 to-[#1475e1]/5 flex items-center justify-center backdrop-blur-xl border border-white/10">
+              <svg className="w-8 h-8 text-[#1475e1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <p className="text-white font-semibold mb-1">No messages yet</p>
+            <p className="text-text-secondary text-sm">Be the first to say hello!</p>
           </div>
         ) : (
           messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`group ${msg.userId === user?.id ? 'text-right' : ''}`}
-            >
-              <div
-                className={`inline-block max-w-[85%] ${
-                  msg.userId === 'system'
-                    ? 'bg-accent-primary/10 border border-accent-primary/30 text-accent-primary text-center w-full'
-                    : msg.userId === user?.id
-                    ? 'bg-accent-primary/20 text-white'
-                    : 'bg-white/5 text-white'
-                } rounded-lg px-3 py-2`}
-              >
-                {msg.userId !== 'system' && (
-                  <div className="flex items-center gap-1 mb-1">
+            <div key={msg.id} className="group hover:bg-white/5 p-3 rounded-xl transition-all duration-200 backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1475e1] to-[#1475e1]/60 flex items-center justify-center text-white text-sm font-bold shadow-lg flex-shrink-0">
+                  {msg.username[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
                     {getRoleBadge(msg.role)}
-                    <span className={`text-xs font-medium ${getRoleColor(msg.role)}`}>
+                    <span className={`font-semibold text-sm ${getRoleColor(msg.role)}`}>
                       {msg.username}
                     </span>
-                    <span className="text-[10px] text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
-                      {formatTime(msg.timestamp)}
+                    <span className="text-xs text-text-secondary/60">
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                )}
-                <p className="text-sm break-words">{msg.message}</p>
+                  <p className="text-white/90 text-sm leading-relaxed break-words">{msg.message}</p>
+                </div>
               </div>
             </div>
           ))
@@ -198,40 +141,28 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isVisible = true, onClose }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input - Fixed at bottom */}
-      <div className="flex-shrink-0 p-3 border-t border-white/10 bg-bg-card">
-        {isAuthenticated ? (
-          <div className="flex gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
-              maxLength={200}
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-text-secondary focus:outline-none focus:border-accent-primary/50 transition-colors"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!inputValue.trim() || !isConnected}
-              className="px-4 py-2 bg-accent-primary text-black font-medium rounded-lg hover:bg-accent-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-glow-cyan-sm hover:shadow-glow-cyan"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-          </div>
-        ) : (
-          <div className="text-center py-2">
-            <a href="/login" className="text-accent-primary text-sm hover:underline">
-              Login to chat
-            </a>
-          </div>
-        )}
+      {/* Input Area - Professional Glass */}
+      <div className="flex-shrink-0 p-4 border-t border-white/10 bg-gradient-to-r from-transparent via-white/5 to-transparent backdrop-blur-xl">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message..."
+            className="flex-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-3 text-white placeholder-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-[#1475e1]/50 focus:border-[#1475e1]/50 transition-all duration-200"
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim()}
+            className="px-5 py-3 bg-gradient-to-r from-[#1475e1] to-[#1475e1]/80 hover:from-[#1475e1]/90 hover:to-[#1475e1]/70 text-white rounded-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-[#1475e1]/20 backdrop-blur-xl"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );
-};
-
-export default ChatPanel;
+}
