@@ -85,7 +85,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   {activeTab === 'overview' && (
                     <div className="space-y-6">
                       {/* Balance Card */}
-                      <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl p-6">
+                      <div className="bg-gradient-to-br from-[#1475e1] to-[#1475e1] rounded-xl p-6">
                         <div className="text-sm text-purple-100 mb-2">Total Balance</div>
                         <div className="text-4xl font-bold text-white mb-4">
                           ₮ {primaryBalance?.available || '0.00'} USDT
@@ -182,7 +182,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                               className="w-full bg-slate-700 text-white rounded-lg px-4 py-2"
                             />
                           </div>
-                          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg py-3 font-semibold transition-colors">
+                          <button className="w-full bg-[#1475e1] hover:bg-[#1475e1]/90 text-white rounded-lg py-3 font-semibold transition-colors">
                             Withdraw
                           </button>
                         </div>

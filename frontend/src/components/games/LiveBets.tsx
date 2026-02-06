@@ -224,12 +224,12 @@ const LiveBets: React.FC = () => {
   // Get avatar gradient based on username
   const getAvatarGradient = (username: string) => {
     const gradients = [
-      'from-purple-500 to-pink-500',
+      'from-[#1475e1] to-[#1475e1]',
       'from-cyan-500 to-blue-500',
       'from-green-500 to-emerald-500',
       'from-orange-500 to-red-500',
       'from-yellow-500 to-orange-500',
-      'from-indigo-500 to-purple-500',
+      'from-[#1475e1] to-[#1475e1]',
     ];
     const index = username.charCodeAt(0) % gradients.length;
     return gradients[index];

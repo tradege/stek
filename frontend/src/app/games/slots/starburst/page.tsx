@@ -36,11 +36,11 @@ export default function StarburstPage() {
       </div>
 
       {/* Rainbow gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-cyan-900/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0f212e]/20 via-transparent to-cyan-900/20 pointer-events-none" />
 
       {/* Animated rings - rainbow theme */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-64 h-64 rounded-full border border-purple-500/20 animate-ring-pulse animate-rainbow-border" />
+        <div className="w-64 h-64 rounded-full border border-[#1475e1]/20 animate-ring-pulse animate-rainbow-border" />
         <div className="absolute w-80 h-80 rounded-full border border-cyan-500/10 animate-ring-pulse" style={{ animationDelay: '0.5s' }} />
         <div className="absolute w-96 h-96 rounded-full border border-pink-500/5 animate-ring-pulse" style={{ animationDelay: '1s' }} />
       </div>
@@ -55,9 +55,9 @@ export default function StarburstPage() {
         <h1 className="text-4xl font-bold text-white mb-4 text-shimmer">Starburst</h1>
 
         {/* Coming Soon badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/50 rounded-full mb-6 animate-badge-pulse">
-          <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
-          <span className="text-purple-400 font-semibold">Coming Soon</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1475e1]/20 border border-[#1475e1]/50 rounded-full mb-6 animate-badge-pulse">
+          <span className="w-2 h-2 bg-[#1475e1] rounded-full animate-pulse"></span>
+          <span className="text-[#1475e1] font-semibold">Coming Soon</span>
         </div>
 
         {/* Description */}
@@ -70,7 +70,7 @@ export default function StarburstPage() {
           {['Expanding Wilds', 'Both Ways Pay', 'Re-Spins', 'Low Volatility'].map((feature, i) => (
             <div
               key={feature}
-              className={`px-3 py-2 bg-gray-800/50 rounded-lg border border-purple-500/30 text-sm text-gray-300 animate-slide-in-up`}
+              className={`px-3 py-2 bg-gray-800/50 rounded-lg border border-[#1475e1]/30 text-sm text-gray-300 animate-slide-in-up`}
               style={{ animationDelay: `${0.4 + i * 0.1}s` }}
             >
               {feature}

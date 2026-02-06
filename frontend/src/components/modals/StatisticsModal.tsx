@@ -108,7 +108,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
       {/* Modal */}
       <div className="relative bg-bg-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-blue-500/20 to-purple-500/20">
+        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-[#1475e1]/20 to-[#1475e1]/20">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-white flex items-center gap-3">
               <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +187,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
                   <p className="text-xl font-bold text-yellow-400">{formatCurrency(stats.biggestWin)}</p>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-[#1475e1]/20">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#1475e1]/10 to-[#1475e1]/10 rounded-xl border border-[#1475e1]/20">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🚀</span>
                     <div>

@@ -24,7 +24,7 @@ const GameCard: React.FC<GameCardProps> = ({
   isComingSoon = false,
   isHot = false,
   isNew = false,
-  gradient = "from-purple-600 via-blue-600 to-cyan-500",
+  gradient = "from-[#1475e1] via-[#1475e1] to-[#1475e1]",
   players,
 }) => {
   const [isHovered, setIsHovered] = useState(false);

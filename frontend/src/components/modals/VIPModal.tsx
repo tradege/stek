@@ -169,7 +169,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
               {/* Decorative Elements */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
               <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-20 right-0 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 right-0 w-72 h-72 bg-[#1475e1]/10 rounded-full blur-3xl pointer-events-none" />
 
               {/* Close Button */}
               <button

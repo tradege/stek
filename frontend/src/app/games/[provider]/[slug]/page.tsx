@@ -119,7 +119,7 @@ export default function GamePage() {
     <MainLayout>
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Game Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900 via-blue-900 to-cyan-900 border border-white/10">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0f212e] via-blue-900 to-cyan-900 border border-white/10">
           {game.banner && (
             <img
               src={game.banner}
@@ -147,7 +147,7 @@ export default function GamePage() {
                   <span className="px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full text-sm font-semibold">
                     {game.category}
                   </span>
-                  <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm font-semibold">
+                  <span className="px-3 py-1 bg-[#1475e1]/20 text-[#1475e1] rounded-full text-sm font-semibold">
                     {game.provider.name}
                   </span>
                   {game.isHot && (
@@ -210,7 +210,7 @@ export default function GamePage() {
           )}
           {game.maxBet && (
             <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-              <p className="text-3xl font-bold text-purple-400 mb-1">${game.maxBet}</p>
+              <p className="text-3xl font-bold text-[#1475e1] mb-1">${game.maxBet}</p>
               <p className="text-sm text-gray-400">Max Bet</p>
             </div>
           )}

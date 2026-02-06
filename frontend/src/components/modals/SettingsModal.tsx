@@ -146,7 +146,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </div>
               <button
                 onClick={handleMusicToggle}
-                className={`relative w-14 h-7 rounded-full transition-colors ${musicEnabled ? 'bg-purple-500' : 'bg-white/20'}`}
+                className={`relative w-14 h-7 rounded-full transition-colors ${musicEnabled ? 'bg-[#1475e1]' : 'bg-white/20'}`}
               >
                 <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${musicEnabled ? 'translate-x-7' : ''}`} />
               </button>

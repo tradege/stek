@@ -124,7 +124,7 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                 <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
                   <div className="flex h-full flex-col bg-slate-900 border-l border-slate-700 shadow-2xl">
                     {/* Header */}
-                    <div className="px-4 py-4 bg-gradient-to-r from-purple-600 to-blue-600">
+                    <div className="px-4 py-4 bg-gradient-to-r from-[#1475e1] to-[#1475e1]">
                       <div className="flex items-center justify-between">
                         <Dialog.Title className="text-lg font-semibold text-white flex items-center gap-2">
                           <span className="text-2xl">💬</span>
@@ -177,7 +177,7 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                                 <div
                                   className={`rounded-2xl px-4 py-2 ${
                                     isOwnMessage
-                                      ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white'
+                                      ? 'bg-gradient-to-r from-[#1475e1] to-[#1475e1] text-white'
                                       : 'bg-slate-800 text-slate-100'
                                   }`}
                                 >
@@ -204,13 +204,13 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                             onChange={(e) => setNewMessage(e.target.value)}
                             onKeyPress={handleKeyPress}
                             placeholder="Type a message..."
-                            className="flex-1 bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="flex-1 bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1475e1]"
                             disabled={isLoading}
                           />
                           <button
                             onClick={sendMessage}
                             disabled={!newMessage.trim() || isLoading}
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg px-4 py-2 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            className="bg-gradient-to-r from-[#1475e1] to-[#1475e1] text-white rounded-lg px-4 py-2 hover:from-[#1475e1] hover:to-[#1475e1] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                           >
                             {isLoading ? (
                               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
