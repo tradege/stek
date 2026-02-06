@@ -3,8 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
+import Sidebar from '@/components/layout/Sidebar';
 
 export default function AdminLayout({
   children,
@@ -22,11 +21,8 @@ export default function AdminLayout({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f212e]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#1475e1] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading Admin Panel...</p>
-        </div>
+      <div className="min-h-screen bg-[#0f212e] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1475e1]"></div>
       </div>
     );
   }
@@ -35,11 +31,19 @@ export default function AdminLayout({
     return null;
   }
 
+  const adminMenuItems = [
+    { href: '/admin/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+    { href: '/admin/users', label: 'Users', icon: 'Users' },
+    { href: '/admin/finance', label: 'Finance', icon: 'DollarSign' },
+    { href: '/admin/transactions', label: 'Transactions', icon: 'CreditCard' },
+    { href: '/admin/games', label: 'Game Control', icon: 'Gamepad2' },
+    { href: '/admin/settings', label: 'Settings', icon: 'Settings' },
+  ];
+
   return (
-    <div className="flex min-h-screen bg-[#0f212e]">
-      <AdminSidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <AdminHeader />
+    <div className="min-h-screen bg-[#0f212e]">
+      <Sidebar menuItems={adminMenuItems} title="Admin Panel" />
+      <main className="lg:ml-64 p-4 lg:p-8">
         {children}
       </main>
     </div>
