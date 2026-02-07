@@ -1,9 +1,8 @@
 'use client';
-
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import Sidebar from '@/components/layout/Sidebar';
+import AdminSidebar from '@/components/admin/AdminSidebar';
 
 export default function AdminLayout({
   children,
@@ -31,18 +30,9 @@ export default function AdminLayout({
     return null;
   }
 
-  const adminMenuItems = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-    { href: '/admin/users', label: 'Users', icon: 'Users' },
-    { href: '/admin/finance', label: 'Finance', icon: 'DollarSign' },
-    { href: '/admin/transactions', label: 'Transactions', icon: 'CreditCard' },
-    { href: '/admin/games', label: 'Game Control', icon: 'Gamepad2' },
-    { href: '/admin/settings', label: 'Settings', icon: 'Settings' },
-  ];
-
   return (
     <div className="min-h-screen bg-[#0f212e]">
-      <Sidebar menuItems={adminMenuItems} title="Admin Panel" />
+      <AdminSidebar />
       <main className="lg:ml-64 p-4 lg:p-8">
         {children}
       </main>
