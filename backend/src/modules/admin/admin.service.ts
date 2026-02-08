@@ -7,42 +7,81 @@ export class AdminService {
   constructor(private prisma: PrismaService) {}
 
   async getStats() {
-    const [
-      totalUsers,
-      activeUsers,
-      pendingApprovalUsers,
-      totalDeposits,
-      totalWithdrawals,
-      pendingTransactions,
-      totalBets,
-    ] = await Promise.all([
+    // Phase 49: Correct Financial Aggregation for Admin Dashboard
+    
+    // 1. User counts
+    const [totalUsers, activeUsers, pendingApprovalUsers, pendingTransactions] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { status: 'ACTIVE' } }),
       this.prisma.user.count({ where: { status: 'PENDING_APPROVAL' } }),
-      this.prisma.transaction.aggregate({
-        where: { type: 'DEPOSIT', status: 'CONFIRMED' },
-        _sum: { amount: true },
-      }),
-      this.prisma.transaction.aggregate({
-        where: { type: 'WITHDRAWAL', status: 'CONFIRMED' },
-        _sum: { amount: true },
-      }),
       this.prisma.transaction.count({ where: { status: 'PENDING' } }),
-      this.prisma.bet.count(),
     ]);
 
-    const deposits = Number(totalDeposits._sum.amount || 0);
-    const withdrawals = Number(totalWithdrawals._sum.amount || 0);
+    // 2. Calculate Transactions (Deposits/Withdrawals)
+    const transactions = await this.prisma.transaction.groupBy({
+      by: ['type'],
+      _sum: { amount: true },
+      where: { status: 'CONFIRMED' },
+    });
+
+    const totalDeposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
+    const totalWithdrawals = Number(transactions.find(t => t.type === 'WITHDRAWAL')?._sum.amount || 0);
+
+    // 3. Calculate Betting Stats (Revenue/GGR)
+    // Schema: Bet has betAmount, payout, profit, isWin (boolean)
+    const bets = await this.prisma.bet.aggregate({
+      _sum: {
+        betAmount: true,  // Total Wagered
+        payout: true,     // Total Payouts
+        profit: true,     // Total Profit (negative = house wins)
+      },
+      _count: true,
+    });
+
+    const totalWagered = Number(bets._sum.betAmount || 0);
+    const totalPayouts = Number(bets._sum.payout || 0);
+    const totalBets = bets._count;
+
+    // GGR = Total Wagered - Total Payouts (Money In - Money Out)
+    const totalGGR = totalWagered - totalPayouts;
+
+    // 4. Provider Fees & Net Profit
+    const providerFeeRate = 0.08; // 8%
+    const providerFees = totalGGR > 0 ? totalGGR * providerFeeRate : 0;
+    const netProfit = totalGGR - providerFees;
+
+    // 5. Active Users (Last 24h) - based on betting activity
+    const oneDayAgo = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
+    const activeUsersLast24h = await this.prisma.bet.groupBy({
+      by: ['userId'],
+      where: { createdAt: { gte: oneDayAgo } },
+    });
 
     return {
+      // User stats
       totalUsers,
       activeUsers,
       pendingApprovalUsers,
-      totalDeposits: deposits,
-      totalWithdrawals: withdrawals,
+      activeUsersLast24h: activeUsersLast24h.length,
+      
+      // Financial stats
+      totalDeposits,
+      totalWithdrawals,
       pendingTransactions,
+      
+      // Gaming stats (GGR)
       totalBets,
-      houseProfit: deposits - withdrawals,
+      totalRevenue: totalGGR,
+      totalGGR,
+      providerFees,
+      netProfit,
+      houseProfit: totalGGR,
+      
+      // Detailed stats
+      stats: {
+        wagered: totalWagered,
+        payouts: totalPayouts,
+      },
     };
   }
 

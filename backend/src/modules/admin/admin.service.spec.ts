@@ -36,10 +36,13 @@ describe('AdminService', () => {
     transaction: {
       count: jest.fn(),
       aggregate: jest.fn(),
+      groupBy: jest.fn(),
       findMany: jest.fn(),
     },
     bet: {
       count: jest.fn(),
+      aggregate: jest.fn(),
+      groupBy: jest.fn(),
     },
   };
 
@@ -69,28 +72,47 @@ describe('AdminService', () => {
         .mockResolvedValueOnce(100)
         .mockResolvedValueOnce(90)
         .mockResolvedValueOnce(5);
-      jest.spyOn(prisma.transaction, 'aggregate')
-        .mockResolvedValueOnce({ _sum: { amount: new Decimal(50000) } } as any)
-        .mockResolvedValueOnce({ _sum: { amount: new Decimal(20000) } } as any);
       jest.spyOn(prisma.transaction, 'count').mockResolvedValue(3);
-      jest.spyOn(prisma.bet, 'count').mockResolvedValue(1000);
+      (prisma.transaction as any).groupBy = jest.fn().mockResolvedValue([
+        { type: 'DEPOSIT', _sum: { amount: new Decimal(50000) } },
+        { type: 'WITHDRAWAL', _sum: { amount: new Decimal(20000) } },
+      ]);
+      (prisma.bet as any).aggregate = jest.fn().mockResolvedValue({
+        _sum: { betAmount: new Decimal(100000), payout: new Decimal(70000), profit: new Decimal(-30000) },
+        _count: 1000,
+      });
+      (prisma.bet as any).groupBy = jest.fn().mockResolvedValue([
+        { userId: 'user-1' }, { userId: 'user-2' },
+      ]);
 
       const result = await service.getStats();
 
       expect(result.totalUsers).toBe(100);
       expect(result.activeUsers).toBe(90);
       expect(result.pendingApprovalUsers).toBe(5);
+      expect(result.totalGGR).toBe(30000);
       expect(result.houseProfit).toBe(30000);
+      expect(result.totalBets).toBe(1000);
+      expect(result.activeUsersLast24h).toBe(2);
+      expect(result.stats.wagered).toBe(100000);
+      expect(result.stats.payouts).toBe(70000);
     });
 
     it('1.2 - Should handle zero values', async () => {
       jest.spyOn(prisma.user, 'count').mockResolvedValue(0);
-      jest.spyOn(prisma.transaction, 'aggregate').mockResolvedValue({ _sum: { amount: null } } as any);
       jest.spyOn(prisma.transaction, 'count').mockResolvedValue(0);
-      jest.spyOn(prisma.bet, 'count').mockResolvedValue(0);
+      (prisma.transaction as any).groupBy = jest.fn().mockResolvedValue([]);
+      (prisma.bet as any).aggregate = jest.fn().mockResolvedValue({
+        _sum: { betAmount: null, payout: null, profit: null },
+        _count: 0,
+      });
+      (prisma.bet as any).groupBy = jest.fn().mockResolvedValue([]);
 
       const result = await service.getStats();
       expect(result.totalDeposits).toBe(0);
+      expect(result.totalWithdrawals).toBe(0);
+      expect(result.totalGGR).toBe(0);
+      expect(result.totalBets).toBe(0);
     });
   });
 

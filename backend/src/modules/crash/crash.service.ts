@@ -278,30 +278,22 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     // Convert to random value between 0 and 1
     const r = h / E;
     
-    // 1. INSTANT BUST CHECK - 2% chance of immediate crash
-    if (r < this.gameConfig.instantBust) {
-      return new Decimal(1.00); // House takes everything
-    }
+    // Phase 49: Pure ICDF formula - NO double-dip
+    // The Formula: X = (1 - edge) / (1 - r)
+    // If r < HOUSE_EDGE, result < 1.00 -> Instant Bust (clamped to 1.00)
+    // This creates a perfect mathematical curve where P(bust at 1.00) = exactly HOUSE_EDGE
+    const HOUSE_EDGE = this.gameConfig.houseEdge; // 0.04 = 4%
+    const rawMultiplier = (1 - HOUSE_EDGE) / (1 - r);
     
-    // 2. Calculate multiplier with 4% house edge
-    const houseEdge = this.gameConfig.houseEdge;
-    
-    // CORRECT FORMULA: crashPoint = (1 - houseEdge) / (1 - r)
-    // This creates proper exponential distribution with house edge
-    const crashPoint = (1 - houseEdge) / (1 - r);
-    
-    // Instant bust protection: if crashPoint < 1.00, return 1.00
-    if (crashPoint < 1.00) {
-      return new Decimal(1.00);
-    }
+    // Clamp to 1.00 minimum - in Crash, 1.00 = loss for everyone
+    const crashPoint = Math.max(1.00, Math.floor(rawMultiplier * 100) / 100);
     
     // Cap at 5000x to protect bankroll from extreme outliers
     if (crashPoint > 5000) {
       return new Decimal(5000.00);
     }
     
-    // Round down to 2 decimal places
-    return new Decimal(Math.floor(crashPoint * 100) / 100);
+    return new Decimal(crashPoint);
   }
 
   /**
