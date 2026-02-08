@@ -17,7 +17,15 @@ interface PlinkoResult {
   multiplier: number;
   payout: number;
   profit: number;
+  // Provably Fair data
+  serverSeedHash: string;
+  clientSeed: string;
+  nonce: number;
 }
+
+// Rate limiting: track last bet time per user
+const userLastBetTime = new Map<string, number>();
+const RATE_LIMIT_MS = 500; // Minimum 500ms between bets
 
 @Injectable()
 export class PlinkoService {
@@ -25,6 +33,22 @@ export class PlinkoService {
 
   async play(userId: string, dto: PlayPlinkoDto): Promise<PlinkoResult> {
     const { betAmount, rows, risk, currency = 'USDT' } = dto;
+
+    // ===== RATE LIMITING =====
+    const now = Date.now();
+    const lastBet = userLastBetTime.get(userId) || 0;
+    if (now - lastBet < RATE_LIMIT_MS) {
+      throw new BadRequestException('Please wait before placing another bet');
+    }
+    userLastBetTime.set(userId, now);
+
+    // Clean up old entries periodically (prevent memory leak)
+    if (userLastBetTime.size > 10000) {
+      const cutoff = now - 60000; // Remove entries older than 1 minute
+      for (const [uid, time] of userLastBetTime.entries()) {
+        if (time < cutoff) userLastBetTime.delete(uid);
+      }
+    }
 
     // Validate inputs
     if (betAmount <= 0) {
@@ -121,12 +145,16 @@ export class PlinkoService {
       });
     });
 
+    // Return result WITH provably fair data
     return {
       path,
       bucketIndex,
       multiplier,
       payout,
       profit,
+      serverSeedHash,
+      clientSeed,
+      nonce,
     };
   }
 
