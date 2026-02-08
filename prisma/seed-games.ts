@@ -369,9 +369,9 @@ async function main() {
       minBet: 0.01,
       maxBet: 1000,
       playCount: 0,
-      isActive: false, // Coming soon
+      isActive: true, // Coming soon
       isNew: true,
-      isHot: false,
+      isHot: true,
       isFeatured: false,
       sortOrder: 102,
     },
@@ -397,9 +397,9 @@ async function main() {
       minBet: 0.10,
       maxBet: 100,
       playCount: 0,
-      isActive: false, // Coming soon
+      isActive: true, // Coming soon
       isNew: true,
-      isHot: false,
+      isHot: true,
       isFeatured: false,
       sortOrder: 103,
     },
