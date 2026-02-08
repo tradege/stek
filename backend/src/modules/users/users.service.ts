@@ -5,6 +5,22 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getPlatformStats() {
+    const [totalBets, totalUsers, totalWagered, highestMultiplier] = await Promise.all([
+      this.prisma.bet.count(),
+      this.prisma.user.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.bet.aggregate({ _sum: { betAmount: true } }),
+      this.prisma.bet.aggregate({ _max: { multiplier: true } }),
+    ]);
+
+    return {
+      totalWagered: Number(totalWagered._sum.betAmount || 0),
+      gamesPlayed: totalBets,
+      highestWin: Number(highestMultiplier._max.multiplier || 0),
+      activePlayers: totalUsers,
+    };
+  }
+
   async getUserStats(userId: string) {
     const bets = await this.prisma.bet.findMany({
       where: { userId },
@@ -83,6 +99,141 @@ export class UsersService {
     return {
       ...user,
       stats,
+    };
+  }
+
+  async getUserBets(userId: string, page: number = 1, limit: number = 20, gameType?: string) {
+    const where: any = { userId };
+    if (gameType) {
+      where.gameType = gameType;
+    }
+
+    const [bets, total] = await Promise.all([
+      this.prisma.bet.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          gameType: true,
+          betAmount: true,
+          multiplier: true,
+          payout: true,
+          profit: true,
+          isWin: true,
+          currency: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.bet.count({ where }),
+    ]);
+
+    return {
+      bets: bets.map(b => ({
+        ...b,
+        betAmount: Number(b.betAmount),
+        multiplier: Number(b.multiplier),
+        payout: Number(b.payout || 0),
+        profit: Number(b.profit || 0),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getUserTransactions(userId: string, page: number = 1, limit: number = 20, type?: string) {
+    const where: any = { userId };
+    if (type) {
+      where.type = type;
+    }
+
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          status: true,
+          balanceBefore: true,
+          balanceAfter: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.transaction.count({ where }),
+    ]);
+
+    return {
+      transactions: transactions.map(t => ({
+        ...t,
+        amount: Number(t.amount),
+        balanceBefore: Number(t.balanceBefore || 0),
+        balanceAfter: Number(t.balanceAfter || 0),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getUserFinancialSummary(userId: string) {
+    const [deposits, withdrawals, bets, wallets] = await Promise.all([
+      this.prisma.transaction.aggregate({
+        where: { userId, type: 'DEPOSIT', status: 'CONFIRMED' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.transaction.aggregate({
+        where: { userId, type: 'WITHDRAWAL', status: 'CONFIRMED' },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      this.prisma.bet.aggregate({
+        where: { userId },
+        _sum: { betAmount: true, payout: true, profit: true },
+        _count: true,
+      }),
+      this.prisma.wallet.findMany({
+        where: { userId },
+        select: {
+          currency: true,
+          balance: true,
+        },
+      }),
+    ]);
+
+    const totalDeposited = Number(deposits._sum.amount || 0);
+    const totalWithdrawn = Number(withdrawals._sum.amount || 0);
+    const totalWagered = Number(bets._sum.betAmount || 0);
+    const totalWon = Number(bets._sum.payout || 0);
+    const totalProfit = Number(bets._sum.profit || 0);
+    const netPnL = totalDeposited - totalWithdrawn + totalProfit;
+
+    return {
+      totalDeposited: parseFloat(totalDeposited.toFixed(2)),
+      totalWithdrawn: parseFloat(totalWithdrawn.toFixed(2)),
+      totalWagered: parseFloat(totalWagered.toFixed(2)),
+      totalWon: parseFloat(totalWon.toFixed(2)),
+      totalProfit: parseFloat(totalProfit.toFixed(2)),
+      netPnL: parseFloat(netPnL.toFixed(2)),
+      depositCount: deposits._count,
+      withdrawalCount: withdrawals._count,
+      betCount: bets._count,
+      wallets: wallets.map(w => ({
+        currency: w.currency,
+        balance: Number(w.balance),
+      })),
     };
   }
 }
