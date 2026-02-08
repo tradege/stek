@@ -430,18 +430,36 @@ const CrashGamePanel: React.FC = () => {
             gradient.addColorStop(1, 'rgba(0, 240, 255, 0)');
           }
 
+          // Smooth Bezier fill under curve
           ctx.beginPath();
           ctx.moveTo(recalcPoints[0].x, padding.top + graphHeight);
-          recalcPoints.forEach(p => ctx.lineTo(p.x, p.y));
-          ctx.lineTo(recalcPoints[recalcPoints.length - 1].x, padding.top + graphHeight);
+          ctx.lineTo(recalcPoints[0].x, recalcPoints[0].y);
+          for (let i = 1; i < recalcPoints.length; i++) {
+            const prev = recalcPoints[i - 1];
+            const curr = recalcPoints[i];
+            const cpx = (prev.x + curr.x) / 2;
+            const cpy = (prev.y + curr.y) / 2;
+            ctx.quadraticCurveTo(prev.x, prev.y, cpx, cpy);
+          }
+          const lastFill = recalcPoints[recalcPoints.length - 1];
+          ctx.lineTo(lastFill.x, lastFill.y);
+          ctx.lineTo(lastFill.x, padding.top + graphHeight);
           ctx.closePath();
           ctx.fillStyle = gradient;
           ctx.fill();
 
-          // Draw line
+          // Draw smooth Bezier line
           ctx.beginPath();
           ctx.moveTo(recalcPoints[0].x, recalcPoints[0].y);
-          recalcPoints.forEach(p => ctx.lineTo(p.x, p.y));
+          for (let i = 1; i < recalcPoints.length; i++) {
+            const prev = recalcPoints[i - 1];
+            const curr = recalcPoints[i];
+            const cpx = (prev.x + curr.x) / 2;
+            const cpy = (prev.y + curr.y) / 2;
+            ctx.quadraticCurveTo(prev.x, prev.y, cpx, cpy);
+          }
+          const lastLine = recalcPoints[recalcPoints.length - 1];
+          ctx.lineTo(lastLine.x, lastLine.y);
           ctx.strokeStyle = gameState === 'CRASHED' ? '#FF385C' : '#00F0FF';
           ctx.lineWidth = 3;
           ctx.shadowColor = gameState === 'CRASHED' ? '#FF385C' : '#00F0FF';
@@ -459,17 +477,63 @@ const CrashGamePanel: React.FC = () => {
         }
       }
 
-      // Waiting state - draw pulsing circle
+      // Waiting state - draw pulsing circle with clear text
       if (gameState === 'WAITING') {
         const centerX = logicalWidth / 2;
         const centerY = logicalHeight / 2;
         const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
 
+        // Outer pulsing ring
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 40 * pulse, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 50 * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0, 240, 255, ${pulse * 0.3})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Inner pulsing ring
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 30 * pulse, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(0, 240, 255, ${pulse * 0.5})`;
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        // Center dot
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 240, 255, ${pulse})`;
+        ctx.fill();
+
+        // "Next Round" text
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + pulse * 0.3})`;
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('NEXT ROUND STARTING...', centerX, centerY + 70);
+        ctx.restore();
+
+        // Animated loading dots
+        const dotCount = 3;
+        const dotPhase = Math.floor(Date.now() / 400) % (dotCount + 1);
+        for (let d = 0; d < dotCount; d++) {
+          ctx.beginPath();
+          ctx.arc(centerX - 12 + d * 12, centerY + 90, 3, 0, Math.PI * 2);
+          ctx.fillStyle = d < dotPhase ? 'rgba(0, 240, 255, 0.8)' : 'rgba(255, 255, 255, 0.15)';
+          ctx.fill();
+        }
+      }
+
+      // Disconnected state - show warning
+      if (!isConnected && gameState !== 'RUNNING') {
+        const centerX = logicalWidth / 2;
+        const centerY = logicalHeight / 2;
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 56, 92, 0.6)';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('RECONNECTING...', centerX, centerY + 70);
+        ctx.restore();
       }
 
       animationFrameRef.current = requestAnimationFrame(draw);
@@ -481,7 +545,7 @@ const CrashGamePanel: React.FC = () => {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [gameState, currentMultiplier]);
+  }, [gameState, currentMultiplier, isConnected]);
 
   // ==================== KEYBOARD HOTKEYS ====================
   useEffect(() => {
