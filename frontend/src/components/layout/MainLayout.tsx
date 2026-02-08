@@ -1,7 +1,9 @@
 'use client';
+
 import React, { useState, useEffect, ReactNode } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import Footer from './Footer';
 import ChatPanel from '@/components/chat/ChatPanel';
 
 interface MainLayoutProps {
@@ -10,7 +12,7 @@ interface MainLayoutProps {
 
 /**
  * MainLayout - The primary layout wrapper for the casino
- * Includes: Sidebar (left), Header (top), Main Content Area, Chat (right)
+ * Includes: Sidebar (left), Header (top), Main Content Area, Footer, Chat (right)
  * Fully responsive with mobile hamburger menu and chat toggle
  */
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
@@ -27,7 +29,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         setIsChatOpen(false);
       }
     };
-
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -44,7 +45,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Overlay for Sidebar (mobile) or Chat (all viewports) */}
       {((isSidebarOpen && isMobile) || isChatOpen) && (
         <div
-          className={`fixed inset-0 bg-black/60 z-40 ${isSidebarOpen && isMobile ? '' : ''}`}
+          className="fixed inset-0 bg-black/60 z-40"
           onClick={handleOverlayClick}
         />
       )}
@@ -68,13 +69,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         />
 
         {/* Content + Chat */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex flex-col">
           {/* Main Content */}
           <main className="flex-1 p-4 lg:p-6 overflow-auto pb-20 lg:pb-6">
             {children}
           </main>
 
-
+          {/* Footer - only on desktop */}
+          <div className="hidden lg:block">
+            <Footer />
+          </div>
         </div>
       </div>
 
@@ -100,21 +104,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </svg>
               <span className="text-xs">Menu</span>
             </button>
-
             <button className="flex flex-col items-center gap-1 p-2 text-accent-primary">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               <span className="text-xs">Crash</span>
             </button>
-
             <button className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-xs">Wallet</span>
             </button>
-
             <button
               onClick={() => setIsChatOpen(true)} data-testid="mobile-chat-open"
               className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors relative"
@@ -123,13 +124,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <span className="text-xs">Chat</span>
-              {/* Notification dot */}
               <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full" />
             </button>
           </div>
         </nav>
       )}
-
     </div>
   );
 };

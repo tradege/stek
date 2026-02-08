@@ -67,7 +67,7 @@ interface ChatMessage {
  * Also handles chat functionality.
  */
 @WebSocketGateway({
-  namespace: '/crash',
+  namespace: '/casino',
   cors: {
     origin: '*',
     credentials: true,

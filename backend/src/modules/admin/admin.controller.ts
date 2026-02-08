@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminFinanceService } from './admin-finance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -19,7 +19,6 @@ export class AdminController {
   // ==========================================
   // EXISTING ENDPOINTS
   // ==========================================
-
   @Get('finance/stats')
   async getFinanceStats() {
     return this.adminFinanceService.getFinanceStats();
@@ -31,9 +30,8 @@ export class AdminController {
   }
 
   // ==========================================
-  // PHASE 32: REAL ANALYTICS (Task 2)
+  // REAL ANALYTICS
   // ==========================================
-
   @Get('stats')
   async getStats() {
     return this.adminService.getStats();
@@ -50,18 +48,16 @@ export class AdminController {
   }
 
   // ==========================================
-  // PHASE 32: GAME CONTROL CENTER (Task 3)
-  // Now connected to REAL GameConfigService
+  // GAME CONTROL CENTER
   // ==========================================
-
   @Get('game/config')
   async getGameConfig() {
     const config = this.gameConfigService.getConfig();
     return {
       success: true,
       data: {
-        houseEdge: config.houseEdge * 100, // Convert 0.04 -> 4 for display
-        instantBust: config.instantBust * 100, // Convert 0.02 -> 2 for display
+        houseEdge: config.houseEdge * 100,
+        instantBust: config.instantBust * 100,
         botsEnabled: config.botsEnabled,
         maxBotBet: config.maxBotBet,
         minBotBet: config.minBotBet,
@@ -81,11 +77,8 @@ export class AdminController {
       maxBotsPerRound?: number;
     },
   ) {
-    // Convert display values (4%) to decimal (0.04) for GameConfigService
     const updates: any = {};
-
     if (body.houseEdge !== undefined) {
-      // Input is in percentage (1-10), convert to decimal (0.01-0.10)
       updates.houseEdge = body.houseEdge / 100;
     }
     if (body.instantBust !== undefined) {
@@ -105,7 +98,6 @@ export class AdminController {
     }
 
     const config = this.gameConfigService.updateConfig(updates);
-
     return {
       success: true,
       message: 'Game configuration updated - changes take effect on next round',
@@ -123,7 +115,6 @@ export class AdminController {
   // ==========================================
   // USER MANAGEMENT
   // ==========================================
-
   @Get('users')
   async getAllUsers() {
     return this.adminService.getAllUsers();
@@ -132,6 +123,30 @@ export class AdminController {
   @Get('users/pending')
   async getPendingUsers() {
     return this.adminService.getPendingUsers();
+  }
+
+  @Post('users/:id/approve')
+  async approveUser(@Param('id') userId: string, @Req() req: any) {
+    const adminId = req.user?.id || req.user?.sub || 'admin';
+    return this.adminService.approveUser(userId, adminId);
+  }
+
+  @Post('users/:id/ban')
+  async banUser(@Param('id') userId: string, @Req() req: any) {
+    const adminId = req.user?.id || req.user?.sub || 'admin';
+    return this.adminService.banUser(userId, adminId);
+  }
+
+  @Post('users/:id/unban')
+  async unbanUser(@Param('id') userId: string, @Req() req: any) {
+    const adminId = req.user?.id || req.user?.sub || 'admin';
+    return this.adminService.unbanUser(userId, adminId);
+  }
+
+  @Post('users/:id/send-verification')
+  async sendVerification(@Param('id') userId: string, @Req() req: any) {
+    const adminId = req.user?.id || req.user?.sub || 'admin';
+    return this.adminService.sendVerificationEmail(userId, adminId);
   }
 
   @Get('transactions')

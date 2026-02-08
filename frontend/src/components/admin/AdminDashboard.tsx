@@ -63,8 +63,8 @@ export default function AdminDashboard() {
         },
       });
       if (response.ok) {
-        const data = await response.json();
-        setConfig(data);
+        const result = await response.json();
+        setConfig(result.data || result);
       }
     } catch (err) {
       console.error('Failed to fetch config:', err);
@@ -84,8 +84,8 @@ export default function AdminDashboard() {
         body: JSON.stringify(updates),
       });
       if (response.ok) {
-        const data = await response.json();
-        setConfig(data);
+        const result = await response.json();
+        setConfig(result.data || result);
       }
     } catch (err) {
       console.error('Failed to update config:', err);
@@ -210,15 +210,15 @@ export default function AdminDashboard() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-gray-400 text-sm">House Edge</label>
-                    <span className="text-[#00ff88] font-semibold">{(config.houseEdge * 100).toFixed(1)}%</span>
+                    <span className="text-[#00ff88] font-semibold">{config.houseEdge.toFixed(1)}%</span>
                   </div>
                   <input
                     type="range"
                     min="1"
                     max="10"
                     step="0.5"
-                    value={config.houseEdge * 100}
-                    onChange={(e) => updateConfig({ houseEdge: parseFloat(e.target.value) / 100 })}
+                    value={config.houseEdge}
+                    onChange={(e) => updateConfig({ houseEdge: parseFloat(e.target.value) })}
                     className="w-full h-2 bg-[#2a3f4d] rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
                     disabled={saving}
                   />
@@ -232,15 +232,15 @@ export default function AdminDashboard() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-gray-400 text-sm">Instant Bust Chance</label>
-                    <span className="text-orange-400 font-semibold">{(config.instantBust * 100).toFixed(1)}%</span>
+                    <span className="text-orange-400 font-semibold">{config.instantBust.toFixed(1)}%</span>
                   </div>
                   <input
                     type="range"
                     min="0"
                     max="5"
                     step="0.5"
-                    value={config.instantBust * 100}
-                    onChange={(e) => updateConfig({ instantBust: parseFloat(e.target.value) / 100 })}
+                    value={config.instantBust}
+                    onChange={(e) => updateConfig({ instantBust: parseFloat(e.target.value) })}
                     className="w-full h-2 bg-[#2a3f4d] rounded-lg appearance-none cursor-pointer accent-orange-400"
                     disabled={saving}
                   />

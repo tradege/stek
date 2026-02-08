@@ -6,11 +6,13 @@
  */
 
 import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { IsBoolean } from 'class-validator';
 import { BotService } from './bot.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 // DTO for toggle endpoint
 class ToggleBotsDto {
+  @IsBoolean()
   enable: boolean;
 }
 

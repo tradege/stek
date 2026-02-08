@@ -23,6 +23,15 @@ const formatCompact = (num: number): string => {
   return num.toString();
 };
 
+// Role badge configuration
+const roleBadgeConfig: Record<string, { text: string; color: string }> = {
+  ADMIN: { text: 'ADMIN', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  SUPER_MASTER: { text: 'SUPER', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  MASTER: { text: 'MASTER', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  AGENT: { text: 'AGENT', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  USER: { text: '', color: '' }, // No badge for regular users
+};
+
 /**
  * Header - Top navigation bar
  * Contains: Menu (mobile), Search, Wallet Balance, Sound, Notifications, User Menu, Chat (mobile)
@@ -35,6 +44,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Real-time stats
   const [onlineUsers, setOnlineUsers] = useState<number>(0);
@@ -48,42 +58,37 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
   // Listen for real-time stats from socket
   useEffect(() => {
     if (!socket) return;
-
-    // Listen for online users count
-    const handleOnlineUsers = (count: number) => {
-      setOnlineUsers(count);
-    };
-
-    // Listen for global stats
+    const handleOnlineUsers = (count: number) => setOnlineUsers(count);
     const handleGlobalStats = (stats: { onlineUsers?: number; betsToday?: number; totalVolume?: number }) => {
       if (stats.onlineUsers !== undefined) setOnlineUsers(stats.onlineUsers);
       if (stats.betsToday !== undefined) setBetsToday(stats.betsToday);
       if (stats.totalVolume !== undefined) setTotalVolume(stats.totalVolume);
     };
-
     socket.on('stats:online', handleOnlineUsers);
     socket.on('stats:global', handleGlobalStats);
-
-    // Request initial stats
     socket.emit('stats:request');
-
     return () => {
       socket.off('stats:online', handleOnlineUsers);
       socket.off('stats:global', handleGlobalStats);
     };
   }, [socket]);
 
-  // Close notifications dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const userRole = user?.role || 'USER';
+  const roleBadge = roleBadgeConfig[userRole] || roleBadgeConfig.USER;
 
   return (
     <>
@@ -118,15 +123,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            
+
             {/* Live Stats - Desktop only */}
             <div className="hidden xl:flex items-center gap-6 text-sm">
               <div className="flex items-center gap-2">
@@ -144,17 +144,15 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
               </div>
             </div>
           </div>
-          
+
           {/* Right Section */}
           <div className="flex items-center gap-2 sm:gap-4">
             {isLoading ? (
-              // Loading state
               <div className="flex items-center gap-4">
                 <div className="w-24 sm:w-32 h-10 bg-white/5 rounded-lg animate-pulse" />
                 <div className="w-10 h-10 bg-white/5 rounded-lg animate-pulse" />
               </div>
             ) : isAuthenticated && user ? (
-              // Authenticated user
               <>
                 {/* Wallet Balance */}
                 <div className="relative">
@@ -174,15 +172,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-
-                  {/* Wallet Dropdown */}
                   {isWalletOpen && (
                     <div className="absolute right-0 top-full mt-2 w-48 bg-bg-card border border-white/10 rounded-lg shadow-xl py-2 z-50">
                       <button
-                        onClick={() => {
-                          setIsWalletModalOpen(true);
-                          setIsWalletOpen(false);
-                        }}
+                        onClick={() => { setIsWalletModalOpen(true); setIsWalletOpen(false); }}
                         className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
                       >
                         <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,10 +184,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                         Deposit
                       </button>
                       <button
-                        onClick={() => {
-                          setIsWalletModalOpen(true);
-                          setIsWalletOpen(false);
-                        }}
+                        onClick={() => { setIsWalletModalOpen(true); setIsWalletOpen(false); }}
                         className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
                       >
                         <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,44 +211,24 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 {/* Sound Toggle */}
                 <SoundToggleButton />
 
-                {/* Chat Toggle */}
-                {onChatClick && (
-                  <button
-                    onClick={onChatClick}
-                    data-testid="header-chat-btn"
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
-                    title="Open Chat"
-                  >
-                    <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full animate-pulse" />
-                  </button>
-                )}
-
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                   <button
                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                    data-testid="notifications-btn"
+                    data-testid="header-notifications"
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
-                    title="Notifications"
                   >
                     <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
-                    {/* Notification dot - hidden when no notifications */}
-                    {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" /> */}
                   </button>
-
-                  {/* Notifications Dropdown */}
                   {isNotificationsOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-bg-card border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-white/10">
-                        <h3 className="text-white font-semibold">Notifications</h3>
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-bg-card border border-white/10 rounded-lg shadow-xl py-2 z-50">
+                      <div className="px-4 py-2 border-b border-white/10">
+                        <p className="text-white font-medium text-sm">Notifications</p>
                       </div>
-                      <div className="p-6 text-center">
-                        <svg className="w-12 h-12 text-text-secondary mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="p-4 text-center">
+                        <svg className="w-8 h-8 text-text-secondary mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
                         <p className="text-text-secondary text-sm">No new notifications</p>
@@ -268,7 +238,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 </div>
 
                 {/* User Menu */}
-                <div className="relative">
+                <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     data-testid="user-menu"
@@ -280,39 +250,117 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                     <span className="text-white font-medium hidden sm:block max-w-24 truncate">
                       {user.username}
                     </span>
+                    {/* Role badge next to username */}
+                    {roleBadge.text && (
+                      <span className={`hidden sm:inline-block px-1.5 py-0.5 text-[9px] rounded border font-semibold ${roleBadge.color}`}>
+                        {roleBadge.text}
+                      </span>
+                    )}
                   </button>
 
                   {/* User Dropdown */}
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-bg-card border border-white/10 rounded-lg shadow-xl py-2 z-50">
-                      <div className="px-4 py-2 border-b border-white/10">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-bg-card border border-white/10 rounded-lg shadow-xl py-2 z-50">
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-white/10">
                         <p className="text-white font-medium truncate">{user.username}</p>
                         <p className="text-text-secondary text-xs truncate">{user.email}</p>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs bg-yellow-500/20 text-[#1475e1] px-2 py-1 rounded-full font-semibold">
-                            👑 VIP {user.vipLevel || 0}
+                          <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full font-semibold">
+                            VIP {user.vipLevel || 0}
                           </span>
+                          {roleBadge.text && (
+                            <span className={`text-xs px-2 py-1 rounded-full font-semibold border ${roleBadge.color}`}>
+                              {roleBadge.text}
+                            </span>
+                          )}
                           <span className="text-xs text-slate-400">
                             {user.xp || 0} XP
                           </span>
                         </div>
                       </div>
+
+                      {/* Profile Link */}
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        My Profile
+                      </Link>
+
+                      {/* My Bets / History */}
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        My Bets &amp; History
+                      </Link>
+
+                      {/* VIP */}
+                      <Link
+                        href="/vip"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        VIP Program
+                      </Link>
+
+                      {/* Affiliates */}
                       <Link
                         href="/affiliates"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
+                        className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 flex items-center gap-2"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         Affiliates
                       </Link>
+
+                      {/* Divider before role-specific links */}
+                      {userRole !== 'USER' && (
+                        <>
+                          <div className="my-1 mx-3 border-t border-white/10" />
+                          <Link
+                            href="/admin/dashboard"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className={`w-full px-4 py-2.5 text-left text-sm hover:bg-white/5 flex items-center gap-2 ${
+                              userRole === 'ADMIN' ? 'text-red-400' :
+                              userRole === 'SUPER_MASTER' ? 'text-purple-400' :
+                              userRole === 'MASTER' ? 'text-orange-400' :
+                              'text-blue-400'
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            {userRole === 'ADMIN' ? 'Admin Panel' :
+                             userRole === 'SUPER_MASTER' ? 'Admin Panel' :
+                             userRole === 'MASTER' ? 'Master Panel' :
+                             'Agent Panel'}
+                          </Link>
+                        </>
+                      )}
+
+                      {/* Divider + Logout */}
+                      <div className="my-1 mx-3 border-t border-white/10" />
                       <button
                         onClick={() => {
                           logout();
                           setIsUserMenuOpen(false);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-white/5 flex items-center gap-2"
+                        className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-white/5 flex items-center gap-2"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -323,7 +371,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                   )}
                 </div>
 
-
+                {/* Mobile Chat Button */}
+                {isMobile && onChatClick && (
+                  <button
+                    onClick={onChatClick}
+                    data-testid="mobile-chat-btn"
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors relative lg:hidden"
+                  >
+                    <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full" />
+                  </button>
+                )}
               </>
             ) : (
               // Not authenticated
