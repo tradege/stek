@@ -41,10 +41,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-bg-main text-text-primary">
-      {/* Mobile Overlay */}
-      {(isSidebarOpen || isChatOpen) && isMobile && (
+      {/* Overlay for Sidebar (mobile) or Chat (all viewports) */}
+      {((isSidebarOpen && isMobile) || isChatOpen) && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          className={`fixed inset-0 bg-black/60 z-40 ${isSidebarOpen && isMobile ? '' : ''}`}
           onClick={handleOverlayClick}
         />
       )}
@@ -74,16 +74,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {children}
           </main>
 
-          {/* Chat Panel - Desktop (toggleable) */}
-          <aside className={`hidden lg:block w-80 border-l border-white/10 p-4 transition-all duration-300 ${isChatOpen ? 'opacity-100' : 'lg:hidden'}`}>
-            <ChatPanel />
-          </aside>
+
         </div>
       </div>
 
-      {/* Chat Panel - Mobile Slide-in */}
+      {/* Chat Panel - Slide-in from Right (all viewports) */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-bg-card z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed top-0 right-0 h-full w-64 bg-bg-card border-l border-white/10 z-50 transform transition-transform duration-300 ease-in-out ${
           isChatOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -95,7 +92,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <nav className="fixed bottom-0 left-0 right-0 bg-bg-card border-t border-white/10 z-30 lg:hidden safe-area-bottom">
           <div className="flex items-center justify-around py-2">
             <button
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setIsSidebarOpen(true)} data-testid="mobile-sidebar-open"
               className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,7 +116,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </button>
 
             <button
-              onClick={() => setIsChatOpen(true)}
+              onClick={() => setIsChatOpen(true)} data-testid="mobile-chat-open"
               className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors relative"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

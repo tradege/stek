@@ -87,7 +87,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-bg-card/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
+      <header data-testid="header" className="sticky top-0 z-30 bg-bg-card/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Left Section */}
           <div className="flex items-center gap-4">
@@ -95,6 +95,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
             {isMobile && onMenuClick && (
               <button
                 onClick={onMenuClick}
+                data-testid="mobile-menu-btn"
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden"
               >
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,6 +109,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
               <input
                 type="text"
                 placeholder="Search games..."
+                data-testid="header-search"
                 className="w-48 lg:w-64 bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-text-secondary focus:outline-none focus:border-accent-primary/50 transition-colors"
               />
               <svg
@@ -158,6 +160,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 <div className="relative">
                   <button
                     onClick={() => setIsWalletOpen(!isWalletOpen)}
+                    data-testid="header-wallet-balance"
                     className="flex items-center gap-2 sm:gap-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg hover:border-accent-primary/50 transition-colors"
                   >
                     <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold">
@@ -206,6 +209,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 {/* Deposit Button */}
                 <button
                   onClick={() => setIsWalletModalOpen(true)}
+                  data-testid="header-deposit"
                   className="hidden sm:flex items-center gap-2 px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-black font-semibold rounded-lg transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,10 +221,26 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 {/* Sound Toggle */}
                 <SoundToggleButton />
 
+                {/* Chat Toggle */}
+                {onChatClick && (
+                  <button
+                    onClick={onChatClick}
+                    data-testid="header-chat-btn"
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
+                    title="Open Chat"
+                  >
+                    <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full animate-pulse" />
+                  </button>
+                )}
+
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                   <button
                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    data-testid="notifications-btn"
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
                     title="Notifications"
                   >
@@ -251,6 +271,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    data-testid="user-menu"
                     className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-lg transition-colors"
                   >
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white font-bold text-sm">
@@ -302,30 +323,21 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                   )}
                 </div>
 
-                {/* Mobile Chat Button */}
-                {isMobile && onChatClick && (
-                  <button
-                    onClick={onChatClick}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors lg:hidden relative"
-                  >
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full" />
-                  </button>
-                )}
+
               </>
             ) : (
               // Not authenticated
               <div className="flex items-center gap-2 sm:gap-4">
                 <Link
                   href="/login"
+                  data-testid="header-login"
                   className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-colors text-sm font-medium"
                 >
                   Login
                 </Link>
                 <Link
                   href="/register"
+                  data-testid="header-register"
                   className="px-4 py-2 bg-accent-primary hover:bg-accent-primary/90 text-black font-semibold rounded-lg transition-colors text-sm"
                 >
                   Register

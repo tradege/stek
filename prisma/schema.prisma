@@ -486,6 +486,7 @@ model GameProvider {
   apiSecret       String?
   isActive        Boolean     @default(true)
   isLive          Boolean     @default(false)  // Live casino provider
+  feePercentage   Float       @default(0)  // Provider fee percentage (e.g., 8 = 8% of GGR)
   ipWhitelist     String[]    // Array of allowed IPs for callbacks
   config          Json?       // Provider specific settings
   

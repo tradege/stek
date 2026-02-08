@@ -95,6 +95,16 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
     });
   };
 
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -106,7 +116,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
       />
       
       {/* Modal */}
-      <div className="relative bg-bg-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+      <div data-testid="statistics-modal" className="relative bg-bg-card border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-[#1475e1]/20 to-[#1475e1]/20">
           <div className="flex items-center justify-between">
@@ -117,6 +127,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
               My Statistics
             </h2>
             <button
+              data-testid="statistics-close"
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >

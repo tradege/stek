@@ -12,6 +12,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { PlinkoModule } from './modules/plinko/plinko.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { GamesModule } from './modules/games/games.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { GamesModule } from './modules/games/games.module';
     
     // Games Catalog API
     GamesModule,
+    UsersModule,
   ],
   controllers: [],
   providers: [],

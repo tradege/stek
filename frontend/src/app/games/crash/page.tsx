@@ -67,15 +67,17 @@ const CrashGamePanel = dynamic(
   }
 );
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+
 export default function CrashGamePage() {
   const { socket, isConnected, connectionError } = useSocket();
   
   // Game stats - updated from socket events
   const [gameStats, setGameStats] = useState({
-    totalWagered: 1200000,
-    gamesPlayed: 12847,
-    highestWin: 156.32,
-    activePlayers: 2341,
+    totalWagered: 0,
+    gamesPlayed: 0,
+    highestWin: 0,
+    activePlayers: 0,
   });
 
   // Listen for crash events to update stats only (history is handled in CrashGamePanel)
@@ -107,6 +109,30 @@ export default function CrashGamePage() {
       socket.off('crash:crashed', handleCrashed);
     };
   }, [socket]);
+
+  // Fetch game stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${API_URL}/admin/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          setGameStats(prev => ({
+            ...prev,
+            totalWagered: data.totalDeposits || 0,
+            gamesPlayed: data.totalBets || 0,
+            activePlayers: data.activeUsers || 0,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch game stats:', err);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
 
   // Format large numbers
   const formatNumber = (num: number) => {

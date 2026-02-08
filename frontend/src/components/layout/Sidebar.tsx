@@ -1,13 +1,12 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import VIPModal from '@/components/modals/VIPModal';
 import WalletModal from '@/components/modals/WalletModal';
 import StatisticsModal from '@/components/modals/StatisticsModal';
 import SettingsModal from '@/components/modals/SettingsModal';
-import ChatSidebar from '@/components/chat/ChatSidebar';
 
 // Icons (using simple SVG placeholders - replace with your icon library)
 const icons = {
@@ -77,6 +76,40 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
   ),
+  // Sports-specific icons
+  football: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" strokeWidth={2} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3l3.09 2.26L13.91 12H10.09L8.91 7.26 12 5zm-6.04 7.6L3.6 11.2l2.49-3.2 1.18 4.72-1.31.88zm.57 1.4l3.09 2.26-.79 3.08L5.6 17.6l.93-1.6zm8.94 0l.93 1.6-3.23 1.74-.79-3.08 3.09-2.26zm2.49-1.4l-1.31-.88L17.83 8l2.49 3.2-2.36 1.4z" />
+    </svg>
+  ),
+  basketball: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" strokeWidth={2} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 12h20M12 2v20M4.93 4.93c4.08 2.38 8.58 2.38 14.14 0M4.93 19.07c4.08-2.38 8.58-2.38 14.14 0" />
+    </svg>
+  ),
+  tennis: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" strokeWidth={2} />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.36 5.64a9 9 0 01-12.73 12.73M5.64 5.64a9 9 0 0112.73 12.73" />
+    </svg>
+  ),
+  esports: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+    </svg>
+  ),
+  mma: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  ),
+  racing: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
 };
 
 interface NavItem {
@@ -87,7 +120,8 @@ interface NavItem {
   badge?: string;
 }
 
-const mainNavItems: NavItem[] = [
+// Casino navigation items
+const casinoNavItems: NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', href: '/' },
   { id: 'crash', label: 'Crash', icon: 'crash', href: '/games/crash', badge: 'HOT' },
   { id: 'plinko', label: 'Plinko', icon: 'plinko', href: '/games/plinko', badge: 'NEW' },
@@ -95,11 +129,15 @@ const mainNavItems: NavItem[] = [
   { id: 'mines', label: 'Mines', icon: 'mines', href: '/games/mines' },
 ];
 
-const secondaryNavItems: NavItem[] = [
-  { id: 'wallet', label: 'Wallet', icon: 'wallet', href: '/wallet' },
-  { id: 'chat', label: 'Chat', icon: 'chat', href: '/chat' },
-  { id: 'stats', label: 'Statistics', icon: 'stats', href: '/stats' },
-  { id: 'settings', label: 'Settings', icon: 'settings', href: '/settings' },
+// Sports navigation items
+const sportsNavItems: NavItem[] = [
+  { id: 'sports-home', label: 'Sports Home', icon: 'sports', href: '/sports' },
+  { id: 'football', label: 'Football', icon: 'football', href: '/sports/football', badge: 'LIVE' },
+  { id: 'basketball', label: 'Basketball', icon: 'basketball', href: '/sports/basketball', badge: 'LIVE' },
+  { id: 'tennis', label: 'Tennis', icon: 'tennis', href: '/sports/tennis' },
+  { id: 'esports', label: 'eSports', icon: 'esports', href: '/sports/esports', badge: 'HOT' },
+  { id: 'mma', label: 'MMA / UFC', icon: 'mma', href: '/sports/mma' },
+  { id: 'racing', label: 'Racing', icon: 'racing', href: '/sports/racing' },
 ];
 
 interface SidebarProps {
@@ -112,12 +150,14 @@ interface SidebarProps {
  */
 const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>('casino');
+  const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>(
+    pathname?.startsWith('/sports') ? 'sports' : 'casino'
+  );
   const [isVIPModalOpen, setIsVIPModalOpen] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
   const handleNavClick = () => {
@@ -126,6 +166,23 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       onClose();
     }
   };
+
+  const handleSectionSwitch = (section: 'casino' | 'sports') => {
+    setActiveSection(section);
+    if (section === 'casino') {
+      router.push('/');
+    } else {
+      router.push('/sports');
+    }
+    // Close sidebar on mobile
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  // Determine which nav items to show based on active section
+  const currentNavItems = activeSection === 'casino' ? casinoNavItems : sportsNavItems;
+  const sectionLabel = activeSection === 'casino' ? 'Games' : 'Sports';
   
   return (
     <aside data-testid="sidebar" className="h-full flex flex-col bg-bg-card">
@@ -152,12 +209,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         )}
       </div>
       
-      {/* Casino / Sports Toggle */}
+      {/* Casino / Sports Toggle - NOW FUNCTIONAL */}
       <div className="px-4 py-3 border-b border-white/10">
         <div className="flex rounded-lg overflow-hidden bg-white/5">
           <button
             data-testid="nav-casino"
-            onClick={() => setActiveSection('casino')}
+            onClick={() => handleSectionSwitch('casino')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all ${
               activeSection === 'casino'
                 ? 'bg-accent-primary text-black'
@@ -169,7 +226,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </button>
           <button
             data-testid="nav-sports"
-            onClick={() => setActiveSection('sports')}
+            onClick={() => handleSectionSwitch('sports')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-all ${
               activeSection === 'sports'
                 ? 'bg-accent-primary text-black'
@@ -184,15 +241,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       
       {/* Main Navigation */}
       <nav data-testid="main-nav" className="flex-1 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-        {/* Games Section */}
+        {/* Section Label */}
         <div className="px-4 mb-2">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-            Games
+            {sectionLabel}
           </span>
         </div>
         
         <ul data-testid="nav-games-list" className="space-y-1 px-2">
-          {mainNavItems.map((item) => {
+          {currentNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
             return (
               <li key={item.id}>
@@ -209,7 +266,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                   {icons[item.icon]}
                   <span className="flex-1 font-medium">{item.label}</span>
                   {item.badge && (
-                    <span data-testid={`badge-${item.id}`} className="px-2 py-0.5 text-[10px] bg-accent-primary/20 text-accent-primary rounded-full font-semibold">
+                    <span data-testid={`badge-${item.id}`} className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${
+                      item.badge === 'LIVE' 
+                        ? 'bg-red-500/20 text-red-400 animate-pulse' 
+                        : 'bg-accent-primary/20 text-accent-primary'
+                    }`}>
                       {item.badge}
                     </span>
                   )}
@@ -240,16 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
               <span className="font-medium">Wallet</span>
             </button>
           </li>
-          <li>
-            <button
-              data-testid="nav-chat"
-              onClick={() => setIsChatOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
-            >
-              {icons.chat}
-              <span className="font-medium">Chat</span>
-            </button>
-          </li>
+
           <li>
             <button
               data-testid="nav-stats"
@@ -314,7 +366,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       <WalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
       <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />
       <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
-      <ChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </aside>
   );
 };

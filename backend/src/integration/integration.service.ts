@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { Decimal } from '@prisma/client/runtime/library';
-import { Currency, TransactionType as PrismaTransactionType, UserStatus } from '@prisma/client';
+import { Currency } from '@prisma/client';
+import { TransactionType as PrismaTransactionType } from '@prisma/client';
 import {
   BalanceRequestDto,
   BalanceResponseDto,
@@ -10,27 +11,26 @@ import {
   TransactionType,
   IntegrationErrorCode,
 } from './integration.dto';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class IntegrationService {
   private readonly logger = new Logger(IntegrationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   /**
-   * Get user balance for external provider
+   * Get user balance
    */
   async getBalance(dto: BalanceRequestDto): Promise<BalanceResponseDto> {
     try {
-      // Map string currency to enum
-      const currency = this.mapCurrency(dto.currency || 'USDT');
-      
       const user = await this.prisma.user.findUnique({
         where: { id: dto.userId },
         include: {
-          wallets: {
-            where: { currency },
-          },
+          wallets: true,
         },
       });
 
@@ -41,22 +41,19 @@ export class IntegrationService {
         };
       }
 
-      // Check if user is blocked
-      if (user.status === UserStatus.BANNED || user.status === UserStatus.SUSPENDED) {
+      const currency = this.mapCurrency(dto.currency || 'USDT');
+      const wallet = user.wallets.find((w) => w.currency === currency);
+
+      if (!wallet) {
         return {
           status: 'ERROR',
-          error: 'User is blocked',
+          error: 'Wallet not found',
         };
       }
 
-      const wallet = user.wallets[0];
-      const balance = wallet ? Number(wallet.balance) : 0;
-
-      this.logger.log(`Balance check for user ${dto.userId}: ${balance} ${dto.currency}`);
-
       return {
         status: 'OK',
-        balance: Number(balance.toFixed(2)),
+        balance: Number(new Decimal(wallet.balance.toString()).toFixed(2)),
         currency: dto.currency || 'USDT',
       };
     } catch (error) {
@@ -69,19 +66,21 @@ export class IntegrationService {
   }
 
   /**
-   * Process transaction (BET / WIN / REFUND) from external provider
+   * Process a transaction (BET, WIN, REFUND)
    */
-  async processTransaction(dto: TransactionRequestDto): Promise<TransactionResponseDto> {
+  async processTransaction(
+    dto: TransactionRequestDto,
+  ): Promise<TransactionResponseDto> {
     try {
-      // 1. Check for duplicate transaction (idempotency)
+      // 1. Idempotency check - if transaction already exists, return success
       const existingTx = await this.prisma.transaction.findFirst({
         where: { externalRef: dto.transactionId },
       });
 
       if (existingTx) {
-        this.logger.warn(`Duplicate transaction detected: ${dto.transactionId}`);
-        
-        // Return the same result as before (idempotent)
+        this.logger.warn(
+          `Duplicate transaction detected: ${dto.transactionId}`,
+        );
         return {
           status: 'OK',
           newBalance: Number(existingTx.balanceAfter),
@@ -89,17 +88,10 @@ export class IntegrationService {
         };
       }
 
-      // Map string currency to enum
-      const currency = this.mapCurrency(dto.currency || 'USDT');
-
-      // 2. Get user and wallet
+      // 2. Find user and wallet
       const user = await this.prisma.user.findUnique({
         where: { id: dto.userId },
-        include: {
-          wallets: {
-            where: { currency },
-          },
-        },
+        include: { wallets: true },
       });
 
       if (!user) {
@@ -110,37 +102,22 @@ export class IntegrationService {
         };
       }
 
-      // Check if user is blocked
-      if (user.status === UserStatus.BANNED || user.status === UserStatus.SUSPENDED) {
+      const wallet = user.wallets.find((w) => w.currency === Currency.USDT);
+      if (!wallet) {
         return {
           status: 'ERROR',
-          error: 'User is blocked',
-          errorCode: IntegrationErrorCode.USER_BLOCKED,
+          error: 'Wallet not found',
+          errorCode: IntegrationErrorCode.USER_NOT_FOUND,
         };
       }
 
-      let wallet = user.wallets[0];
-
-      // Create wallet if doesn't exist
-      if (!wallet) {
-        wallet = await this.prisma.wallet.create({
-          data: {
-            userId: user.id,
-            currency,
-            balance: 0,
-            lockedBalance: 0,
-          },
-        });
-      }
-
-      const currentBalance = new Decimal(wallet.balance);
+      // 3. Calculate new balance based on transaction type
+      const currentBalance = new Decimal(wallet.balance.toString());
       let newBalance: Decimal;
       let transactionType: PrismaTransactionType;
 
-      // 3. Process based on transaction type
       switch (dto.type) {
         case TransactionType.BET:
-          // Check sufficient funds
           if (currentBalance.lessThan(dto.amount)) {
             this.logger.warn(
               `Insufficient funds for user ${dto.userId}: ${currentBalance} < ${dto.amount}`
@@ -305,17 +282,99 @@ export class IntegrationService {
 
   /**
    * Authenticate user session for Seamless Wallet
+   * 
+   * REAL IMPLEMENTATION:
+   * 1. Validates the JWT token issued by our auth system
+   * 2. Extracts user ID from token payload
+   * 3. Fetches user data and wallet balance from database
+   * 4. Returns user session data to the game provider
+   * 
+   * This is the Seamless Wallet handshake - when a player opens
+   * a game from an external provider, the provider calls this
+   * endpoint with the player's token to verify their identity
+   * and get their current balance.
    */
   async authenticate(token: string): Promise<any> {
-    this.logger.log(`Authenticating token: ${token}`);
-    
-    return {
-      success: true,
-      userId: 'user_from_token',
-      balance: 0,
-      currency: 'USDT',
-      message: 'Authenticated successfully (mock)',
-    };
-  }
+    try {
+      // 1. Validate and decode the JWT token
+      let payload: any;
+      try {
+        payload = this.jwtService.verify(token);
+      } catch (jwtError) {
+        this.logger.warn(`Invalid token: ${jwtError.message}`);
+        return {
+          success: false,
+          error: 'Invalid or expired token',
+          errorCode: 'INVALID_TOKEN',
+        };
+      }
 
+      // 2. Extract user ID from token (our JWT uses 'sub' for user ID)
+      const userId = payload.sub;
+      if (!userId) {
+        return {
+          success: false,
+          error: 'Token missing user identifier',
+          errorCode: 'INVALID_TOKEN',
+        };
+      }
+
+      // 3. Fetch user from database with wallets
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          wallets: true,
+        },
+      });
+
+      if (!user) {
+        this.logger.warn(`User not found for token sub: ${userId}`);
+        return {
+          success: false,
+          error: 'User not found',
+          errorCode: 'USER_NOT_FOUND',
+        };
+      }
+
+      // 4. Check user status
+      if (user.status !== 'ACTIVE') {
+        this.logger.warn(`User ${userId} is not active: ${user.status}`);
+        return {
+          success: false,
+          error: 'User account is not active',
+          errorCode: 'USER_DISABLED',
+        };
+      }
+
+      // 5. Get USDT wallet balance
+      const usdtWallet = user.wallets.find((w) => w.currency === Currency.USDT);
+      const balance = usdtWallet
+        ? Number(new Decimal(usdtWallet.balance.toString()).toFixed(2))
+        : 0;
+
+      this.logger.log(
+        `User authenticated: ${user.username} (${userId}), balance: ${balance} USDT`
+      );
+
+      // 6. Return session data to provider
+      return {
+        success: true,
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName || user.username,
+        balance: balance,
+        currency: 'USDT',
+        country: 'IL',
+        sessionId: `session_${Date.now()}_${userId}`,
+        createdAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logger.error(`Authentication failed: ${error.message}`, error.stack);
+      return {
+        success: false,
+        error: 'Internal server error',
+        errorCode: 'INTERNAL_ERROR',
+      };
+    }
+  }
 }

@@ -55,6 +55,7 @@ async function bootstrap() {
     'http://127.0.0.1:3000',
     'http://146.190.21.113:3001',
     'http://146.190.21.113:3000',
+    'http://146.190.21.113',
     'https://marketedgepros.com',
     'https://www.marketedgepros.com',
   ];

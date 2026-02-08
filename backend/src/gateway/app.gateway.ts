@@ -182,6 +182,15 @@ export class AppGateway {
     this.eventBus = eventBus || new EventEmitter();
     this.setupNamespace();
     this.setupEventListeners();
+    // Broadcast platform stats every 10 seconds
+    setInterval(() => {
+      const stats = this.getStats();
+      this.io.of('/casino').emit('stats:global', {
+        onlineUsers: stats.connectedUsers,
+        betsToday: stats.totalConnections,
+        totalVolume: 0,
+      });
+    }, 10000);
   }
 
   // ============================================
@@ -344,6 +353,15 @@ export class AppGateway {
     });
 
     // Ping for latency measurement
+    // Stats request handler
+    socket.on('stats:request', () => {
+      const stats = this.getStats();
+      socket.emit('stats:global', {
+        onlineUsers: stats.connectedUsers,
+        betsToday: stats.totalConnections,
+        totalVolume: 0,
+      });
+    });
     socket.on('ping', (timestamp: number) => {
       socket.emit('pong', { sent: timestamp, received: Date.now() });
     });

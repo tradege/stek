@@ -1,12 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import GameGrid from '@/components/lobby/GameGrid';
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+
 export default function Home() {
+  // Platform stats from API
+  const [platformStats, setPlatformStats] = useState({
+    totalWagered: 0,
+    gamesPlayed: 0,
+    highestWin: 0,
+    activePlayers: 0,
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(`${API_URL}/admin/stats`);
+        if (response.ok) {
+          const data = await response.json();
+          setPlatformStats({
+            totalWagered: data.totalDeposits || 0,
+            gamesPlayed: data.totalBets || 0,
+            highestWin: 156.32,
+            activePlayers: data.activeUsers || 0,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch platform stats:', err);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<'casino' | 'sports'>('casino');
+  const router = useRouter();
 
   return (
     <MainLayout>
@@ -68,7 +102,7 @@ export default function Home() {
               🎰 Casino
             </button>
             <button
-              onClick={() => setActiveTab('sports')}
+              onClick={() => router.push('/sports')}
               className={`px-8 py-3 rounded-lg font-bold transition-all relative ${
                 activeTab === 'sports'
                   ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
@@ -129,19 +163,19 @@ export default function Home() {
         {/* Stats Section */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <p className="text-3xl font-bold text-cyan-400 mb-1">$1.2M+</p>
+            <p className="text-3xl font-bold text-cyan-400 mb-1">${platformStats.totalWagered > 1000000 ? (platformStats.totalWagered / 1000000).toFixed(1) + "M" : platformStats.totalWagered > 1000 ? (platformStats.totalWagered / 1000).toFixed(0) + "K" : platformStats.totalWagered.toFixed(0)}+</p>
             <p className="text-sm text-gray-400">Total Wagered</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <p className="text-3xl font-bold text-green-400 mb-1">12,847+</p>
+            <p className="text-3xl font-bold text-green-400 mb-1">{platformStats.gamesPlayed.toLocaleString()}+</p>
             <p className="text-sm text-gray-400">Games Played</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <p className="text-3xl font-bold text-yellow-400 mb-1">156.32x</p>
+            <p className="text-3xl font-bold text-yellow-400 mb-1">{platformStats.highestWin.toFixed(2)}x</p>
             <p className="text-sm text-gray-400">Highest Win</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <p className="text-3xl font-bold text-purple-400 mb-1">2,341+</p>
+            <p className="text-3xl font-bold text-purple-400 mb-1">{platformStats.activePlayers.toLocaleString()}+</p>
             <p className="text-sm text-gray-400">Active Players</p>
           </div>
         </section>

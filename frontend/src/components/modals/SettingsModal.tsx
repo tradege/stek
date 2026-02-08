@@ -13,6 +13,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [clientSeed, setClientSeed] = useState('');
   const [isCopied, setIsCopied] = useState(false);
 
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   // Load settings from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -82,7 +92,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       />
       
       {/* Modal */}
-      <div className="relative bg-bg-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div data-testid="settings-modal" className="relative bg-bg-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center justify-between">
@@ -94,6 +104,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               Settings
             </h2>
             <button
+              data-testid="settings-close"
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             >

@@ -63,7 +63,7 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <div className="card p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" data-testid="login-form">
             {/* Error Message */}
             {error && (
               <div className="p-3 bg-danger-muted border border-danger-primary/30 rounded-lg text-danger-primary text-sm animate-shake">
@@ -78,6 +78,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   name="email"
+                  data-testid="login-email"
                   value={formData.email}
                   onChange={handleChange}
                   className="input w-full pl-10"
@@ -103,6 +104,7 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
+                  data-testid="login-password"
                   value={formData.password}
                   onChange={handleChange}
                   className="input w-full pl-10 pr-10"
@@ -153,6 +155,7 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
+              data-testid="login-submit"
               disabled={isLoading}
               className="btn-primary w-full py-3 text-lg font-semibold disabled:opacity-50"
             >

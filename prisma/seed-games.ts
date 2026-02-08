@@ -13,10 +13,11 @@ async function main() {
       name: 'Pragmatic Play',
       slug: 'pragmatic',
       aggregatorId: 'pragmatic_play_001',
-      aggregatorName: 'Direct Integration',
+      aggregatorName: 'SoftSwiss',
       apiUrl: 'https://api.pragmaticplay.net',
       isActive: true,
       isLive: false,
+      feePercentage: 8,
       ipWhitelist: [],
       config: {
         operatorId: 'stakepro',
@@ -34,10 +35,11 @@ async function main() {
       name: 'Evolution Gaming',
       slug: 'evolution',
       aggregatorId: 'evolution_gaming_001',
-      aggregatorName: 'Direct Integration',
+      aggregatorName: 'SoftSwiss',
       apiUrl: 'https://api.evolution.com',
       isActive: true,
       isLive: true,
+      feePercentage: 12,
       ipWhitelist: [],
       config: {
         casinoId: 'stakepro_live',
@@ -56,6 +58,7 @@ async function main() {
       apiUrl: null,
       isActive: true,
       isLive: false,
+      feePercentage: 0,
       ipWhitelist: [],
       config: {
         type: 'internal',

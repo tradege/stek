@@ -111,7 +111,7 @@ function RegisterForm() {
 
   return (
     <div className="card p-8">
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" data-testid="register-form">
         {/* Error Message */}
         {error && (
           <div className="p-3 bg-danger-muted border border-danger-primary/30 rounded-lg text-danger-primary text-sm">
@@ -126,6 +126,7 @@ function RegisterForm() {
             <input
               type="text"
               name="username"
+                  data-testid="register-username"
               value={formData.username}
               onChange={handleChange}
               className="input w-full pl-10"
@@ -150,6 +151,7 @@ function RegisterForm() {
             <input
               type="email"
               name="email"
+                  data-testid="register-email"
               value={formData.email}
               onChange={handleChange}
               className="input w-full pl-10"
@@ -214,6 +216,7 @@ function RegisterForm() {
             <input
               type={showPassword ? "text" : "password"}
               name="confirmPassword"
+                  data-testid="register-confirm-password"
               value={formData.confirmPassword}
               onChange={handleChange}
               className="input w-full pl-10"
@@ -238,6 +241,7 @@ function RegisterForm() {
             <input
               type="text"
               name="referralCode"
+                  data-testid="register-referral"
               value={formData.referralCode}
               onChange={handleChange}
               className="input w-full pl-10"

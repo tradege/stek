@@ -42,7 +42,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-2xl transition-all">
+              <Dialog.Panel data-testid="wallet-modal" className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-2xl transition-all">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                   <Dialog.Title className="text-2xl font-bold text-white flex items-center gap-2">
