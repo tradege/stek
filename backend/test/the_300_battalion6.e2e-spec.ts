@@ -1,3 +1,4 @@
+export {};
 /**
  * 🌐 BATTALION 6: THE SIEGE
  * API Integration Tests (100 Tests)

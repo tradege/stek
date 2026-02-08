@@ -19,7 +19,7 @@ export default defineConfig({
     env: {
       apiUrl: 'http://localhost:3000',
       adminEmail: 'marketedgepros@gmail.com',
-      adminPassword: 'Admin99449x',
+      adminPassword: '994499',
     },
     setupNodeEvents(on, config) {
       on('task', {
