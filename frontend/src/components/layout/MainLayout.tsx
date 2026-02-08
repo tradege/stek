@@ -70,7 +70,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {/* Content + Chat */}
         <div className="flex-1 flex">
           {/* Main Content */}
-          <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          <main className="flex-1 p-4 lg:p-6 overflow-auto pb-20 lg:pb-6">
             {children}
           </main>
 
@@ -130,8 +130,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </nav>
       )}
 
-      {/* Add padding for mobile bottom nav */}
-      {isMobile && <div className="h-16" />}
     </div>
   );
 };
