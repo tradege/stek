@@ -30,29 +30,11 @@ export class PlinkoService {
     if (betAmount <= 0) {
       throw new BadRequestException('Bet amount must be positive');
     }
-
     if (rows < 8 || rows > 16) {
       throw new BadRequestException('Rows must be between 8 and 16');
     }
-
     if (!['LOW', 'MEDIUM', 'HIGH'].includes(risk)) {
       throw new BadRequestException('Invalid risk level');
-    }
-
-    // Get user wallet and check balance
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { 
-        userId,
-        currency: currency as any,
-      },
-    });
-
-    if (!wallet) {
-      throw new BadRequestException('Wallet not found');
-    }
-
-    if (wallet.balance.toNumber() < betAmount) {
-      throw new BadRequestException('Insufficient balance');
     }
 
     // Generate provably fair seeds
@@ -68,46 +50,75 @@ export class PlinkoService {
     const payout = betAmount * multiplier;
     const profit = payout - betAmount;
 
-    // Update wallet balance - deduct bet
-    await this.prisma.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        balance: {
-          decrement: betAmount,
-        },
-      },
-    });
+    // CRITICAL: Use a single atomic transaction with row locking
+    await this.prisma.$transaction(async (tx) => {
+      // Lock the wallet row to prevent race conditions
+      const lockedWallets = await tx.$queryRaw<any[]>`
+        SELECT id, balance FROM "Wallet" 
+        WHERE "userId" = ${userId} AND currency = ${currency}::"Currency"
+        FOR UPDATE
+      `;
 
-    // Add payout if any
-    if (payout > 0) {
-      await this.prisma.wallet.update({
+      if (!lockedWallets || lockedWallets.length === 0) {
+        throw new BadRequestException('Wallet not found');
+      }
+
+      const wallet = lockedWallets[0];
+      const currentBalance = new Decimal(wallet.balance);
+
+      if (currentBalance.lessThan(betAmount)) {
+        throw new BadRequestException('Insufficient balance');
+      }
+
+      // Calculate new balance: deduct bet, add payout (net effect = profit)
+      const newBalance = currentBalance.minus(betAmount).plus(payout);
+
+      // Single atomic balance update
+      await tx.wallet.update({
         where: { id: wallet.id },
+        data: { balance: newBalance.toNumber() },
+      });
+
+      // Save bet to database
+      await tx.bet.create({
         data: {
-          balance: {
-            increment: payout,
+          id: crypto.randomUUID(),
+          userId,
+          gameType: 'PLINKO',
+          currency: currency as any,
+          betAmount: new Decimal(betAmount),
+          multiplier: new Decimal(multiplier),
+          payout: new Decimal(payout),
+          profit: new Decimal(profit),
+          serverSeed,
+          serverSeedHash,
+          clientSeed,
+          nonce,
+          gameData: { path, bucketIndex, rows, risk },
+          isWin: profit > 0,
+        },
+      });
+
+      // Record bet in transaction table for complete audit trail
+      await tx.transaction.create({
+        data: {
+          userId,
+          walletId: wallet.id,
+          type: 'BET',
+          status: 'CONFIRMED',
+          amount: new Decimal(betAmount),
+          balanceBefore: currentBalance,
+          balanceAfter: newBalance,
+          externalRef: `PLINKO-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`,
+          metadata: {
+            game: 'PLINKO',
+            multiplier,
+            payout,
+            profit,
+            isWin: profit > 0,
           },
         },
       });
-    }
-
-    // Save bet to database
-    await this.prisma.bet.create({
-      data: {
-        id: crypto.randomUUID(),
-        userId,
-        gameType: 'PLINKO',
-        currency: currency as any,
-        betAmount: new Decimal(betAmount),
-        multiplier: new Decimal(multiplier),
-        payout: new Decimal(payout),
-        profit: new Decimal(profit),
-        serverSeed,
-        serverSeedHash,
-        clientSeed,
-        nonce,
-        gameData: { path, bucketIndex, rows, risk },
-        isWin: profit > 0,
-      },
     });
 
     return {

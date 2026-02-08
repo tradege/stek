@@ -192,17 +192,13 @@ describe('💎 BATTALION 7: THE TREASURY (Financial Integrity)', () => {
         tx.type === 'DEPOSIT' && Math.abs(parseFloat(tx.amount) - depositAmount) < 0.01
       );
       
+      expect(latestDeposit).toBeDefined();
       if (latestDeposit) {
         const txBalBefore = parseFloat(latestDeposit.balanceBefore || '0');
         const txBalAfter = parseFloat(latestDeposit.balanceAfter || '0');
-        // KNOWN ISSUE: Backend doesn't populate balanceBefore/balanceAfter correctly
-        // The difference should be exactly depositAmount but backend returns 0 for these fields
+        // STRICT: balanceAfter - balanceBefore must equal depositAmount
         const diff = Math.abs(txBalAfter - txBalBefore - depositAmount);
-        if (diff > 0.01) {
-          console.warn(`⚠️ KNOWN BUG: balanceBefore/After not set correctly. Expected diff=${depositAmount}, got txBefore=${txBalBefore}, txAfter=${txBalAfter}`);
-        }
-        // Soft assertion - log but don't fail
-        expect(true).toBe(true);
+        expect(diff).toBeLessThan(0.01);
       }
     });
 
@@ -244,14 +240,9 @@ describe('💎 BATTALION 7: THE TREASURY (Financial Integrity)', () => {
       const balanceAfter = await getBalance(adminToken);
       const expectedIncrease = depositAmount * count;
       const actualIncrease = balanceAfter - balanceBefore;
-      // KNOWN ISSUE: Concurrent deposits cause race condition - not all deposits are applied
-      // This is a critical backend bug that needs database-level locking
+      // STRICT: All concurrent deposits must be applied - no money loss
       const diff = Math.abs(actualIncrease - expectedIncrease);
-      if (diff >= 1) {
-        console.warn(`⚠️ CRITICAL BUG: Concurrent deposit race condition! Expected +${expectedIncrease}, got +${actualIncrease} (lost $${expectedIncrease - actualIncrease})`);
-      }
-      // Balance should at least increase
-      expect(balanceAfter).toBeGreaterThan(balanceBefore);
+      expect(diff).toBeLessThan(1);
     });
 
     it('should reject deposit of 0 amount', async () => {
@@ -331,16 +322,12 @@ describe('💎 BATTALION 7: THE TREASURY (Financial Integrity)', () => {
 
       const results = await Promise.all(promises);
       
-      // At most ONE should succeed
+      // STRICT: At most ONE should succeed - no double-spend allowed
       const successes = results.filter(r => r.status === 200 || r.status === 201);
-      // KNOWN ISSUE: Backend lacks pessimistic locking - both withdrawals may succeed
-      // This is a critical double-spend vulnerability
-      if (successes.length > 1) {
-        console.warn(`⚠️ CRITICAL BUG: Double-spend detected! ${successes.length} concurrent withdrawals succeeded when max 1 should have.`);
-      }
-      // At minimum, balance should not go negative
+      expect(successes.length).toBeLessThanOrEqual(1);
+      // Balance must NEVER go negative
       const finalBalance = await getBalance(adminToken);
-      expect(finalBalance).toBeGreaterThanOrEqual(-0.01); // Allow tiny float imprecision
+      expect(finalBalance).toBeGreaterThanOrEqual(-0.01);
     });
 
     it('should require valid wallet address format', async () => {
@@ -490,11 +477,8 @@ describe('💎 BATTALION 7: THE TREASURY (Financial Integrity)', () => {
         const bets = txRes.data.filter((tx: any) => 
           tx.type === 'BET' || tx.type === 'GAME_BET' || tx.type === 'GAME'
         );
-        // KNOWN ISSUE: Bets may not appear in wallet/transactions endpoint
-        if (bets.length === 0) {
-          console.warn('⚠️ NOTE: Bets are not recorded in wallet/transactions. They may be in a separate bets table.');
-        }
-        expect(true).toBe(true); // Soft check - documented behavior
+        // STRICT: Bets MUST be recorded in transaction history
+        expect(bets.length).toBeGreaterThan(0);
       }
     });
 
@@ -758,13 +742,9 @@ describe('💎 BATTALION 7: THE TREASURY (Financial Integrity)', () => {
       const expectedIncrease = amount * successes;
       const actualIncrease = balanceAfter - balanceBefore;
       
-      // KNOWN ISSUE: Concurrent deposits race condition at scale
+      // STRICT: All 20 concurrent deposits must be applied - no money loss
       const diff = Math.abs(actualIncrease - expectedIncrease);
-      if (diff >= 5) {
-        console.warn(`⚠️ CRITICAL BUG: 20 concurrent deposits lost $${expectedIncrease - actualIncrease}. Expected +${expectedIncrease}, got +${actualIncrease}`);
-      }
-      // Balance should at least increase
-      expect(balanceAfter).toBeGreaterThan(balanceBefore);
+      expect(diff).toBeLessThan(5);
     });
 
     it('should handle deposit + bet + withdrawal in sequence correctly', async () => {
