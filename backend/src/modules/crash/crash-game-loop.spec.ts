@@ -25,41 +25,87 @@ import * as crypto from 'crypto';
 // MOCK SERVICES
 // ============================================
 
-const createMockPrismaService = () => ({
-  wallet: {
-    findFirst: jest.fn().mockResolvedValue({ 
-      id: 'wallet-1', 
-      balance: new Decimal(10000), 
-      currency: 'USDT' 
-    }),
-    update: jest.fn().mockResolvedValue({}),
-  },
-  user: {
-    findUnique: jest.fn().mockResolvedValue({
-      id: 'user-1',
-      username: 'testuser',
-      status: 'ACTIVE',
-    }),
-  },
-  crashGame: {
-    create: jest.fn().mockResolvedValue({ id: 'game-1' }),
-    update: jest.fn().mockResolvedValue({}),
-  },
-  crashBet: {
-    create: jest.fn().mockResolvedValue({ id: 'bet-1' }),
-    update: jest.fn().mockResolvedValue({}),
-    findMany: jest.fn().mockResolvedValue([]),
-  },
-  bet: {
-    create: jest.fn().mockResolvedValue({ id: 'bet-1' }),
-  },
-  $transaction: jest.fn((callback) => callback({
-    wallet: { 
-      findFirst: jest.fn().mockResolvedValue({ id: 'wallet-1', balance: new Decimal(10000) }),
-      update: jest.fn().mockResolvedValue({}) 
+/**
+ * Creates a mock PrismaService that properly handles:
+ * - $transaction with $queryRaw (for atomic balance operations)
+ * - wallet.findFirst / wallet.update
+ * - crashGame, crashBet, bet models
+ */
+const createMockPrismaService = () => {
+  // Default balance for all users
+  let defaultBalance = 10000;
+
+  const mock: any = {
+    wallet: {
+      findFirst: jest.fn().mockResolvedValue({ 
+        id: 'wallet-1', 
+        balance: new Decimal(10000), 
+        currency: 'USDT' 
+      }),
+      update: jest.fn().mockResolvedValue({}),
     },
-  })),
-});
+    user: {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        username: 'testuser',
+        status: 'ACTIVE',
+      }),
+    },
+    crashGame: {
+      create: jest.fn().mockResolvedValue({ id: 'game-1' }),
+      update: jest.fn().mockResolvedValue({}),
+    },
+    crashBet: {
+      create: jest.fn().mockResolvedValue({ id: 'bet-1' }),
+      update: jest.fn().mockResolvedValue({}),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    bet: {
+      create: jest.fn().mockResolvedValue({ id: 'bet-1' }),
+    },
+    // The service uses $transaction(async (tx) => { tx.$queryRaw`...`; tx.wallet.update(...) })
+    $transaction: jest.fn(async (callback) => {
+      const txClient = {
+        $queryRaw: jest.fn().mockResolvedValue([
+          { id: 'wallet-1', balance: defaultBalance }
+        ]),
+        wallet: {
+          update: jest.fn().mockResolvedValue({}),
+        },
+      };
+      return callback(txClient);
+    }),
+    // Helper to set the balance returned by $queryRaw inside transactions
+    _setTransactionBalance: (balance: number) => {
+      defaultBalance = balance;
+      mock.$transaction.mockImplementation(async (callback) => {
+        const txClient = {
+          $queryRaw: jest.fn().mockResolvedValue([
+            { id: 'wallet-1', balance: balance }
+          ]),
+          wallet: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return callback(txClient);
+      });
+    },
+    // Helper to simulate no wallet found
+    _setNoWallet: () => {
+      mock.$transaction.mockImplementation(async (callback) => {
+        const txClient = {
+          $queryRaw: jest.fn().mockResolvedValue([]),
+          wallet: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return callback(txClient);
+      });
+    },
+  };
+
+  return mock;
+};
 
 const createMockGameConfigService = () => ({
   houseEdge: 0.04,
@@ -108,11 +154,12 @@ describe('🎮 Crash Game Loop Tests', () => {
   });
 
   afterEach(async () => {
-    // Stop game loop if running
-    if (service['gameLoopInterval']) {
-      service.stopGameLoop();
-    }
+    // Stop game loop timers if running
+    service.stopGameLoop();
+    // Clear rate limiting between tests
+    service['lastBetTime'].clear();
     jest.clearAllMocks();
+    jest.clearAllTimers();
   });
 
   // ============================================
@@ -121,8 +168,7 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('🔄 Game Loop Lifecycle', () => {
     it('Should start game loop successfully', () => {
-      // startGameLoop may not set an interval directly
-      // Just verify it doesn't throw
+      // startGameLoop should not throw
       expect(() => service.startGameLoop()).not.toThrow();
     });
 
@@ -130,18 +176,19 @@ describe('🎮 Crash Game Loop Tests', () => {
       service.startGameLoop();
       service.stopGameLoop();
       
-      // After stopping, interval should be null or undefined
-      expect(service['gameLoopInterval'] == null).toBe(true);
+      // After stopping, timer should be null
+      expect(service['gameLoopTimer'] == null).toBe(true);
     });
 
     it('Should not start multiple game loops', () => {
       service.startGameLoop();
-      const firstInterval = service['gameLoopInterval'];
+      const firstTimer = service['gameLoopTimer'];
       
-      service.startGameLoop();
-      const secondInterval = service['gameLoopInterval'];
+      service.startGameLoop(); // Should be no-op
+      const secondTimer = service['gameLoopTimer'];
       
-      expect(firstInterval).toBe(secondInterval);
+      // Timer should remain the same (not replaced)
+      expect(firstTimer).toBe(secondTimer);
     });
 
     it('Should initialize with WAITING state', () => {
@@ -154,7 +201,7 @@ describe('🎮 Crash Game Loop Tests', () => {
       const initialGameNumber = service['gameNumber'];
       
       // Start a new round
-      await service['startNewRound']();
+      service['startNewRound']();
       
       expect(service['gameNumber']).toBe(initialGameNumber + 1);
     });
@@ -166,21 +213,26 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('🎰 Betting Phase', () => {
     beforeEach(async () => {
-      // Initialize a round in BETTING state
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      // Initialize a round in WAITING state
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      // Clear rate limiting
+      service['lastBetTime'].clear();
     });
 
     it('Should accept bet during betting phase', async () => {
       const result = await service.placeBet('user-1', new Decimal(100));
       
       expect(result.success).toBe(true);
+      expect(result.bet).toBeDefined();
     });
 
     it('Should accept bet with auto-cashout', async () => {
       const result = await service.placeBet('user-1', new Decimal(100), new Decimal(2.0));
       
       expect(result.success).toBe(true);
+      expect(result.bet).toBeDefined();
+      expect(result.bet!.autoCashoutAt?.toNumber()).toBe(2.0);
     });
 
     it('Should reject bet when no round active', async () => {
@@ -193,7 +245,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should reject bet after betting phase closed', async () => {
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       
       const result = await service.placeBet('user-1', new Decimal(100));
       
@@ -202,11 +254,8 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should reject bet exceeding balance', async () => {
-      prismaService.wallet.findFirst.mockResolvedValue({
-        id: 'wallet-1',
-        balance: new Decimal(50),
-        currency: 'USDT',
-      });
+      // Set transaction mock to return low balance
+      prismaService._setTransactionBalance(50);
       
       const result = await service.placeBet('user-1', new Decimal(100));
       
@@ -215,25 +264,30 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should reject duplicate bet from same user', async () => {
+      // Place first bet
       await service.placeBet('user-1', new Decimal(100));
       
+      // Second bet from same user - should fail with "Already placed"
+      // (duplicate check happens before rate limiting)
       const result = await service.placeBet('user-1', new Decimal(100));
       
       expect(result.success).toBe(false);
+      // The service checks for existing bet BEFORE rate limiting
       expect(result.error).toContain('Already placed');
     });
 
     it('Should reject bet below minimum', async () => {
       const result = await service.placeBet('user-1', new Decimal(0.001));
       
-      // May succeed if no minimum is enforced, or fail
-      expect(result).toBeDefined();
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Minimum');
     });
 
     it('Should reject bet above maximum', async () => {
       const result = await service.placeBet('user-1', new Decimal(1000000));
       
       expect(result.success).toBe(false);
+      expect(result.error).toContain('Maximum');
     });
 
     it('Should reject negative bet amount', async () => {
@@ -251,9 +305,33 @@ describe('🎮 Crash Game Loop Tests', () => {
     it('Should deduct bet amount from wallet', async () => {
       await service.placeBet('user-1', new Decimal(100));
       
-      // Verify bet was placed (wallet deduction may be handled differently)
+      // Verify bet was placed
       const bet = service['currentRound']!.bets.get('user-1');
       expect(bet).toBeDefined();
+      expect(bet!.amount.toNumber()).toBe(100);
+    });
+
+    it('Should enforce rate limiting between bets', async () => {
+      // Place first bet
+      await service.placeBet('user-1', new Decimal(100));
+      
+      // Immediately try another user (within 500ms cooldown)
+      // The rate limit is per-user, so user-2 should be fine
+      const result = await service.placeBet('user-2', new Decimal(100));
+      expect(result.success).toBe(true);
+    });
+
+    it('Should enforce max bet limit of $10,000', async () => {
+      const result = await service.placeBet('user-1', new Decimal(10001));
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Maximum');
+    });
+
+    it('Should accept bet at exactly max limit', async () => {
+      const result = await service.placeBet('user-1', new Decimal(10000));
+      
+      expect(result.success).toBe(true);
     });
   });
 
@@ -263,10 +341,11 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('💰 Cashout Logic', () => {
     beforeEach(async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
       await service.placeBet('user-1', new Decimal(100));
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.currentMultiplier = new Decimal(2.0);
       service['currentRound']!.crashPoint = new Decimal(5.0);
     });
@@ -286,7 +365,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should reject cashout when game not running', async () => {
-      service['currentRound']!.state = 'CRASHED' as GameState;
+      service['currentRound']!.state = GameState.CRASHED;
       
       const result = await service.cashout('user-1');
       
@@ -345,15 +424,16 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('🤖 Auto-Cashout Precision', () => {
     beforeEach(async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
     });
 
     it('Should trigger auto-cashout at exact multiplier', async () => {
       // Place bet with auto-cashout at 2.00x
       await service.placeBet('user-1', new Decimal(100), new Decimal(2.0));
       
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(5.0);
       
       // Simulate multiplier reaching 2.00x
@@ -369,7 +449,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     it('Should trigger auto-cashout when multiplier exceeds target', async () => {
       await service.placeBet('user-1', new Decimal(100), new Decimal(2.0));
       
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(5.0);
       
       // Multiplier goes past auto-cashout point
@@ -384,7 +464,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     it('Should NOT trigger auto-cashout before target', async () => {
       await service.placeBet('user-1', new Decimal(100), new Decimal(2.0));
       
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(5.0);
       service['currentRound']!.currentMultiplier = new Decimal(1.99);
       
@@ -397,7 +477,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     it('Should NOT trigger auto-cashout if crash happens before target', async () => {
       await service.placeBet('user-1', new Decimal(100), new Decimal(3.0));
       
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(2.0); // Crashes at 2.0x
       service['currentRound']!.currentMultiplier = new Decimal(2.0);
       
@@ -406,24 +486,20 @@ describe('🎮 Crash Game Loop Tests', () => {
       
       const bet = service['currentRound']!.bets.get('user-1');
       // Bet should still be active (will be marked as lost when crash processes)
-      // cashedOutAt can be undefined or null
       expect(bet?.cashedOutAt == null).toBe(true);
     });
 
     it('Should handle multiple auto-cashouts simultaneously', async () => {
-      // Multiple users with different auto-cashout targets
+      // Place first bet
       await service.placeBet('user-1', new Decimal(100), new Decimal(1.5));
       
-      // Reset mock for second user
-      prismaService.wallet.findFirst.mockResolvedValue({
-        id: 'wallet-2',
-        balance: new Decimal(10000),
-        currency: 'USDT',
-      });
+      // Clear rate limit for user-2
+      service['lastBetTime'].clear();
       
+      // Place second bet
       await service.placeBet('user-2', new Decimal(100), new Decimal(2.0));
       
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(5.0);
       service['currentRound']!.currentMultiplier = new Decimal(2.0);
       
@@ -443,10 +519,11 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('⚡ Lag Protection', () => {
     beforeEach(async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
       await service.placeBet('user-1', new Decimal(100));
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
     });
 
     it('Should reject cashout request after crash point', async () => {
@@ -473,7 +550,7 @@ describe('🎮 Crash Game Loop Tests', () => {
       service['currentRound']!.crashPoint = new Decimal(2.0);
       service['currentRound']!.currentMultiplier = new Decimal(2.0);
       
-      // Trying to cashout exactly at crash point - should fail
+      // Trying to cashout above crash point - should fail
       const result = await service.cashout('user-1', new Decimal(2.01));
       
       expect(result.success).toBe(false);
@@ -487,7 +564,7 @@ describe('🎮 Crash Game Loop Tests', () => {
       const result1 = await service.cashout('user-1');
       expect(result1.success).toBe(true);
       
-      // Rapid second attempt fails
+      // Rapid second attempt fails (already settled)
       const result2 = await service.cashout('user-1');
       expect(result2.success).toBe(false);
     });
@@ -499,21 +576,15 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('👥 Concurrency (100 Users)', () => {
     beforeEach(async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
     });
 
     it('Should handle 100 simultaneous bets', async () => {
       const betPromises: Promise<any>[] = [];
       
       for (let i = 0; i < 100; i++) {
-        // Mock different wallets for each user
-        prismaService.wallet.findFirst.mockResolvedValue({
-          id: `wallet-${i}`,
-          balance: new Decimal(10000),
-          currency: 'USDT',
-        });
-        
         betPromises.push(
           service.placeBet(`user-${i}`, new Decimal(100))
         );
@@ -521,23 +592,26 @@ describe('🎮 Crash Game Loop Tests', () => {
       
       const results = await Promise.all(betPromises);
       
-      // All bets should be processed (some may fail due to duplicates in rapid succession)
+      // All bets should be processed (some may fail due to rate limiting in rapid succession)
       expect(results.length).toBe(100);
+      
+      // At least some should succeed
+      const successCount = results.filter(r => r.success).length;
+      expect(successCount).toBeGreaterThan(0);
     });
 
     it('Should handle 100 simultaneous cashouts', async () => {
-      // First, place 100 bets
+      // First, place 100 bets sequentially (to avoid rate limiting)
       for (let i = 0; i < 100; i++) {
-        prismaService.wallet.findFirst.mockResolvedValue({
-          id: `wallet-${i}`,
-          balance: new Decimal(10000),
-          currency: 'USDT',
-        });
+        service['lastBetTime'].clear(); // Clear rate limit for each user
         await service.placeBet(`user-${i}`, new Decimal(100));
       }
       
+      // Verify all 100 bets placed
+      expect(service['currentRound']!.bets.size).toBe(100);
+      
       // Switch to running state
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(10.0);
       service['currentRound']!.currentMultiplier = new Decimal(2.0);
       
@@ -560,11 +634,7 @@ describe('🎮 Crash Game Loop Tests', () => {
       
       // Place bets
       for (let i = 0; i < userCount; i++) {
-        prismaService.wallet.findFirst.mockResolvedValue({
-          id: `wallet-${i}`,
-          balance: new Decimal(10000),
-          currency: 'USDT',
-        });
+        service['lastBetTime'].clear(); // Clear rate limit
         await service.placeBet(`user-${i}`, new Decimal(100));
       }
       
@@ -572,7 +642,7 @@ describe('🎮 Crash Game Loop Tests', () => {
       expect(service['currentRound']!.bets.size).toBe(userCount);
       
       // Switch to running and cashout half
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(10.0);
       service['currentRound']!.currentMultiplier = new Decimal(2.0);
       
@@ -602,7 +672,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should add crash point to history after round', async () => {
-      await service['startNewRound']();
+      service['startNewRound']();
       service['currentRound']!.crashPoint = new Decimal(2.5);
       
       // Simulate crash
@@ -640,14 +710,15 @@ describe('🎮 Crash Game Loop Tests', () => {
       const result1 = service.verifyCrashPoint(serverSeed, clientSeed, nonce);
       const result2 = service.verifyCrashPoint(serverSeed, clientSeed, nonce);
       
-      expect(result1.toString()).toBe(result2.toString());
+      expect(result1.crashPoint).toBe(result2.crashPoint);
     });
 
     it('Should generate different crash points for different seeds', () => {
       const result1 = service.verifyCrashPoint('seed1', 'client', 1);
       const result2 = service.verifyCrashPoint('seed2', 'client', 1);
       
-      expect(result1.toString()).not.toBe(result2.toString());
+      // Compare the crashPoint string values
+      expect(result1.crashPoint).not.toBe(result2.crashPoint);
     });
 
     it('Should generate different crash points for different nonces', () => {
@@ -657,7 +728,8 @@ describe('🎮 Crash Game Loop Tests', () => {
       const result1 = service.verifyCrashPoint(serverSeed, clientSeed, 1);
       const result2 = service.verifyCrashPoint(serverSeed, clientSeed, 2);
       
-      expect(result1.toString()).not.toBe(result2.toString());
+      // Compare the crashPoint string values
+      expect(result1.crashPoint).not.toBe(result2.crashPoint);
     });
 
     it('Should never generate crash point below 1.00', () => {
@@ -668,7 +740,7 @@ describe('🎮 Crash Game Loop Tests', () => {
           i
         );
         
-        expect(result.gte(1.0)).toBe(true);
+        expect(parseFloat(result.crashPoint) >= 1.0).toBe(true);
       }
     });
   });
@@ -695,8 +767,8 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should return correct state during betting', async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
       
       const state = service.getCurrentGameState();
       
@@ -704,8 +776,8 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should return correct state during running', async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.RUNNING;
       
       const state = service.getCurrentGameState();
       
@@ -713,7 +785,7 @@ describe('🎮 Crash Game Loop Tests', () => {
     });
 
     it('Should return correct multiplier', async () => {
-      await service['startNewRound']();
+      service['startNewRound']();
       service['currentRound']!.currentMultiplier = new Decimal(2.5);
       
       const state = service.getCurrentGameState();
@@ -728,10 +800,11 @@ describe('🎮 Crash Game Loop Tests', () => {
 
   describe('💸 Winnings Calculation', () => {
     beforeEach(async () => {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
       await service.placeBet('user-1', new Decimal(100));
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(10.0);
     });
 
@@ -771,6 +844,99 @@ describe('🎮 Crash Game Loop Tests', () => {
       expect(result.profit?.toNumber()).toBe(1);
     });
   });
+
+  // ============================================
+  // 🛡️ RATE LIMITING TESTS
+  // ============================================
+
+  describe('🛡️ Rate Limiting', () => {
+    beforeEach(async () => {
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
+    });
+
+    it('Should enforce 500ms cooldown between bets for same user', async () => {
+      // Place first bet
+      const result1 = await service.placeBet('user-1', new Decimal(100));
+      expect(result1.success).toBe(true);
+      
+      // Remove the bet so duplicate check doesn't fire first
+      service['currentRound']!.bets.delete('user-1');
+      
+      // Immediately try again (within 500ms)
+      const result2 = await service.placeBet('user-1', new Decimal(100));
+      expect(result2.success).toBe(false);
+      expect(result2.error).toContain('Please wait');
+    });
+
+    it('Should allow different users to bet simultaneously', async () => {
+      const result1 = await service.placeBet('user-1', new Decimal(100));
+      const result2 = await service.placeBet('user-2', new Decimal(100));
+      
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+    });
+
+    it('Should allow bet after cooldown expires', async () => {
+      // Place first bet
+      await service.placeBet('user-1', new Decimal(100));
+      
+      // Simulate cooldown expiry by setting lastBetTime to past
+      service['lastBetTime'].set('user-1', Date.now() - 1000);
+      
+      // Remove the bet so duplicate check doesn't fire
+      service['currentRound']!.bets.delete('user-1');
+      
+      // Now should be allowed
+      const result = await service.placeBet('user-1', new Decimal(100));
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ============================================
+  // 💰 ATOMIC TRANSACTION TESTS
+  // ============================================
+
+  describe('💰 Atomic Transactions', () => {
+    beforeEach(async () => {
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
+    });
+
+    it('Should use $transaction for balance deduction', async () => {
+      await service.placeBet('user-1', new Decimal(100));
+      
+      // Verify $transaction was called
+      expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('Should reject bet when no wallet found', async () => {
+      prismaService._setNoWallet();
+      
+      const result = await service.placeBet('user-1', new Decimal(100));
+      
+      expect(result.success).toBe(false);
+      expect(result.error?.toLowerCase()).toContain('insufficient');
+    });
+
+    it('Should use $transaction for adding winnings on cashout', async () => {
+      await service.placeBet('user-1', new Decimal(100));
+      
+      // Clear the mock call count
+      prismaService.$transaction.mockClear();
+      
+      service['currentRound']!.state = GameState.RUNNING;
+      service['currentRound']!.crashPoint = new Decimal(5.0);
+      service['currentRound']!.currentMultiplier = new Decimal(2.0);
+      
+      await service.cashout('user-1');
+      
+      // Verify $transaction was called for adding winnings
+      expect(prismaService.$transaction).toHaveBeenCalled();
+    });
+  });
 });
 
 // ============================================
@@ -802,18 +968,18 @@ describe('🔥 Crash Game Stress Tests', () => {
   });
 
   afterEach(() => {
-    if (service['gameLoopInterval']) {
-      service.stopGameLoop();
-    }
+    service.stopGameLoop();
+    service['lastBetTime'].clear();
     jest.clearAllMocks();
+    jest.clearAllTimers();
   });
 
   it('Should handle rapid state changes', async () => {
     for (let i = 0; i < 10; i++) {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
-      service['currentRound']!.state = 'RUNNING' as GameState;
-      service['currentRound']!.state = 'CRASHED' as GameState;
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['currentRound']!.state = GameState.RUNNING;
+      service['currentRound']!.state = GameState.CRASHED;
     }
     
     // Should not crash
@@ -822,18 +988,13 @@ describe('🔥 Crash Game Stress Tests', () => {
 
   it('Should handle many rounds in sequence', async () => {
     for (let i = 0; i < 50; i++) {
-      await service['startNewRound']();
-      service['currentRound']!.state = 'WAITING' as GameState;
-      
-      prismaService.wallet.findFirst.mockResolvedValue({
-        id: `wallet-${i}`,
-        balance: new Decimal(10000),
-        currency: 'USDT',
-      });
+      service['startNewRound']();
+      service['currentRound']!.state = GameState.WAITING;
+      service['lastBetTime'].clear();
       
       await service.placeBet(`user-${i}`, new Decimal(100));
       
-      service['currentRound']!.state = 'RUNNING' as GameState;
+      service['currentRound']!.state = GameState.RUNNING;
       service['currentRound']!.crashPoint = new Decimal(2.0);
       service['currentRound']!.currentMultiplier = new Decimal(1.5);
       
@@ -864,7 +1025,11 @@ describe('📈 Instant Bust Rate Verification', () => {
     service = module.get<CrashService>(CrashService);
   });
 
-  it('Should have ~2% instant bust rate over 100,000 iterations', () => {
+  afterEach(() => {
+    service.stopGameLoop();
+  });
+
+  it('Should have ~4% instant bust rate over 100,000 iterations', () => {
     const iterations = 100000;
     let instantBusts = 0;
     
@@ -872,7 +1037,7 @@ describe('📈 Instant Bust Rate Verification', () => {
       const serverSeed = crypto.randomBytes(32).toString('hex');
       const crashPoint = service.verifyCrashPoint(serverSeed, 'client', i);
       
-      if (crashPoint.eq(1.0)) {
+      if (parseFloat(crashPoint.crashPoint) === 1.0) {
         instantBusts++;
       }
     }
@@ -882,8 +1047,9 @@ describe('📈 Instant Bust Rate Verification', () => {
     console.log(`📊 Instant Bust Rate: ${(instantBustRate * 100).toFixed(2)}%`);
     console.log(`   Instant Busts: ${instantBusts} / ${iterations}`);
     
+    // With 4% house edge, instant bust rate should be ~4%
     // Allow wide tolerance for statistical variance
-    expect(instantBustRate).toBeGreaterThan(0.005); // At least 0.5%
-    expect(instantBustRate).toBeLessThan(0.10); // At most 10%
+    expect(instantBustRate).toBeGreaterThan(0.02); // At least 2%
+    expect(instantBustRate).toBeLessThan(0.08); // At most 8%
   });
 });

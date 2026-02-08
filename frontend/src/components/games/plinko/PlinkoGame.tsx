@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSoundContextSafe } from '@/contexts/SoundContext';
 
 // ============ PHYSICS CONSTANTS (Tuned for premium feel) ============
 const PHYSICS = {
@@ -224,8 +225,8 @@ const PlinkoGame: React.FC = () => {
   const [lastResult, setLastResult] = useState<{ multiplier: number; payout: number } | null>(null);
   const [history, setHistory] = useState<{ multiplier: number; payout: number; isWin: boolean }[]>([]);
   const [highlightedBucket, setHighlightedBucket] = useState<number | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundVolume, setSoundVolume] = useState(0.5);
+  // Sound synced with global SoundContext
+  const { isSoundActive, toggleGameSound, gameSoundEnabled } = useSoundContextSafe();
   const [activeTab, setActiveTab] = useState<'manual' | 'auto'>('manual');
   const [multipliers, setMultipliers] = useState<number[]>([]);
   const [multipliersLoaded, setMultipliersLoaded] = useState(false);
@@ -312,26 +313,10 @@ const PlinkoGame: React.FC = () => {
     fetchMultipliers();
   }, [rows, risk]);
 
-  // Update sound settings
+  // Sync SoundManager with global SoundContext
   useEffect(() => {
-    soundManager.setEnabled(soundEnabled);
-    soundManager.setVolume(soundVolume);
-  }, [soundEnabled, soundVolume]);
-
-  // Load sound preference from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('plinko_sound');
-      if (saved !== null) setSoundEnabled(saved === 'true');
-    }
-  }, []);
-
-  // Save sound preference
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plinko_sound', String(soundEnabled));
-    }
-  }, [soundEnabled]);
+    soundManager.setEnabled(isSoundActive);
+  }, [isSoundActive]);
 
   // ============ BUCKET COLORS ============
   const getBucketColor = useCallback((mult: number): string => {
@@ -789,17 +774,17 @@ const PlinkoGame: React.FC = () => {
               <h2 className="text-xl sm:text-2xl font-bold text-white">Plinko</h2>
             </div>
             <div className="flex items-center gap-2">
-              {/* Sound Toggle Button */}
+              {/* Sound Toggle Button - synced with global Settings */}
               <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
+                onClick={toggleGameSound}
                 className={`p-2 rounded-lg transition-all ${
-                  soundEnabled
+                  isSoundActive
                     ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                     : 'bg-gray-700/50 text-gray-500 border border-gray-600/30'
                 }`}
-                title={soundEnabled ? 'Mute Sound' : 'Unmute Sound'}
+                title={!isSoundActive ? 'Sound Off (enable in Settings)' : gameSoundEnabled ? 'Mute Game' : 'Unmute Game'}
               >
-                {soundEnabled ? (
+                {isSoundActive ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>

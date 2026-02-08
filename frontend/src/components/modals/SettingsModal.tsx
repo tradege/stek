@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSoundContextSafe } from '@/contexts/SoundContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -8,11 +9,16 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [musicEnabled, setMusicEnabled] = useState(false);
-  const [clientSeed, setClientSeed] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
+  const {
+    masterSoundEnabled,
+    masterMusicEnabled,
+    setMasterSound,
+    setMasterMusic,
+    clientSeed,
+    setClientSeed,
+  } = useSoundContextSafe();
 
+  const [isCopied, setIsCopied] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -23,24 +29,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     return () => document.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
-  // Load settings from localStorage
+  // Generate initial client seed if empty
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedSound = localStorage.getItem('soundEnabled');
-      const savedMusic = localStorage.getItem('musicEnabled');
-      const savedSeed = localStorage.getItem('clientSeed');
-      
-      if (savedSound !== null) setSoundEnabled(savedSound === 'true');
-      if (savedMusic !== null) setMusicEnabled(savedMusic === 'true');
-      if (savedSeed) setClientSeed(savedSeed);
-      else {
-        // Generate random client seed if not exists
-        const newSeed = generateRandomSeed();
-        setClientSeed(newSeed);
-        localStorage.setItem('clientSeed', newSeed);
-      }
+    if (isOpen && !clientSeed) {
+      const newSeed = generateRandomSeed();
+      setClientSeed(newSeed);
     }
-  }, [isOpen]);
+  }, [isOpen, clientSeed, setClientSeed]);
 
   const generateRandomSeed = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -52,27 +47,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   };
 
   const handleSoundToggle = () => {
-    const newValue = !soundEnabled;
-    setSoundEnabled(newValue);
-    localStorage.setItem('soundEnabled', String(newValue));
+    setMasterSound(!masterSoundEnabled);
   };
 
   const handleMusicToggle = () => {
-    const newValue = !musicEnabled;
-    setMusicEnabled(newValue);
-    localStorage.setItem('musicEnabled', String(newValue));
+    setMasterMusic(!masterMusicEnabled);
   };
 
   const handleSeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSeed = e.target.value;
-    setClientSeed(newSeed);
-    localStorage.setItem('clientSeed', newSeed);
+    setClientSeed(e.target.value);
   };
 
   const handleRandomizeSeed = () => {
     const newSeed = generateRandomSeed();
     setClientSeed(newSeed);
-    localStorage.setItem('clientSeed', newSeed);
   };
 
   const handleCopySeed = () => {
@@ -121,7 +109,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Audio</h3>
             
-            {/* Sound Effects Toggle */}
+            {/* Master Sound Toggle */}
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-accent-primary/20 flex items-center justify-center">
@@ -131,16 +119,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <p className="text-white font-medium">Sound Effects</p>
-                  <p className="text-text-secondary text-sm">Game sounds and notifications</p>
+                  <p className="text-text-secondary text-sm">Master control for all game sounds</p>
                 </div>
               </div>
               <button
                 onClick={handleSoundToggle}
-                className={`relative w-14 h-7 rounded-full transition-colors ${soundEnabled ? 'bg-accent-primary' : 'bg-white/20'}`}
+                className={`relative w-14 h-7 rounded-full transition-colors ${masterSoundEnabled ? 'bg-accent-primary' : 'bg-white/20'}`}
               >
-                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-7' : ''}`} />
+                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${masterSoundEnabled ? 'translate-x-7' : ''}`} />
               </button>
             </div>
+
+            {/* Master sound off indicator */}
+            {!masterSoundEnabled && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <svg className="w-4 h-4 text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <p className="text-yellow-400 text-xs">All game sounds are muted. In-game sound buttons will have no effect.</p>
+              </div>
+            )}
 
             {/* Music Toggle */}
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
@@ -157,9 +155,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </div>
               <button
                 onClick={handleMusicToggle}
-                className={`relative w-14 h-7 rounded-full transition-colors ${musicEnabled ? 'bg-[#1475e1]' : 'bg-white/20'}`}
+                className={`relative w-14 h-7 rounded-full transition-colors ${masterMusicEnabled ? 'bg-[#1475e1]' : 'bg-white/20'}`}
               >
-                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${musicEnabled ? 'translate-x-7' : ''}`} />
+                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${masterMusicEnabled ? 'translate-x-7' : ''}`} />
               </button>
             </div>
           </div>

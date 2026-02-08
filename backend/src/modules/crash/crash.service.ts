@@ -88,11 +88,20 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   private currentRound: GameRound | null = null;
   private gameNumber = 0;
   private masterServerSeed: string;
-  private clientSeed = 'stakepro-public-seed';
+  private defaultClientSeed = 'stakepro-public-seed';
+  private userClientSeeds: Map<string, string> = new Map(); // Per-user client seeds
   
   // Crash history - stores last 20 crash points
   private crashHistory: number[] = [];
   private readonly MAX_HISTORY = 20;
+  
+  // Bet limits
+  private readonly MAX_BET = 10000;  // Maximum bet amount in USDT
+  private readonly MIN_BET = 0.10;   // Minimum bet amount in USDT
+  
+  // Rate limiting - track last bet time per user
+  private lastBetTime: Map<string, number> = new Map();
+  private readonly BET_COOLDOWN = 500; // 500ms between bets
   
   // Timers
   private gameLoopTimer: NodeJS.Timeout | null = null;
@@ -112,35 +121,40 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Deduct balance from user's wallet when placing a bet
-   * Returns true if successful, false if insufficient balance
+   * Uses ATOMIC TRANSACTION with row locking to prevent race conditions
    */
   private async deductBalance(userId: string, amount: Decimal): Promise<boolean> {
     try {
-      // Get user's USDT wallet
-      const wallet = await this.prisma.wallet.findFirst({
-        where: { userId, currency: 'USDT' },
+      return await this.prisma.$transaction(async (tx) => {
+        // Lock the wallet row with FOR UPDATE to prevent concurrent modifications
+        const wallets = await tx.$queryRaw<any[]>`
+          SELECT id, balance FROM "Wallet"
+          WHERE "userId" = ${userId} AND currency = 'USDT'
+          FOR UPDATE
+        `;
+
+        if (!wallets || wallets.length === 0) {
+          this.logger.warn(`No wallet found for user ${userId}`);
+          return false;
+        }
+
+        const wallet = wallets[0];
+        const currentBalance = new Decimal(wallet.balance);
+        if (currentBalance.lt(amount)) {
+          this.logger.warn(`Insufficient balance for user ${userId}: ${currentBalance} < ${amount}`);
+          return false;
+        }
+
+        // Deduct balance atomically
+        const newBalance = currentBalance.minus(amount);
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: newBalance.toNumber() },
+        });
+
+        this.logger.debug(`💸 Deducted $${amount.toFixed(2)} from user ${userId}. New balance: $${newBalance.toFixed(2)}`);
+        return true;
       });
-
-      if (!wallet) {
-        this.logger.warn(`No wallet found for user ${userId}`);
-        return false;
-      }
-
-      const currentBalance = new Decimal(wallet.balance);
-      if (currentBalance.lt(amount)) {
-        this.logger.warn(`Insufficient balance for user ${userId}: ${currentBalance} < ${amount}`);
-        return false;
-      }
-
-      // Deduct balance
-      const newBalance = currentBalance.minus(amount);
-      await this.prisma.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: newBalance.toNumber() },
-      });
-
-      this.logger.debug(`💸 Deducted $${amount.toFixed(2)} from user ${userId}. New balance: $${newBalance.toFixed(2)}`);
-      return true;
     } catch (error) {
       this.logger.error(`Failed to deduct balance: ${error.message}`);
       return false;
@@ -149,26 +163,33 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Add winnings to user's wallet on cashout
+   * Uses ATOMIC TRANSACTION with row locking to prevent race conditions
    */
   private async addWinnings(userId: string, amount: Decimal): Promise<boolean> {
     try {
-      const wallet = await this.prisma.wallet.findFirst({
-        where: { userId, currency: 'USDT' },
+      return await this.prisma.$transaction(async (tx) => {
+        // Lock the wallet row with FOR UPDATE
+        const wallets = await tx.$queryRaw<any[]>`
+          SELECT id, balance FROM "Wallet"
+          WHERE "userId" = ${userId} AND currency = 'USDT'
+          FOR UPDATE
+        `;
+
+        if (!wallets || wallets.length === 0) {
+          this.logger.warn(`No wallet found for user ${userId}`);
+          return false;
+        }
+
+        const wallet = wallets[0];
+        const newBalance = new Decimal(wallet.balance).plus(amount);
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: newBalance.toNumber() },
+        });
+
+        this.logger.debug(`💰 Added $${amount.toFixed(2)} to user ${userId}. New balance: $${newBalance.toFixed(2)}`);
+        return true;
       });
-
-      if (!wallet) {
-        this.logger.warn(`No wallet found for user ${userId}`);
-        return false;
-      }
-
-      const newBalance = new Decimal(wallet.balance).plus(amount);
-      await this.prisma.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: newBalance.toNumber() },
-      });
-
-      this.logger.debug(`💰 Added $${amount.toFixed(2)} to user ${userId}. New balance: $${newBalance.toFixed(2)}`);
-      return true;
     } catch (error) {
       this.logger.error(`Failed to add winnings: ${error.message}`);
       return false;
@@ -330,7 +351,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     // Calculate crash point (but don't reveal it yet!)
     const crashPoint = this.generateCrashPoint(
       serverSeed,
-      this.clientSeed,
+      this.defaultClientSeed,
       this.gameNumber
     );
     
@@ -340,7 +361,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
       gameNumber: this.gameNumber,
       serverSeed,
       serverSeedHash,
-      clientSeed: this.clientSeed,
+      clientSeed: this.defaultClientSeed,
       nonce: this.gameNumber,
       crashPoint,
       state: GameState.WAITING,
@@ -520,9 +541,21 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     }
     
     const betAmount = new Decimal(amount);
-    if (betAmount.lte(0)) {
-      return { success: false, error: 'Invalid bet amount' };
+    if (betAmount.lt(this.MIN_BET)) {
+      return { success: false, error: `Minimum bet is $${this.MIN_BET}` };
     }
+    
+    if (betAmount.gt(this.MAX_BET)) {
+      return { success: false, error: `Maximum bet is $${this.MAX_BET.toLocaleString()}` };
+    }
+    
+    // Rate limiting - prevent rapid-fire bets
+    const now = Date.now();
+    const lastBet = this.lastBetTime.get(userId) || 0;
+    if (now - lastBet < this.BET_COOLDOWN) {
+      return { success: false, error: 'Please wait before placing another bet' };
+    }
+    this.lastBetTime.set(userId, now);
 
     // CRITICAL: Deduct balance from user's wallet BEFORE accepting bet
     const balanceDeducted = await this.deductBalance(userId, betAmount);
@@ -671,13 +704,36 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Verify a crash point (for Provably Fair verification)
+   * Can be called by users to verify past games
    */
   verifyCrashPoint(
     serverSeed: string,
     clientSeed: string,
     nonce: number
-  ): Decimal {
-    return this.generateCrashPoint(serverSeed, clientSeed, nonce);
+  ): { crashPoint: string; verified: boolean } {
+    const result = this.generateCrashPoint(serverSeed, clientSeed, nonce);
+    return {
+      crashPoint: result.toFixed(2),
+      verified: true,
+    };
+  }
+
+  /**
+   * Set a user's custom client seed for Provably Fair
+   */
+  setClientSeed(userId: string, seed: string): { success: boolean; seed: string } {
+    if (!seed || seed.length < 1 || seed.length > 64) {
+      return { success: false, seed: '' };
+    }
+    this.userClientSeeds.set(userId, seed);
+    return { success: true, seed };
+  }
+
+  /**
+   * Get a user's client seed
+   */
+  getClientSeed(userId: string): string {
+    return this.userClientSeeds.get(userId) || this.defaultClientSeed;
   }
 
   /**
@@ -723,7 +779,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           profit: bet.profit || new Decimal(0),
           serverSeed: this.currentRound?.serverSeed || '',
           serverSeedHash: this.currentRound?.serverSeedHash || '',
-          clientSeed: 'default',
+          clientSeed: this.defaultClientSeed,
           nonce: this.gameNumber,
           gameData: {
             gameId: this.currentRound?.id,
