@@ -68,7 +68,7 @@ export class PlinkoService {
     const nonce = Math.floor(Math.random() * 1000000);
 
     // Generate path and calculate result
-    const path = this.generatePath(rows, serverSeed);
+    const path = this.generatePath(rows, serverSeed, clientSeed, nonce);
     const bucketIndex = calculateBucketFromPath(path);
     const multiplier = getMultiplier(rows, risk, bucketIndex);
     const payout = betAmount * multiplier;
@@ -158,14 +158,15 @@ export class PlinkoService {
     };
   }
 
-  private generatePath(rows: number, seed: string): number[] {
+  private generatePath(rows: number, serverSeed: string, clientSeed: string, nonce: number): number[] {
     const path: number[] = [];
     
     for (let i = 0; i < rows; i++) {
-      // Create hash for this row
+      // Create HMAC-SHA256 hash combining serverSeed, clientSeed, nonce, and row index
+      // This ensures full Provably Fair compliance - client seed influences the outcome
       const hash = crypto
-        .createHash('sha256')
-        .update(seed + i.toString())
+        .createHmac('sha256', serverSeed)
+        .update(`${clientSeed}:${nonce}:${i}`)
         .digest('hex');
       
       // Use first 8 chars of hash to determine direction
