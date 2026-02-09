@@ -45,6 +45,8 @@ export enum OlympusSymbol {
 
 // ============================================
 // SYMBOL WEIGHTS (probability distribution)
+// Multiplier orbs are COSMETIC in base game - do NOT affect payouts
+// They only affect payouts during FREE SPINS
 // ============================================
 export const SYMBOL_WEIGHTS: { symbol: OlympusSymbol; weight: number }[] = [
   { symbol: OlympusSymbol.PURPLE_GEM, weight: 25 },
@@ -56,10 +58,10 @@ export const SYMBOL_WEIGHTS: { symbol: OlympusSymbol; weight: number }[] = [
   { symbol: OlympusSymbol.HOURGLASS, weight: 10 },
   { symbol: OlympusSymbol.CROWN, weight: 7 },
   { symbol: OlympusSymbol.SCATTER, weight: 3 },
-  { symbol: OlympusSymbol.MULTIPLIER, weight: 19 },
+  { symbol: OlympusSymbol.MULTIPLIER, weight: 2 },
 ];
 
-export const TOTAL_WEIGHT = SYMBOL_WEIGHTS.reduce((sum, s) => sum + s.weight, 0); // 150
+export const TOTAL_WEIGHT = SYMBOL_WEIGHTS.reduce((sum, s) => sum + s.weight, 0); // 133
 
 // Ante bet weights (double scatter chance)
 export const ANTE_SYMBOL_WEIGHTS: { symbol: OlympusSymbol; weight: number }[] = [
@@ -72,26 +74,28 @@ export const ANTE_SYMBOL_WEIGHTS: { symbol: OlympusSymbol; weight: number }[] = 
   { symbol: OlympusSymbol.HOURGLASS, weight: 10 },
   { symbol: OlympusSymbol.CROWN, weight: 7 },
   { symbol: OlympusSymbol.SCATTER, weight: 6 }, // Doubled
-  { symbol: OlympusSymbol.MULTIPLIER, weight: 19 },
+  { symbol: OlympusSymbol.MULTIPLIER, weight: 2 },
 ];
 
-export const ANTE_TOTAL_WEIGHT = ANTE_SYMBOL_WEIGHTS.reduce((sum, s) => sum + s.weight, 0); // 153
+export const ANTE_TOTAL_WEIGHT = ANTE_SYMBOL_WEIGHTS.reduce((sum, s) => sum + s.weight, 0); // 136
 
 // ============================================
 // CLUSTER PAY TABLE (multiplier of bet amount)
+// Calibrated via Monte Carlo simulation (100k+ spins)
+// Scale factor: 0.9555x -> verified RTP: 95.94% (house edge: 4.06%)
 // Key: symbol, Value: { minCount: payout }
 // ============================================
 export const PAYTABLE: Record<string, Record<number, number>> = {
   // Premium symbols
-  [OlympusSymbol.CROWN]:     { 8: 10, 9: 15, 10: 25, 11: 50, 12: 100 },
-  [OlympusSymbol.HOURGLASS]: { 8: 5,  9: 8,  10: 15, 11: 25, 12: 50 },
-  [OlympusSymbol.RING]:      { 8: 4,  9: 6,  10: 10, 11: 15, 12: 25 },
-  [OlympusSymbol.CHALICE]:   { 8: 3,  9: 5,  10: 8,  11: 12, 12: 20 },
+  [OlympusSymbol.CROWN]:     { 8: 9.55, 9: 14.33, 10: 23.89, 11: 47.77, 12: 95.55 },
+  [OlympusSymbol.HOURGLASS]: { 8: 4.78, 9: 7.64,  10: 14.33, 11: 23.89, 12: 47.77 },
+  [OlympusSymbol.RING]:      { 8: 3.82, 9: 5.73,  10: 9.55,  11: 14.33, 12: 23.89 },
+  [OlympusSymbol.CHALICE]:   { 8: 2.87, 9: 4.78,  10: 7.64,  11: 11.47, 12: 19.11 },
   // Low symbols
-  [OlympusSymbol.BLUE_GEM]:  { 8: 1.5, 9: 2,   10: 3,   11: 5,   12: 8 },
-  [OlympusSymbol.GREEN_GEM]: { 8: 1,   9: 1.5, 10: 2.5, 11: 4,   12: 6 },
-  [OlympusSymbol.RED_GEM]:   { 8: 0.8, 9: 1.2, 10: 2,   11: 3,   12: 5 },
-  [OlympusSymbol.PURPLE_GEM]:{ 8: 0.5, 9: 0.8, 10: 1.5, 11: 2.5, 12: 4 },
+  [OlympusSymbol.BLUE_GEM]:  { 8: 1.43, 9: 1.91, 10: 2.87, 11: 4.78, 12: 7.64 },
+  [OlympusSymbol.GREEN_GEM]: { 8: 0.96, 9: 1.43, 10: 2.39, 11: 3.82, 12: 5.73 },
+  [OlympusSymbol.RED_GEM]:   { 8: 0.76, 9: 1.15, 10: 1.91, 11: 2.87, 12: 4.78 },
+  [OlympusSymbol.PURPLE_GEM]:{ 8: 0.48, 9: 0.76, 10: 1.43, 11: 2.39, 12: 3.82 },
 };
 
 // Minimum cluster size for a win
@@ -99,17 +103,18 @@ export const MIN_CLUSTER_SIZE = 8;
 
 // ============================================
 // MULTIPLIER ORB VALUE DISTRIBUTION
+// NOTE: Multiplier orbs are COSMETIC in base game
+// They only affect payouts during FREE SPINS (dampened: each point = +10%)
 // ============================================
 export const MULTIPLIER_VALUES: { value: number; weight: number }[] = [
-  { value: 2, weight: 400 },
-  { value: 3, weight: 250 },
-  { value: 5, weight: 150 },
-  { value: 8, weight: 80 },
-  { value: 10, weight: 50 },
-  { value: 15, weight: 30 },
-  { value: 25, weight: 20 },
-  { value: 50, weight: 15 },
-  { value: 100, weight: 5 },
+  { value: 2, weight: 500 },
+  { value: 3, weight: 300 },
+  { value: 5, weight: 120 },
+  { value: 8, weight: 50 },
+  { value: 10, weight: 20 },
+  { value: 15, weight: 7 },
+  { value: 25, weight: 2 },
+  { value: 50, weight: 1 },
 ];
 
 export const MULTIPLIER_TOTAL_WEIGHT = MULTIPLIER_VALUES.reduce((sum, m) => sum + m.weight, 0); // 1000

@@ -546,9 +546,9 @@ export default function OlympusPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0f1923] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00F0FF] mx-auto mb-4" />
           <p className="text-gray-400">Loading Gates of Olympus...</p>
         </div>
       </div>
@@ -556,17 +556,17 @@ export default function OlympusPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[#0f1923] text-white relative overflow-hidden">
       {/* Olympus Background Ambience */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1040] via-[#0a0e1a] to-[#0a0e1a]" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-500/5 rounded-full blur-[120px]" />
-        <div className="absolute top-20 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 left-1/2 w-[600px] h-[300px] bg-blue-500/3 rounded-full blur-[150px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a2c38] via-[#0f1923] to-[#0f1923]" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00F0FF]/5 rounded-full blur-[120px]" />
+        <div className="absolute top-20 right-1/4 w-80 h-80 bg-[#00F0FF]/3 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-1/2 w-[600px] h-[300px] bg-[#00F0FF]/2 rounded-full blur-[150px]" />
       </div>
 
       {/* Header */}
-      <div className="relative z-10 bg-[#0f1528]/90 backdrop-blur-sm border-b border-yellow-500/20 px-4 py-3">
+      <div className="relative z-10 bg-[#1a2c38] border-b border-[#2f4553] px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -588,20 +588,20 @@ export default function OlympusPage() {
               </svg>
             </Link>
             <span className="text-2xl">⚡</span>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-yellow-400 to-amber-300 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold">
               Gates of Olympus
             </h1>
             <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
               Provably Fair
             </span>
-            <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+            <span className="px-2 py-0.5 bg-green-500/20 text-[#00F0FF] text-xs rounded-full">
               96% RTP
             </span>
           </div>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowPaytable(!showPaytable)}
-              className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
+              className="text-sm text-gray-400 hover:text-[#00F0FF] transition-colors"
             >
               Paytable
             </button>
@@ -622,10 +622,10 @@ export default function OlympusPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="text-center animate-bounce">
             <div className="text-6xl mb-4">⚡</div>
-            <div className="text-4xl font-black text-yellow-400 mb-2">
+            <div className="text-4xl font-black text-[#00F0FF] mb-2">
               FREE SPINS!
             </div>
-            <div className="text-xl text-yellow-200">
+            <div className="text-xl text-[#00F0FF]/80">
               You won {freeSpinsRemaining} Free Spins!
             </div>
           </div>
@@ -636,17 +636,17 @@ export default function OlympusPage() {
       {showBigWin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="text-center">
-            <div className="text-2xl text-yellow-300 mb-2 animate-pulse">
+            <div className="text-2xl text-[#00F0FF] mb-2 animate-pulse">
               {bigWinAmount > actualBet * 50
                 ? "MEGA WIN"
                 : bigWinAmount > actualBet * 20
                 ? "SUPER WIN"
                 : "BIG WIN"}
             </div>
-            <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-300 animate-pulse">
+            <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-300 to-green-400 animate-pulse">
               ${bigWinAmount.toFixed(2)}
             </div>
-            <div className="text-lg text-yellow-200/80 mt-2">
+            <div className="text-lg text-[#00F0FF]/80 mt-2">
               {(bigWinAmount / actualBet).toFixed(1)}x multiplier
             </div>
           </div>
@@ -658,23 +658,23 @@ export default function OlympusPage() {
         <div className="lg:col-span-1 space-y-3 order-2 lg:order-1">
           {/* Free Spins Status */}
           {freeSpinSession && (
-            <div className="bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/40 rounded-xl p-4">
+            <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-[#2f4553] rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xl">⚡</span>
-                <span className="font-bold text-yellow-400">
+                <span className="font-bold text-[#00F0FF]">
                   Free Spins Active
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <div className="text-gray-400 text-xs">Remaining</div>
-                  <div className="text-yellow-300 font-bold text-lg">
+                  <div className="text-[#00F0FF] font-bold text-lg">
                     {freeSpinsRemaining}
                   </div>
                 </div>
                 <div>
                   <div className="text-gray-400 text-xs">Multiplier</div>
-                  <div className="text-purple-400 font-bold text-lg">
+                  <div className="text-[#00F0FF] font-bold text-lg">
                     {cumulativeMultiplier}x
                   </div>
                 </div>
@@ -690,7 +690,7 @@ export default function OlympusPage() {
 
           {/* Bet Amount */}
           {!freeSpinSession && (
-            <div className="bg-[#0f1528] rounded-xl border border-white/10 p-4">
+            <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4">
               <label className="text-sm text-gray-400 mb-2 block">
                 Bet Amount
               </label>
@@ -699,7 +699,7 @@ export default function OlympusPage() {
                   type="number"
                   value={betAmount}
                   onChange={(e) => setBetAmount(e.target.value)}
-                  className="flex-1 bg-[#0a0e1a] border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-yellow-500/50 focus:outline-none"
+                  className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#00F0FF] focus:outline-none"
                   min="0.10"
                   step="0.10"
                   disabled={spinning}
@@ -710,7 +710,7 @@ export default function OlympusPage() {
                       Math.max(0.1, parseFloat(prev) / 2).toFixed(2)
                     )
                   }
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm hover:bg-white/10 transition-colors"
+                  className="px-3 py-2 bg-[#0f1923] border border-[#2f4553] rounded-lg text-sm hover:bg-[#2f4553] transition-colors"
                 >
                   &frac12;
                 </button>
@@ -720,7 +720,7 @@ export default function OlympusPage() {
                       Math.min(1000, parseFloat(prev) * 2).toFixed(2)
                     )
                   }
-                  className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm hover:bg-white/10 transition-colors"
+                  className="px-3 py-2 bg-[#0f1923] border border-[#2f4553] rounded-lg text-sm hover:bg-[#2f4553] transition-colors"
                 >
                   2&times;
                 </button>
@@ -731,7 +731,7 @@ export default function OlympusPage() {
                   <button
                     key={amt}
                     onClick={() => setBetAmount(amt.toFixed(2))}
-                    className="py-1 text-xs bg-white/5 border border-white/10 rounded hover:bg-white/10 transition-colors text-gray-300"
+                    className="py-1 text-xs bg-[#0f1923] border border-[#2f4553] rounded hover:bg-[#2f4553] transition-colors text-gray-300"
                   >
                     ${amt}
                   </button>
@@ -742,7 +742,7 @@ export default function OlympusPage() {
 
           {/* Ante Bet Toggle */}
           {!freeSpinSession && (
-            <div className="bg-[#0f1528] rounded-xl border border-white/10 p-4">
+            <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold text-white">Ante Bet</div>
@@ -753,7 +753,7 @@ export default function OlympusPage() {
                 <button
                   onClick={() => setAnteBet(!anteBet)}
                   className={`w-12 h-6 rounded-full transition-all relative ${
-                    anteBet ? "bg-yellow-500" : "bg-white/10"
+                    anteBet ? "bg-green-500" : "bg-[#2f4553]"
                   }`}
                 >
                   <div
@@ -764,7 +764,7 @@ export default function OlympusPage() {
                 </button>
               </div>
               {anteBet && (
-                <div className="mt-2 text-xs text-yellow-400/80">
+                <div className="mt-2 text-xs text-[#00F0FF]/80">
                   Actual bet: ${actualBet.toFixed(2)}
                 </div>
               )}
@@ -779,8 +779,8 @@ export default function OlympusPage() {
               spinning
                 ? "bg-gray-700 cursor-not-allowed"
                 : freeSpinSession
-                ? "bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 shadow-lg shadow-yellow-500/30"
-                : "bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 shadow-lg shadow-yellow-600/20"
+                ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-lg shadow-green-500/20"
+                : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-lg shadow-green-500/20"
             }`}
           >
             {spinning ? (
@@ -826,7 +826,7 @@ export default function OlympusPage() {
                 ${totalWinDisplay.toFixed(2)}
               </div>
               {currentMultiplier > 0 && (
-                <div className="text-xs text-purple-400 mt-1">
+                <div className="text-xs text-[#00F0FF] mt-1">
                   Multiplier: {currentMultiplier}x
                 </div>
               )}
@@ -834,14 +834,14 @@ export default function OlympusPage() {
           )}
 
           {/* Game Info */}
-          <div className="bg-[#0f1528] rounded-xl border border-white/10 p-4 space-y-2">
+          <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">RTP</span>
               <span className="text-green-400 font-mono">96.00%</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Max Win</span>
-              <span className="text-yellow-400 font-mono">5,000x</span>
+              <span className="text-[#00F0FF] font-mono">5,000x</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-400">Min Cluster</span>
@@ -864,7 +864,7 @@ export default function OlympusPage() {
         {/* Center - Game Grid */}
         <div className="lg:col-span-3 space-y-4 order-1 lg:order-2">
           {/* Slot Grid */}
-          <div className="bg-[#0f1528]/80 backdrop-blur rounded-2xl border border-yellow-500/20 p-3 sm:p-4 relative overflow-hidden">
+          <div className="bg-[#1a2c38]/80 backdrop-blur rounded-2xl border border-[#2f4553] p-3 sm:p-4 relative overflow-hidden">
             {/* Zeus decoration */}
             <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-4xl opacity-30 pointer-events-none">
               ⚡
@@ -905,8 +905,8 @@ export default function OlympusPage() {
                       }
                       ${
                         isWinning
-                          ? "ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/40 bg-yellow-400/10"
-                          : "bg-white/5 hover:bg-white/8"
+                          ? "ring-2 ring-[#00F0FF] shadow-lg shadow-[#00F0FF]/40 bg-[#00F0FF]/10"
+                          : "bg-[#0f1923] hover:bg-[#2f4553]/60"
                       }
                     `}
                     style={{
@@ -923,7 +923,7 @@ export default function OlympusPage() {
                     {/* Multiplier value badge */}
                     {cell.symbol === OlympusSymbol.MULTIPLIER &&
                       cell.multiplierValue && (
-                        <div className="absolute -bottom-0.5 -right-0.5 bg-purple-600 text-white text-[8px] sm:text-[10px] font-bold px-1 rounded-full">
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-[#00F0FF] text-white text-[8px] sm:text-[10px] font-bold px-1 rounded-full">
                           {cell.multiplierValue}x
                         </div>
                       )}
@@ -941,7 +941,7 @@ export default function OlympusPage() {
 
             {/* Tumble counter */}
             {tumbleIndex >= 0 && spinning && (
-              <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-yellow-400">
+              <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-[#00F0FF]">
                 Tumble #{tumbleIndex + 1}
               </div>
             )}
@@ -949,7 +949,7 @@ export default function OlympusPage() {
 
           {/* Provably Fair */}
           {lastResult && !freeSpinSession && (
-            <div className="bg-[#0f1528] rounded-xl border border-white/10 p-4">
+            <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-green-400">&#10003;</span>
                 <span className="text-sm font-bold text-white">
@@ -980,7 +980,7 @@ export default function OlympusPage() {
           )}
 
           {/* Bet History */}
-          <div className="bg-[#0f1528] rounded-xl border border-white/10 p-4">
+          <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4">
             <h3 className="text-sm font-bold text-white mb-3">Recent Spins</h3>
             {history.length === 0 ? (
               <div className="text-center text-gray-500 py-4">
@@ -990,7 +990,7 @@ export default function OlympusPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-gray-400 text-xs border-b border-white/10">
+                    <tr className="text-gray-400 text-xs border-b border-[#2f4553]">
                       <th className="text-left py-2">Type</th>
                       <th className="text-right py-2">Bet</th>
                       <th className="text-right py-2">Multi</th>
@@ -1002,7 +1002,7 @@ export default function OlympusPage() {
                     {history.slice(0, 10).map((bet) => (
                       <tr
                         key={bet.id}
-                        className="border-b border-white/5"
+                        className="border-b border-[#2f4553]/50"
                       >
                         <td className="py-2 text-gray-300">
                           {bet.gameData?.type === "free_spins_complete"
@@ -1014,7 +1014,7 @@ export default function OlympusPage() {
                         <td className="py-2 text-right text-gray-300 font-mono">
                           ${parseFloat(bet.betAmount).toFixed(2)}
                         </td>
-                        <td className="py-2 text-right text-yellow-400 font-mono">
+                        <td className="py-2 text-right text-[#00F0FF] font-mono">
                           {parseFloat(bet.multiplier).toFixed(2)}x
                         </td>
                         <td className="py-2 text-right text-gray-300 font-mono">
@@ -1041,9 +1041,9 @@ export default function OlympusPage() {
       {/* Paytable Modal */}
       {showPaytable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[#0f1528] border border-yellow-500/30 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
+          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-yellow-400">
+              <h2 className="text-xl font-bold text-[#00F0FF]">
                 Paytable
               </h2>
               <button
@@ -1056,7 +1056,7 @@ export default function OlympusPage() {
 
             {/* Premium Symbols */}
             <div className="mb-6">
-              <h3 className="text-sm font-bold text-purple-400 mb-3">
+              <h3 className="text-sm font-bold text-[#00F0FF] mb-3">
                 Premium Symbols
               </h3>
               <div className="space-y-2">
@@ -1080,7 +1080,7 @@ export default function OlympusPage() {
                 ].map(({ s, pays }) => (
                   <div
                     key={s}
-                    className="flex items-center gap-3 bg-white/5 rounded-lg p-2"
+                    className="flex items-center gap-3 bg-[#0f1923] rounded-lg p-2"
                   >
                     <span className="text-2xl">{SYMBOL_CONFIG[s].emoji}</span>
                     <div>
@@ -1120,7 +1120,7 @@ export default function OlympusPage() {
                 ].map(({ s, pays }) => (
                   <div
                     key={s}
-                    className="flex items-center gap-3 bg-white/5 rounded-lg p-2"
+                    className="flex items-center gap-3 bg-[#0f1923] rounded-lg p-2"
                   >
                     <span className="text-2xl">{SYMBOL_CONFIG[s].emoji}</span>
                     <div>
@@ -1136,14 +1136,14 @@ export default function OlympusPage() {
 
             {/* Special Symbols */}
             <div className="mb-6">
-              <h3 className="text-sm font-bold text-yellow-400 mb-3">
+              <h3 className="text-sm font-bold text-[#00F0FF] mb-3">
                 Special Symbols
               </h3>
               <div className="space-y-2">
-                <div className="flex items-center gap-3 bg-yellow-500/10 rounded-lg p-3">
+                <div className="flex items-center gap-3 bg-green-500/10 rounded-lg p-3">
                   <span className="text-2xl">⚡</span>
                   <div>
-                    <div className="text-sm font-bold text-yellow-400">
+                    <div className="text-sm font-bold text-[#00F0FF]">
                       Scatter (Zeus Lightning)
                     </div>
                     <div className="text-xs text-gray-400">
@@ -1152,10 +1152,10 @@ export default function OlympusPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 bg-purple-500/10 rounded-lg p-3">
+                <div className="flex items-center gap-3 bg-[#00F0FF]/10 rounded-lg p-3">
                   <span className="text-2xl">🔮</span>
                   <div>
-                    <div className="text-sm font-bold text-purple-400">
+                    <div className="text-sm font-bold text-[#00F0FF]">
                       Multiplier Orb
                     </div>
                     <div className="text-xs text-gray-400">

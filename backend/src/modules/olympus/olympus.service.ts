@@ -125,12 +125,10 @@ export class OlympusService {
     const spinResult = this.executeSpin(serverSeed, clientSeed, nonce, anteBet);
 
     // Calculate final payout
+    // IMPORTANT: In base game, multiplier orbs are COSMETIC ONLY
+    // They are displayed but do NOT affect the payout
+    // Multipliers only affect payouts during FREE SPINS
     let totalWin = spinResult.totalWinMultiplier * actualBet;
-
-    // Apply multiplier orbs
-    if (spinResult.totalMultiplierSum > 0 && spinResult.totalWinMultiplier > 0) {
-      totalWin = spinResult.totalWinMultiplier * spinResult.totalMultiplierSum * actualBet;
-    }
 
     // Cap at max win
     totalWin = Math.min(totalWin, actualBet * MAX_WIN_MULTIPLIER);
@@ -293,10 +291,14 @@ export class OlympusService {
     // Collect multipliers (cumulative in free spins)
     session.cumulativeMultiplier += spinResult.totalMultiplierSum;
 
-    // Calculate win with cumulative multiplier
+    // In FREE SPINS, multipliers DO apply but with a reasonable cap
+    // Formula: baseWin * max(1, cumulativeMultiplier * 0.1)
+    // This gives a small boost from multipliers without exploding payouts
     let spinWin = spinResult.totalWinMultiplier * session.betAmount;
     if (session.cumulativeMultiplier > 0 && spinResult.totalWinMultiplier > 0) {
-      spinWin = spinResult.totalWinMultiplier * session.cumulativeMultiplier * session.betAmount;
+      // Apply a dampened multiplier: each accumulated multiplier point adds 10% to the win
+      const multiplierBoost = 1 + (session.cumulativeMultiplier * 0.1);
+      spinWin = spinResult.totalWinMultiplier * Math.min(multiplierBoost, 50) * session.betAmount;
     }
 
     // Cap individual spin win
@@ -343,10 +345,10 @@ export class OlympusService {
         await tx.bet.create({
           data: {
             id: crypto.randomUUID(),
-            userId,
+            userId: session.userId,
             gameType: 'OLYMPUS',
             currency: session.currency as any,
-            betAmount: new Decimal(0), // Free spin
+            betAmount: new Decimal(0), // Free spin - no cost
             multiplier: new Decimal(totalWin > 0 ? totalWin / session.betAmount : 0),
             payout: new Decimal(totalWin),
             profit: new Decimal(profit),
@@ -355,7 +357,7 @@ export class OlympusService {
             clientSeed: session.clientSeed,
             nonce: session.nonce,
             gameData: {
-              type: 'free_spins_complete',
+              type: 'free_spin_complete',
               totalSpins: session.totalSpins,
               cumulativeMultiplier: session.cumulativeMultiplier,
               totalWin,
@@ -364,30 +366,27 @@ export class OlympusService {
           },
         });
 
-        if (totalWin > 0) {
-          await tx.transaction.create({
-            data: {
-              userId,
-              walletId: wallet.id,
-              type: 'BET',
-              status: 'CONFIRMED',
-              amount: new Decimal(0),
-              balanceBefore: currentBalance,
-              balanceAfter: newBalance,
-              externalRef: `OLYMPUS-FS-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`,
-              metadata: {
-                game: 'OLYMPUS',
-                type: 'free_spins_payout',
-                totalWin,
-                totalSpins: session.totalSpins,
-                cumulativeMultiplier: session.cumulativeMultiplier,
-              },
+        await tx.transaction.create({
+          data: {
+            userId: session.userId,
+            walletId: wallet.id,
+            type: 'BET',
+            status: 'CONFIRMED',
+            amount: new Decimal(0),
+            balanceBefore: currentBalance,
+            balanceAfter: newBalance,
+            externalRef: `OLYMPUS-FS-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`,
+            metadata: {
+              game: 'OLYMPUS',
+              type: 'free_spin_complete',
+              totalWin,
+              totalSpins: session.totalSpins,
+              cumulativeMultiplier: session.cumulativeMultiplier,
             },
-          });
-        }
+          },
+        });
       });
 
-      // Clean up session
       this.freeSpinSessions.delete(dto.sessionId);
     }
 
@@ -411,9 +410,9 @@ export class OlympusService {
   }
 
   // ============================================
-  // GET GAME STATE
+  // GAME STATE
   // ============================================
-  getState(userId: string) {
+  async getState(userId: string) {
     const session = this.getActiveSession(userId);
     if (!session) {
       return { hasActiveSession: false };
@@ -430,44 +429,53 @@ export class OlympusService {
   }
 
   // ============================================
-  // GET PAYTABLE
+  // PAYTABLE INFO
   // ============================================
   getPaytable() {
+    const symbols = SYMBOL_WEIGHTS.map((sw) => ({
+      id: sw.symbol,
+      weight: sw.weight,
+      payouts: PAYTABLE[sw.symbol] || null,
+    }));
+
     return {
-      symbols: SYMBOL_WEIGHTS.map((s) => ({
-        id: s.symbol,
-        weight: s.weight,
-        payouts: PAYTABLE[s.symbol] || null,
+      symbols,
+      multiplierValues: MULTIPLIER_VALUES.map((mv) => ({
+        value: mv.value,
+        probability: `${((mv.weight / MULTIPLIER_TOTAL_WEIGHT) * 100).toFixed(1)}%`,
       })),
-      minClusterSize: MIN_CLUSTER_SIZE,
-      multiplierValues: MULTIPLIER_VALUES.map((m) => ({
-        value: m.value,
-        probability: ((m.weight / MULTIPLIER_TOTAL_WEIGHT) * 100).toFixed(1) + '%',
-      })),
-      houseEdge: HOUSE_EDGE * 100 + '%',
-      rtp: (1 - HOUSE_EDGE) * 100 + '%',
-      maxWin: MAX_WIN_MULTIPLIER + 'x',
+      houseEdge: `${HOUSE_EDGE * 100}%`,
+      rtp: `${(1 - HOUSE_EDGE) * 100}%`,
+      maxWin: `${MAX_WIN_MULTIPLIER}x`,
       freeSpins: {
         trigger: `${SCATTERS_FOR_FREE_SPINS}+ Scatter symbols`,
         count: FREE_SPINS_COUNT,
         retrigger: FREE_SPINS_RETRIGGER,
-        feature: 'Cumulative multipliers',
+        feature: 'Cumulative multipliers (only active in free spins)',
       },
     };
   }
 
   // ============================================
-  // VERIFY A PAST SPIN
+  // VERIFY SPIN (Provably Fair)
   // ============================================
-  verify(serverSeed: string, clientSeed: string, nonce: number) {
+  verify(serverSeed: string, clientSeed: string, nonce: number, anteBet: boolean = false) {
     const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
-    const grid = this.generateGrid(serverSeed, clientSeed, nonce, false);
-    const wins = this.findClusters(grid);
+    const spinResult = this.executeSpin(serverSeed, clientSeed, nonce, anteBet);
+
     return {
       serverSeedHash,
-      grid: this.formatGrid(grid),
-      wins,
-      verified: true,
+      initialGrid: this.formatGrid(spinResult.initialGrid),
+      tumbles: spinResult.tumbles.map((t) => ({
+        grid: this.formatGrid(t.grid),
+        wins: t.wins,
+        multipliers: t.multipliers,
+        removedPositions: t.removedPositions,
+      })),
+      totalWinMultiplier: spinResult.totalWinMultiplier,
+      multiplierSum: spinResult.totalMultiplierSum,
+      scatterCount: spinResult.scatterCount,
+      freeSpinsAwarded: spinResult.freeSpinsAwarded,
     };
   }
 
