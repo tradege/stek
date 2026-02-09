@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSoundContextSafe } from '@/contexts/SoundContext';
+import config from '@/config/api';
 
 // ============ PHYSICS CONSTANTS (Tuned for premium feel) ============
 const PHYSICS = {
@@ -44,7 +45,7 @@ class SoundManager {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     } catch (e) {
-      console.warn('Web Audio API not supported');
+      // 'Web Audio API not supported');
     }
   }
 
@@ -258,7 +259,7 @@ const PlinkoGame: React.FC = () => {
     const fetchMultipliers = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000'}/games/plinko/multipliers?rows=${rows}&risk=${risk}`
+          `${config.apiUrl}/games/plinko/multipliers?rows=${rows}&risk=${risk}`
         );
         if (response.ok) {
           const data = await response.json();
@@ -269,7 +270,7 @@ const PlinkoGame: React.FC = () => {
           }
         }
       } catch (e) {
-        console.warn('Failed to fetch multipliers from server, using fallback');
+        // 'Failed to fetch multipliers from server, using fallback');
       }
       // Fallback: hardcoded multipliers (kept for offline/error resilience)
       const FALLBACK_MULTIPLIERS: Record<string, Record<number, number[]>> = {
@@ -665,7 +666,7 @@ const PlinkoGame: React.FC = () => {
     soundManager.playButtonClick();
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000'}/games/plinko/play`, {
+      const response = await fetch(`${config.apiUrl}/games/plinko/play`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -709,7 +710,7 @@ const PlinkoGame: React.FC = () => {
       ballsRef.current.push(newBall);
 
     } catch (error: any) {
-      console.error('Bet error:', error);
+      // 'Bet error:', error);
       setIsPlaying(false);
       // Stop auto-bet on error
       if (autoBetRef.current.enabled) {

@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSoundContext } from "@/contexts/SoundContext";
 import Link from "next/link";
+import config from '@/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://146.190.21.113:3000";
+const API_URL = config.apiUrl;
 
 interface MinesGameState {
   gameId: string;
@@ -58,7 +59,7 @@ export default function MinesPage() {
     if (user) checkActiveGame();
   }, [user]);
 
-  const getToken = () => localStorage.getItem("token");
+  const getToken = () => localStorage.getItem('auth_token');
 
   const checkActiveGame = async () => {
     try {

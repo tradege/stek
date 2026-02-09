@@ -4,3 +4,4 @@ dist/
 .env
 ecosystem.config.js
 query.js
+full_backup/

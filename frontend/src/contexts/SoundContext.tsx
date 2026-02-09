@@ -251,7 +251,7 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           break;
       }
     } catch (e) {
-      console.warn('Sound playback failed:', e);
+      // 'Sound playback failed:', e);
     }
   }, [isSoundActive]);
 

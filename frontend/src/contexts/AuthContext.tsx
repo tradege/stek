@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useSocket } from './SocketContext';
+import config from '@/config/api';
 
 // API Base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = config.apiUrl;
 
 // User type
 export interface User {
@@ -94,7 +95,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for balance update events from socket - update balance in real-time
   useEffect(() => {
     const handleBalanceUpdate = (event: CustomEvent<{ change: string; reason: string; newBalance?: string }>) => {
-      console.log('[Auth] Balance update event received:', event.detail);
       
       // Update balance directly in state for instant UI update
       setUser(prevUser => {
@@ -115,7 +115,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return b;
         });
         
-        console.log('[Auth] Balance updated in state:', updatedBalance);
         return { ...prevUser, balance: updatedBalance };
       });
     };
@@ -145,7 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       setError(null);
     } catch (err) {
-      console.error('[Auth] Failed to fetch user:', err);
+      // '[Auth] Failed to fetch user:', err);
       // Clear invalid token
       localStorage.removeItem('auth_token');
       setToken(null);

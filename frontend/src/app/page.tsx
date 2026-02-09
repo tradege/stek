@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import GameGrid from '@/components/lobby/GameGrid';
 import Link from 'next/link';
+import config from '@/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
 // Animated counter component
 function AnimatedCounter({ target, prefix = '', suffix = '', color }: { target: number; prefix?: string; suffix?: string; color: string }) {
@@ -69,6 +70,7 @@ const mockRecentWins = [
 ];
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true);
   const [platformStats, setPlatformStats] = useState({
     totalWagered: 0,
     gamesPlayed: 0,
@@ -93,7 +95,7 @@ export default function Home() {
           });
         }
       } catch (err) {
-        console.error('Failed to fetch platform stats:', err);
+        // 'Failed to fetch platform stats:', err);
       }
     };
     fetchStats();

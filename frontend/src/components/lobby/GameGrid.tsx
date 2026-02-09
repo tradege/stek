@@ -35,7 +35,7 @@ export default function GameGrid({ category, limit }: GameGridProps) {
         const response = await getAllGames(filters);
         setGames(response.data || []);
       } catch (err) {
-        console.error('Failed to load games:', err);
+        // 'Failed to load games:', err);
         setError('Failed to load games. Please try again later.');
       } finally {
         setLoading(false);

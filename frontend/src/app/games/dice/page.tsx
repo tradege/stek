@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSoundContext } from "@/contexts/SoundContext";
 import Link from "next/link";
+import config from '@/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://146.190.21.113:3000";
+const API_URL = config.apiUrl;
 
 interface DiceResult {
   roll: number;
@@ -37,6 +38,7 @@ export default function DicePage() {
   const { isSoundActive } = useSoundContext();
 
   // Game state
+  const [loading, setLoading] = useState(false);
   const [betAmount, setBetAmount] = useState<string>("1.00");
   const [target, setTarget] = useState<number>(50);
   const [condition, setCondition] = useState<"OVER" | "UNDER">("UNDER");
@@ -87,7 +89,7 @@ export default function DicePage() {
 
   const loadHistory = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`${API_URL}/dice/history?limit=20`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -141,7 +143,7 @@ export default function DicePage() {
     playSound(rollSoundRef.current);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`${API_URL}/dice/play`, {
         method: "POST",
         headers: {

@@ -43,7 +43,7 @@ export default function GameIframe({ url, gameName, onClose, onError }: GameIfra
         setIsFullscreen(false);
       }
     } catch (error) {
-      console.error('Fullscreen error:', error);
+      // 'Fullscreen error:', error);
     }
   };
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import config from '@/config/api';
 
 interface StatisticsModalProps {
   isOpen: boolean;
@@ -37,8 +38,8 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
   const fetchStats = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000'}/users/stats`, {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${config.apiUrl}/users/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -65,7 +66,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
         });
       }
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      // 'Failed to fetch stats:', error);
       // Use fallback data
       setStats({
         totalWager: 0,

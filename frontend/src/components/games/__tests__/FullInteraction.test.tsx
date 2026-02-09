@@ -309,7 +309,7 @@ describe('🔐 Auth Interactions', () => {
       localStorageMock.removeItem.mockClear();
 
       // Simulate logout
-      localStorage.removeItem('token');
+      localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
 
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('token');

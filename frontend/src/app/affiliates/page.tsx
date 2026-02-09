@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import config from '@/config/api';
 
 // Rank definitions with icons and colors
 const RANKS = [
@@ -84,7 +85,7 @@ export default function AffiliatesPage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
   const fetchAffiliateData = useCallback(async () => {
     if (!token) return;
@@ -117,7 +118,7 @@ export default function AffiliatesPage() {
         setLeaderboard(leaderboardData.leaderboard || []);
       }
     } catch (error) {
-      console.error('Failed to fetch affiliate data:', error);
+      // 'Failed to fetch affiliate data:', error);
     } finally {
       setLoading(false);
     }

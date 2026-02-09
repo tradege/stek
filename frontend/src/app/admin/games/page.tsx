@@ -8,8 +8,9 @@ import {
   ToggleLeft, ToggleRight, Save, RefreshCw,
   Dice1, Target, Bomb, Rocket, AlertTriangle
 } from 'lucide-react';
+import config from '@/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
 interface GameConfig {
   houseEdge: number;
@@ -93,7 +94,7 @@ export default function AdminGames() {
     fetchGameStats();
   }, [user]);
 
-  const getToken = () => localStorage.getItem('token');
+  const getToken = () => localStorage.getItem('auth_token');
 
   const fetchConfig = async () => {
     try {
@@ -106,7 +107,7 @@ export default function AdminGames() {
         setEditConfig(data.data);
       }
     } catch (err) {
-      console.error('Failed to fetch config:', err);
+      // 'Failed to fetch config:', err);
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import config from '@/config/api';
 
 interface RealStats {
   totalRealUsers: number;
@@ -27,7 +28,7 @@ interface GameConfig {
   maxBotsPerRound: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = config.apiUrl;
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -50,7 +51,7 @@ export default function AdminDashboard() {
         setStats(data);
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      // 'Failed to fetch stats:', err);
     }
   };
 
@@ -67,7 +68,7 @@ export default function AdminDashboard() {
         setConfig(result.data || result);
       }
     } catch (err) {
-      console.error('Failed to fetch config:', err);
+      // 'Failed to fetch config:', err);
     }
   };
 
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
         setConfig(result.data || result);
       }
     } catch (err) {
-      console.error('Failed to update config:', err);
+      // 'Failed to update config:', err);
       setError('Failed to update configuration');
     } finally {
       setSaving(false);

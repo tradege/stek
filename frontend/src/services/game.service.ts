@@ -1,7 +1,8 @@
+import config from '@/config/api';
 // Game Service - Frontend API Client for Games Module
 // Handles all game-related API calls
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = config.apiUrl;
 
 export interface Game {
   id: string;
@@ -113,7 +114,7 @@ export async function getAllGames(filters?: GameFilters): Promise<GamesResponse>
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching games:', error);
+    // 'Error fetching games:', error);
     throw error;
   }
 }
@@ -136,7 +137,7 @@ export async function getGameBySlug(slug: string): Promise<Game> {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching game:', error);
+    // 'Error fetching game:', error);
     throw error;
   }
 }
@@ -159,7 +160,7 @@ export async function getAllProviders(): Promise<GameProvider[]> {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching providers:', error);
+    // 'Error fetching providers:', error);
     throw error;
   }
 }
@@ -182,7 +183,7 @@ export async function getCategories(): Promise<GameCategory[]> {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    // 'Error fetching categories:', error);
     throw error;
   }
 }
@@ -212,7 +213,7 @@ export async function launchGame(slug: string, currency?: string): Promise<Launc
 
     return await response.json();
   } catch (error) {
-    console.error('Error launching game:', error);
+    // 'Error launching game:', error);
     throw error;
   }
 }
@@ -241,7 +242,7 @@ export async function getActiveSessions(): Promise<GameSession[]> {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching sessions:', error);
+    // 'Error fetching sessions:', error);
     throw error;
   }
 }
@@ -268,7 +269,7 @@ export async function closeSession(sessionId: string): Promise<void> {
       throw new Error(`Failed to close session: ${response.statusText}`);
     }
   } catch (error) {
-    console.error('Error closing session:', error);
+    // 'Error closing session:', error);
     throw error;
   }
 }

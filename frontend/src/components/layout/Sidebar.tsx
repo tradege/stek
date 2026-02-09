@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import VIPModal from '@/components/modals/VIPModal';
-import WalletModal from '@/components/modals/WalletModal';
+import WalletModal from '@/components/wallet/WalletModal';
 import StatisticsModal from '@/components/modals/StatisticsModal';
 import SettingsModal from '@/components/modals/SettingsModal';
 

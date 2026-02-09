@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
+import config from '@/config/api';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ interface DepositAddress {
   minDeposit: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const { token, refreshUser } = useAuth();
@@ -56,7 +57,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
         setDepositAddress(data);
       }
     } catch (error) {
-      console.error('Failed to fetch deposit address:', error);
+      // 'Failed to fetch deposit address:', error);
     }
   };
 

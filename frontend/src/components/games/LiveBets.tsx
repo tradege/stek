@@ -45,19 +45,15 @@ const LiveBets: React.FC = () => {
   // Listen for bet events
   useEffect(() => {
     if (!socket) {
-      console.log('[LiveBets] No socket available');
       return;
     }
 
-    console.log('[LiveBets] Setting up socket listeners');
 
     // New bet placed - listen to the broadcast event
     const handleNewBet = (data: any) => {
-      console.log('[LiveBets] Received crash:bet_placed:', data);
       
       // Make sure we have the required fields
       if (!data || !data.id) {
-        console.log('[LiveBets] Invalid bet data received:', data);
         return;
       }
 
@@ -81,11 +77,9 @@ const LiveBets: React.FC = () => {
       setBets((prev) => {
         // Check if bet already exists
         if (prev.some(b => b.id === newBet.id)) {
-          console.log('[LiveBets] Bet already exists, skipping:', newBet.id);
           return prev;
         }
         
-        console.log('[LiveBets] Adding new bet:', newBet);
         
         // Remove isNew flag after animation
         setTimeout(() => {
@@ -103,7 +97,6 @@ const LiveBets: React.FC = () => {
 
     // Cashout event
     const handleCashout = (data: { betId: string; oddsId?: string; oddsNumber?: number; oddsNumberFormatted?: string; multiplier: number; profit: number; userId?: string }) => {
-      console.log('[LiveBets] Received crash:cashout:', data);
       
       setBets((prev) =>
         prev.map((bet) => {
@@ -144,7 +137,6 @@ const LiveBets: React.FC = () => {
 
     // Round crashed - mark all active bets as lost
     const handleCrashed = (data: any) => {
-      console.log('[LiveBets] Received crash:crashed:', data);
       setBets((prev) =>
         prev.map((bet) =>
           bet.status === 'ACTIVE' ? { ...bet, status: 'LOST' as const } : bet
@@ -154,7 +146,6 @@ const LiveBets: React.FC = () => {
 
     // New round - clear bets
     const handleNewRound = () => {
-      console.log('[LiveBets] New round starting, clearing bets');
       setBets([]);
       setTotalBets(0);
       setTotalWagered(0);
@@ -162,7 +153,6 @@ const LiveBets: React.FC = () => {
 
     // Round history/initial bets
     const handleBetsHistory = (data: { bets: Bet[] }) => {
-      console.log('[LiveBets] Received bets history:', data);
       if (data.bets && Array.isArray(data.bets)) {
         setBets(data.bets.map((b) => ({ ...b, timestamp: new Date(b.timestamp) })));
       }
@@ -177,7 +167,6 @@ const LiveBets: React.FC = () => {
     // Also listen for state changes to clear on new game
     socket.on('crash:state_change', (data: { state: string }) => {
       if (data.state === 'WAITING') {
-        console.log('[LiveBets] State changed to WAITING, clearing bets');
         setBets([]);
         setTotalBets(0);
         setTotalWagered(0);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { DollarSign, TrendingUp, TrendingDown, Calculator, Users, Percent } from 'lucide-react';
+import config from '@/config/api';
 
 interface FinanceData {
   totalGGR: number;
@@ -14,7 +15,7 @@ interface FinanceData {
   rtp: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = config.apiUrl;
 
 export default function AdminFinance() {
   const { token } = useAuth();
@@ -67,7 +68,7 @@ export default function AdminFinance() {
       setLoading(false);
       setError(null);
     } catch (error: any) {
-      console.error('Failed to fetch finance stats:', error);
+      // 'Failed to fetch finance stats:', error);
       setError(error.message || 'Failed to load finance stats');
       setLoading(false);
     }

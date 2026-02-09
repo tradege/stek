@@ -5,6 +5,7 @@ import { useState, useEffect, Component, ReactNode, ErrorInfo } from 'react';
 
 import LiveBets from '@/components/games/LiveBets';
 import { useSocket } from '@/contexts/SocketContext';
+import config from '@/config/api';
 
 // Error Boundary Component to catch and display errors gracefully
 interface ErrorBoundaryProps {
@@ -27,7 +28,7 @@ class GameErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Game Error:', error, errorInfo);
+    // 'Game Error:', error, errorInfo);
   }
 
   render() {
@@ -67,7 +68,7 @@ const CrashGamePanel = dynamic(
   }
 );
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
 export default function CrashGamePage() {
   const { socket, isConnected, connectionError } = useSocket();
@@ -99,7 +100,7 @@ export default function CrashGamePage() {
           }));
         }
       } catch (err) {
-        console.error('Error handling crash event:', err);
+        // 'Error handling crash event:', err);
       }
     };
 
@@ -125,7 +126,7 @@ export default function CrashGamePage() {
           }));
         }
       } catch (err) {
-        console.error('Failed to fetch game stats:', err);
+        // 'Failed to fetch game stats:', err);
       }
     };
     fetchStats();

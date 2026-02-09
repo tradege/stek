@@ -8,8 +8,9 @@ import {
   Database, Server, Lock, Mail, Save,
   RefreshCw, CheckCircle, AlertTriangle, Eye, EyeOff
 } from 'lucide-react';
+import config from '@/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
 interface SiteSettings {
   siteName: string;
@@ -32,7 +33,7 @@ export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'system'>('general');
   const [settings, setSettings] = useState<SiteSettings>({
     siteName: 'StakePro',
-    siteUrl: 'http://146.190.21.113:3001',
+    siteUrl: '',
     supportEmail: 'support@stakepro.com',
     maintenanceMode: false,
     registrationEnabled: true,
@@ -44,6 +45,7 @@ export default function AdminSettings() {
     kycRequired: false,
     twoFactorEnabled: false,
   });
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 

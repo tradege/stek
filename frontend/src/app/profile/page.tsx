@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import config from '@/config/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://146.190.21.113:3000';
+const API_URL = config.apiUrl;
 
 interface UserStats {
   totalBets: number;
@@ -44,7 +45,7 @@ export default function ProfilePage() {
     if (user) {
       const fetchStats = async () => {
         try {
-          const token = localStorage.getItem('token');
+          const token = localStorage.getItem('auth_token');
           const res = await fetch(`${API_URL}/users/stats`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -73,7 +74,7 @@ export default function ProfilePage() {
       const fetchBets = async () => {
         setBetsLoading(true);
         try {
-          const token = localStorage.getItem('token');
+          const token = localStorage.getItem('auth_token');
           const res = await fetch(`${API_URL}/users/bets?limit=50`, {
             headers: { Authorization: `Bearer ${token}` },
           });

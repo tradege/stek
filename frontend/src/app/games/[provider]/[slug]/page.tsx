@@ -28,7 +28,7 @@ export default function GamePage() {
         const gameData = await getGameBySlug(slug);
         setGame(gameData);
       } catch (err) {
-        console.error('Error fetching game:', err);
+        // 'Error fetching game:', err);
         setError('Failed to load game details');
       } finally {
         setLoading(false);
@@ -52,7 +52,7 @@ export default function GamePage() {
       const response = await launchGame(slug);
       setGameUrl(response.url);
     } catch (err) {
-      console.error('Error launching game:', err);
+      // 'Error launching game:', err);
       alert('Failed to launch game. Please try again.');
     } finally {
       setLaunching(false);

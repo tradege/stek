@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import config from '@/config/api';
 
 interface VIPModalProps {
   isOpen: boolean;
@@ -96,9 +97,9 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
   const fetchVIPData = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (token) {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/affiliates/stats`, {
+        const response = await fetch(`${config.apiUrl}/affiliates/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -113,7 +114,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch VIP data:', error);
+      // 'Failed to fetch VIP data:', error);
     } finally {
       setIsLoading(false);
     }

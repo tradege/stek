@@ -12,6 +12,7 @@ import {
   CreditCard,
   Gamepad2
 } from 'lucide-react';
+import config from '@/config/api';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -25,7 +26,7 @@ interface DashboardStats {
   activeSessions: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = config.apiUrl;
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -73,7 +74,7 @@ export default function AdminDashboard() {
       setLoading(false);
       setError(null);
     } catch (error: any) {
-      console.error('Failed to fetch dashboard stats:', error);
+      // 'Failed to fetch dashboard stats:', error);
       setError(error.message || 'Failed to load dashboard stats');
       setLoading(false);
     }

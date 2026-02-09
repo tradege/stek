@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import config from '@/config/api';
 
 interface User {
   id: string;
@@ -14,7 +15,7 @@ interface User {
   wallets: { balance: string; currency: string }[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://146.190.21.113:3000";
+const API_URL = config.apiUrl;
 
 export default function AdminUsersPage() {
   const { user, token } = useAuth();

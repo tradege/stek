@@ -574,7 +574,7 @@ const CrashGamePanel: React.FC = () => {
       playSound('bet');
       placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
     } catch (e) {
-      console.error('Error placing bet:', e);
+      // 'Error placing bet:', e);
     }
   };
 
@@ -583,7 +583,7 @@ const CrashGamePanel: React.FC = () => {
       playSound('win');
       cashOut();
     } catch (e) {
-      console.error('Error cashing out:', e);
+      // 'Error cashing out:', e);
     }
   };
 

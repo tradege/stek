@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
+import config from '@/config/api';
 
 // Socket.io server URL
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = config.socketUrl;
 const SOCKET_NAMESPACE = '/casino';
 
 interface SocketContextType {
@@ -49,7 +50,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     connectingRef.current = false;
     
     if (socketRef.current) {
-      console.log('[Socket] Disconnecting...');
       socketRef.current.removeAllListeners();
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -65,7 +65,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const connect = useCallback((token?: string) => {
     // Prevent double connection
     if (connectingRef.current) {
-      console.log('[Socket] Already connecting, skipping...');
       return;
     }
     
@@ -74,15 +73,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     
     // If already connected with same token, skip
     if (socketRef.current?.connected && currentTokenRef.current === authToken) {
-      console.log('[Socket] Already connected with same token');
       return;
     }
     
     connectingRef.current = true;
     currentTokenRef.current = authToken;
     
-    console.log('[Socket] Connecting to:', SOCKET_URL + SOCKET_NAMESPACE);
-    console.log('[Socket] Auth token present:', !!authToken);
     
     // Prepare auth payload - STANDARDIZED FORMAT with Bearer prefix
     const authPayload = authToken ? { token: `Bearer ${authToken}` } : undefined;
@@ -102,8 +98,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     // Connection events with DEBUG logging
     newSocket.on('connect', () => {
-      console.log('[Socket] ✅ Connected! ID:', newSocket.id);
-      console.log('[Socket] Transport:', newSocket.io.engine.transport.name);
       
       if (mountedRef.current) {
         setIsConnected(true);
@@ -116,7 +110,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.log('[Socket] ❌ Disconnected:', reason);
       
       if (mountedRef.current) {
         setIsConnected(false);
@@ -128,7 +121,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('[Socket] ⚠️ Connection error:', error.message);
+      // '[Socket] ⚠️ Connection error:', error.message);
       
       if (mountedRef.current) {
         setConnectionError(error.message);
@@ -139,7 +132,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     // Authentication response - DEBUG
     newSocket.on('auth:success', (data) => {
-      console.log('[Socket] 🔐 Authenticated successfully:', data);
       if (mountedRef.current) {
         setIsAuthenticated(true);
         setConnectionError(null);
@@ -147,7 +139,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
 
     newSocket.on('auth:error', (error) => {
-      console.error('[Socket] 🔐 Auth error:', error);
+      // '[Socket] 🔐 Auth error:', error);
       // Don't disconnect on auth error - allow guest mode
       if (mountedRef.current) {
         setIsAuthenticated(false);
@@ -159,7 +151,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     });
 
     newSocket.on('auth:guest', () => {
-      console.log('[Socket] 👤 Connected as Guest (read-only mode)');
       if (mountedRef.current) {
         setIsAuthenticated(false);
       }
@@ -167,18 +158,15 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     // Room join confirmation
     newSocket.on('room:joined', (data) => {
-      console.log('[Socket] 🏠 Joined room:', data.room);
     });
 
     // Game state events - DEBUG
     newSocket.on('crash:state_change', (data) => {
-      console.log('[Socket] 🎮 State change:', data.state);
     });
 
     newSocket.on('crash:tick', (data) => {
       // Don't log every tick, just occasionally
       if (Math.random() < 0.1) {
-        console.log('[Socket] 📈 Tick:', data.multiplier);
       }
     });
 
@@ -189,7 +177,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   // Reconnect with new token - FULL DISCONNECT AND RECONNECT
   const reconnectWithToken = useCallback((token: string) => {
-    console.log('[Socket] 🔄 Reconnecting with new token...');
     
     // Store new token
     currentTokenRef.current = token;
@@ -233,7 +220,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'auth_token') {
-        console.log('[Socket] 🔑 Token changed in storage');
         if (e.newValue) {
           reconnectWithToken(e.newValue);
         } else {
