@@ -1,9 +1,17 @@
 /**
  * ============================================
- * OLYMPUS - Monte Carlo RTP Verification
+ * 🏛️ OLYMPUS - Monte Carlo RTP Verification
  * ============================================
- * Runs 10,000+ simulated spins to verify the Return To Player
- * is within acceptable range (~96% ± 3%)
+ * Runs 5,000-10,000 simulated spins to verify the Return To Player
+ * is within acceptable range (~95% ± 5%)
+ *
+ * Updated for new constants:
+ *   - FREE_SPINS_COUNT: 10 (was 15)
+ *   - FREE_SPINS_RETRIGGER: 2 (was 5)
+ *   - Scatter weight: 2 normal, 3 ante (was 3/6)
+ *   - Separate FREE_SPIN_PAYTABLE (0.48x scale)
+ *   - Base PAYTABLE (0.84x scale)
+ *   - Multiplier orbs are cosmetic only
  */
 
 import { OlympusService } from './olympus.service';
@@ -18,7 +26,7 @@ import {
   MIN_CLUSTER_SIZE,
 } from './olympus.constants';
 
-describe('Olympus Monte Carlo RTP', () => {
+describe('🏛️ Olympus Monte Carlo RTP', () => {
   let service: OlympusService;
   let mockPrisma: any;
 
@@ -102,9 +110,7 @@ describe('Olympus Monte Carlo RTP', () => {
     console.log(`House Profit: $${houseProfit.toFixed(2)}`);
 
     // Over 10k spins, house should be profitable
-    // (with 4% edge, expected profit = 400, but variance exists)
-    expect(houseProfit).toBeGreaterThan(-500); // Allow some variance
-    // RTP should be < 1.0 on average
+    expect(houseProfit).toBeGreaterThan(-500);
     expect(rtp).toBeLessThan(1.05);
   }, 300000); // 5 minute timeout
 
@@ -146,10 +152,10 @@ describe('Olympus Monte Carlo RTP', () => {
       (service as any).freeSpinSessions.clear();
     }
 
-    // Expected scatter frequency: weight 3 / total 133 = 2.26% per cell
-    // With 30 cells: ~0.68 scatters per spin
+    // Expected scatter frequency: weight 2 / total 132 = 1.52% per cell
+    // With 30 cells: ~0.45 scatters per spin
     const avgScatters = totalScatters / N;
-    const expectedAvg = (3 / TOTAL_WEIGHT) * GRID_SIZE;
+    const expectedAvg = (2 / TOTAL_WEIGHT) * GRID_SIZE;
 
     console.log(`\nAvg Scatters per spin: ${avgScatters.toFixed(3)} (expected: ${expectedAvg.toFixed(3)})`);
 

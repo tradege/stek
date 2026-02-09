@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import * as crypto from 'crypto';
@@ -20,6 +20,7 @@ import {
   ANTE_SYMBOL_WEIGHTS,
   ANTE_TOTAL_WEIGHT,
   PAYTABLE,
+  FREE_SPIN_PAYTABLE,
   MIN_CLUSTER_SIZE,
   MULTIPLIER_VALUES,
   MULTIPLIER_TOTAL_WEIGHT,
@@ -82,7 +83,7 @@ interface FreeSpinSession {
   anteBet: boolean;
   spinsRemaining: number;
   totalSpins: number;
-  cumulativeMultiplier: number; // Multipliers accumulate across free spins
+  cumulativeMultiplier: number; // Multipliers accumulate across free spins (cosmetic)
   totalWin: number;
   serverSeed: string;
   clientSeed: string;
@@ -121,13 +122,11 @@ export class OlympusService {
     const clientSeed = crypto.randomBytes(16).toString('hex');
     const nonce = 0;
 
-    // Execute the spin
-    const spinResult = this.executeSpin(serverSeed, clientSeed, nonce, anteBet);
+    // Execute the spin (base game uses PAYTABLE)
+    const spinResult = this.executeSpin(serverSeed, clientSeed, nonce, anteBet, false);
 
     // Calculate final payout
-    // IMPORTANT: In base game, multiplier orbs are COSMETIC ONLY
-    // They are displayed but do NOT affect the payout
-    // Multipliers only affect payouts during FREE SPINS
+    // Multiplier orbs are COSMETIC ONLY in base game
     let totalWin = spinResult.totalWinMultiplier * actualBet;
 
     // Cap at max win
@@ -280,26 +279,22 @@ export class OlympusService {
       throw new BadRequestException('No free spins remaining');
     }
 
-    // Execute the free spin
+    // Execute the free spin (uses FREE_SPIN_PAYTABLE for reduced payouts)
     const spinResult = this.executeSpin(
       session.serverSeed,
       session.clientSeed,
       session.nonce,
       session.anteBet,
+      true, // isFreeSpin = true -> uses FREE_SPIN_PAYTABLE
     );
 
-    // Collect multipliers (cumulative in free spins)
+    // Collect multipliers (cumulative in free spins - COSMETIC ONLY)
+    // Multipliers are displayed for visual excitement but do NOT affect payouts
     session.cumulativeMultiplier += spinResult.totalMultiplierSum;
 
-    // In FREE SPINS, multipliers DO apply but with a reasonable cap
-    // Formula: baseWin * max(1, cumulativeMultiplier * 0.1)
-    // This gives a small boost from multipliers without exploding payouts
+    // In FREE SPINS, payouts use the FREE_SPIN_PAYTABLE (already reduced)
+    // NO multiplier boost is applied - the reduced paytable IS the balance mechanism
     let spinWin = spinResult.totalWinMultiplier * session.betAmount;
-    if (session.cumulativeMultiplier > 0 && spinResult.totalWinMultiplier > 0) {
-      // Apply a dampened multiplier: each accumulated multiplier point adds 10% to the win
-      const multiplierBoost = 1 + (session.cumulativeMultiplier * 0.1);
-      spinWin = spinResult.totalWinMultiplier * Math.min(multiplierBoost, 50) * session.betAmount;
-    }
 
     // Cap individual spin win
     spinWin = Math.min(spinWin, session.betAmount * MAX_WIN_MULTIPLIER);
@@ -451,7 +446,7 @@ export class OlympusService {
         trigger: `${SCATTERS_FOR_FREE_SPINS}+ Scatter symbols`,
         count: FREE_SPINS_COUNT,
         retrigger: FREE_SPINS_RETRIGGER,
-        feature: 'Cumulative multipliers (only active in free spins)',
+        feature: 'Cumulative multipliers (visual effect during free spins)',
       },
     };
   }
@@ -461,7 +456,7 @@ export class OlympusService {
   // ============================================
   verify(serverSeed: string, clientSeed: string, nonce: number, anteBet: boolean = false) {
     const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
-    const spinResult = this.executeSpin(serverSeed, clientSeed, nonce, anteBet);
+    const spinResult = this.executeSpin(serverSeed, clientSeed, nonce, anteBet, false);
 
     return {
       serverSeedHash,
@@ -509,16 +504,21 @@ export class OlympusService {
 
   /**
    * Execute a full spin with tumble mechanic
+   * @param isFreeSpin - if true, uses FREE_SPIN_PAYTABLE for reduced payouts
    */
   private executeSpin(
     serverSeed: string,
     clientSeed: string,
     nonce: number,
     anteBet: boolean,
+    isFreeSpin: boolean = false,
   ): SpinResult {
     let positionIndex = 0; // Tracks the HMAC position index for Provably Fair
     const allMultipliers: number[] = [];
     const tumbles: TumbleResult[] = [];
+
+    // Select the appropriate paytable
+    const activePaytable = isFreeSpin ? FREE_SPIN_PAYTABLE : PAYTABLE;
 
     // Generate initial grid
     let grid = this.generateGrid(serverSeed, clientSeed, nonce, anteBet, positionIndex);
@@ -538,7 +538,7 @@ export class OlympusService {
     const MAX_TUMBLES = 50; // Safety limit
 
     while (tumbleIteration < MAX_TUMBLES) {
-      const wins = this.findClusters(grid);
+      const wins = this.findClusters(grid, activePaytable);
       if (wins.length === 0) break;
 
       // Calculate win from this tumble
@@ -623,8 +623,9 @@ export class OlympusService {
 
   /**
    * Find all winning clusters (8+ matching symbols)
+   * Uses the provided paytable (base game or free spin)
    */
-  private findClusters(grid: GridCell[]): ClusterWin[] {
+  private findClusters(grid: GridCell[], paytable: Record<string, Record<number, number>>): ClusterWin[] {
     const wins: ClusterWin[] = [];
     const symbolCounts: Map<OlympusSymbol, number[]> = new Map();
 
@@ -642,7 +643,7 @@ export class OlympusService {
     // Check each symbol for cluster wins
     for (const [symbol, positions] of symbolCounts) {
       if (positions.length >= MIN_CLUSTER_SIZE) {
-        const payoutTable = PAYTABLE[symbol];
+        const payoutTable = paytable[symbol];
         if (!payoutTable) continue;
 
         // Find the highest applicable payout

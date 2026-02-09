@@ -5,16 +5,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSoundContextSafe } from '@/contexts/SoundContext';
 import config from '@/config/api';
 
-// ============ PHYSICS CONSTANTS (Tuned for premium feel) ============
+// ============ PHYSICS CONSTANTS (Tuned for premium feel + anti-stuck) ============
 const PHYSICS = {
-  GRAVITY: 0.6,           // Heavier feel (was 0.4)
-  BOUNCE_FACTOR: 0.7,     // Slightly less bouncy for realism
-  FRICTION: 0.985,        // Air resistance (was 0.99)
+  GRAVITY: 0.6,           // Heavier feel
+  BOUNCE_FACTOR: 0.65,    // Slightly less bouncy to prevent trapping
+  FRICTION: 0.985,        // Air resistance
   BALL_RADIUS: 10,
   PIN_RADIUS: 5,
   TRAIL_LENGTH: 14,
-  JITTER: 1.8,
+  JITTER: 2.0,            // Slightly more jitter to prevent stuck states
   TERMINAL_VELOCITY: 14,
+  // Anti-stuck parameters
+  MIN_VELOCITY: 0.5,      // Minimum velocity before anti-stuck kicks in
+  STUCK_FRAMES: 15,       // Frames of low velocity before forcing movement
+  MAX_FALL_TIME: 6000,    // Maximum ms before force-landing the ball (6 seconds)
+  RESCUE_FORCE: 3.0,      // Force applied to rescue stuck balls
 };
 
 // ============ VISUAL CONSTANTS ============
@@ -45,7 +50,7 @@ class SoundManager {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     } catch (e) {
-      // 'Web Audio API not supported');
+      // Web Audio API not supported
     }
   }
 
@@ -198,7 +203,11 @@ interface Ball {
   profit: number;
   startTime: number;
   lastPinHit: number;
-  resultRevealed: boolean; // NEW: Track if result has been shown to user
+  resultRevealed: boolean;
+  // Anti-stuck tracking
+  stuckFrames: number;
+  lastY: number;
+  lastX: number;
 }
 
 interface AutoBetConfig {
@@ -273,7 +282,7 @@ const PlinkoGame: React.FC = () => {
           }
         }
       } catch (e) {
-        // 'Failed to fetch multipliers from server, using fallback');
+        // Failed to fetch multipliers from server, using fallback
       }
       // Fallback: hardcoded multipliers (kept for offline/error resilience)
       const FALLBACK_MULTIPLIERS: Record<string, Record<number, number[]>> = {
@@ -492,7 +501,58 @@ const PlinkoGame: React.FC = () => {
     }
   }, [getPinPositions, multipliers, numBuckets, rows, highlightedBucket, lastResult, betAmount, risk, getBucketColor, getBucketGlow]);
 
-  // ============ PHYSICS UPDATE WITH TRIANGULAR BOUNDARIES & EVENT-DRIVEN REVEAL ============
+  // ============ FORCE LAND BALL (used by anti-stuck and timeout) ============
+  const forceLandBall = useCallback((ball: Ball, startX: number, bucketWidth: number) => {
+    ball.landed = true;
+    ball.bucketIndex = ball.targetBucketIndex >= 0 ? ball.targetBucketIndex : Math.max(0, Math.min(numBuckets - 1, Math.floor((ball.x - startX) / bucketWidth)));
+    ball.x = startX + (ball.bucketIndex + 0.5) * bucketWidth;
+
+    soundManager.playBucketLand(ball.multiplier);
+    setHighlightedBucket(ball.bucketIndex);
+    setTimeout(() => setHighlightedBucket(null), 2000);
+
+    if (!ball.resultRevealed) {
+      ball.resultRevealed = true;
+      setLastResult({ multiplier: ball.multiplier, payout: ball.payout });
+      setHistory(prev => [
+        { multiplier: ball.multiplier, payout: ball.payout, isWin: ball.payout > betAmount },
+        ...prev.slice(0, 19),
+      ]);
+      if (ball.payout > betAmount) {
+        soundManager.playWin(ball.multiplier >= 50);
+      } else {
+        soundManager.playLose();
+      }
+      refreshUser();
+      activeBallsRef.current = Math.max(0, activeBallsRef.current - 1);
+      setActiveBalls(activeBallsRef.current);
+      if (activeBallsRef.current === 0) {
+        setIsPlaying(false);
+      }
+
+      // Auto-bet logic
+      const currentAutoBet = autoBetRef.current;
+      if (currentAutoBet.enabled && currentAutoBet.betsRemaining > 0) {
+        const newProfit = currentAutoBet.totalProfit + ball.profit;
+        const shouldStop =
+          (currentAutoBet.stopOnWin && ball.profit > 0 && newProfit >= currentAutoBet.stopOnWinAmount) ||
+          (currentAutoBet.stopOnLoss && ball.profit < 0 && Math.abs(newProfit) >= currentAutoBet.stopOnLossAmount);
+
+        if (shouldStop || currentAutoBet.betsRemaining <= 1) {
+          setAutoBet(prev => ({ ...prev, enabled: false, betsRemaining: 0, totalProfit: newProfit }));
+        } else {
+          setAutoBet(prev => ({
+            ...prev,
+            betsRemaining: prev.betsRemaining - 1,
+            totalProfit: newProfit,
+          }));
+          setTimeout(() => placeBetInternal(), 800);
+        }
+      }
+    }
+  }, [numBuckets, betAmount, refreshUser]);
+
+  // ============ PHYSICS UPDATE WITH ANTI-STUCK MECHANISM ============
   const updatePhysics = useCallback(() => {
     const pins = getPinPositions();
     const bucketY = 60 + rows * PIN_GAP + 25;
@@ -500,13 +560,21 @@ const PlinkoGame: React.FC = () => {
     const bucketWidth = totalWidth / numBuckets;
     const startX = CANVAS_WIDTH / 2 - totalWidth / 2;
     const centerX = CANVAS_WIDTH / 2;
-    const startY = 60; // First row of pins Y position
+    const startY = 60;
+    const now = Date.now();
 
     ballsRef.current = ballsRef.current.filter(ball => {
       if (ball.landed) return false;
 
+      // ===== TIMEOUT SAFETY: Force-land after MAX_FALL_TIME =====
+      const elapsed = now - ball.startTime;
+      if (elapsed > PHYSICS.MAX_FALL_TIME) {
+        forceLandBall(ball, startX, bucketWidth);
+        return false;
+      }
+
       // Trail
-      ball.trail.push({ x: ball.x, y: ball.y, time: Date.now() });
+      ball.trail.push({ x: ball.x, y: ball.y, time: now });
       if (ball.trail.length > PHYSICS.TRAIL_LENGTH) ball.trail.shift();
 
       // Gravity with terminal velocity
@@ -515,7 +583,39 @@ const PlinkoGame: React.FC = () => {
       // Air resistance / friction
       ball.vx *= PHYSICS.FRICTION;
 
+      // ===== ANTI-STUCK DETECTION =====
+      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+      const moved = Math.abs(ball.y - ball.lastY) + Math.abs(ball.x - ball.lastX);
+      
+      if (speed < PHYSICS.MIN_VELOCITY || moved < 0.3) {
+        ball.stuckFrames++;
+      } else {
+        ball.stuckFrames = 0;
+      }
+
+      // If stuck for too many frames, apply rescue force
+      if (ball.stuckFrames > PHYSICS.STUCK_FRAMES) {
+        // Push ball downward and to a random side
+        ball.vy = PHYSICS.RESCUE_FORCE;
+        ball.vx = (Math.random() - 0.5) * PHYSICS.RESCUE_FORCE * 2;
+        // Push ball away from any nearby pin
+        pins.forEach(pin => {
+          const dx = ball.x - pin.x;
+          const dy = ball.y - pin.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < PHYSICS.BALL_RADIUS + PHYSICS.PIN_RADIUS + 5) {
+            ball.x += (dx / dist) * 8;
+            ball.y += (dy / dist) * 8;
+          }
+        });
+        ball.stuckFrames = 0;
+      }
+
+      ball.lastX = ball.x;
+      ball.lastY = ball.y;
+
       // Pin collisions
+      let hitPin = false;
       pins.forEach(pin => {
         const dx = ball.x - pin.x;
         const dy = ball.y - pin.y;
@@ -523,16 +623,24 @@ const PlinkoGame: React.FC = () => {
         const minDist = PHYSICS.BALL_RADIUS + PHYSICS.PIN_RADIUS;
 
         if (dist < minDist && dist > 0) {
+          hitPin = true;
           const angle = Math.atan2(dy, dx);
           const overlap = minDist - dist;
-          ball.x += Math.cos(angle) * overlap * 1.2;
-          ball.y += Math.sin(angle) * overlap * 1.2;
+          
+          // Push ball out of pin with extra margin to prevent re-entry
+          ball.x += Math.cos(angle) * (overlap + 2);
+          ball.y += Math.sin(angle) * (overlap + 2);
 
           const normalX = Math.cos(angle);
           const normalY = Math.sin(angle);
           const dotProduct = ball.vx * normalX + ball.vy * normalY;
           ball.vx -= 2 * dotProduct * normalX * PHYSICS.BOUNCE_FACTOR;
           ball.vy -= 2 * dotProduct * normalY * PHYSICS.BOUNCE_FACTOR;
+
+          // Ensure ball always has minimum downward velocity after pin hit
+          if (ball.vy < 1.0) {
+            ball.vy = 1.0;
+          }
 
           // Controlled jitter
           ball.vx += (Math.random() - 0.5) * PHYSICS.JITTER;
@@ -545,7 +653,6 @@ const PlinkoGame: React.FC = () => {
           }
 
           // Throttled pin hit sound
-          const now = Date.now();
           if (now - ball.lastPinHit > 50) {
             soundManager.playPinHit();
             ball.lastPinHit = now;
@@ -558,105 +665,41 @@ const PlinkoGame: React.FC = () => {
       ball.y += ball.vy;
 
       // ===== TRIANGULAR BOUNDARY COLLISION =====
-      // Calculate the dynamic boundary based on Y position
-      // The triangle starts narrow at the top and widens as Y increases
-      const progress = Math.max(0, (ball.y - startY) / (bucketY - startY)); // 0 at top, 1 at bottom
-      const topHalfWidth = PIN_GAP * 1.5; // Width at the top (first row has 3 pins)
-      const bottomHalfWidth = totalWidth / 2 + PHYSICS.BALL_RADIUS; // Width at the bottom
+      const progress = Math.max(0, (ball.y - startY) / (bucketY - startY));
+      const topHalfWidth = PIN_GAP * 1.5;
+      const bottomHalfWidth = totalWidth / 2 + PHYSICS.BALL_RADIUS;
       const currentHalfWidth = topHalfWidth + (bottomHalfWidth - topHalfWidth) * progress;
 
       // Left triangle wall
       if (ball.x < centerX - currentHalfWidth) {
         ball.x = centerX - currentHalfWidth;
         ball.vx = Math.abs(ball.vx) * 0.5;
-        ball.x += 2; // Push in slightly
+        ball.x += 2;
       }
       // Right triangle wall
       if (ball.x > centerX + currentHalfWidth) {
         ball.x = centerX + currentHalfWidth;
         ball.vx = -Math.abs(ball.vx) * 0.5;
-        ball.x -= 2; // Push in slightly
+        ball.x -= 2;
       }
 
       // ===== MAGNET GUIDANCE: Ensure ball lands on correct backend bucket =====
-      // As ball approaches the bottom (last 30% of travel), gently steer toward target bucket
       if (progress > 0.7 && ball.targetBucketIndex >= 0) {
         const targetX = startX + (ball.targetBucketIndex + 0.5) * bucketWidth;
         const dx = targetX - ball.x;
-        // Strength increases as ball gets closer to bottom (0 at 70%, full at 100%)
-        const magnetStrength = (progress - 0.7) / 0.3; // 0 to 1
+        const magnetStrength = (progress - 0.7) / 0.3;
         ball.vx += dx * 0.08 * magnetStrength;
       }
 
-      // ===== EVENT-DRIVEN BUCKET LANDING =====
+      // ===== BUCKET LANDING =====
       if (ball.y >= bucketY - PHYSICS.BALL_RADIUS) {
-        ball.landed = true;
-        // Snap ball X to the correct backend bucket center for visual consistency
-        ball.bucketIndex = ball.targetBucketIndex >= 0 ? ball.targetBucketIndex : Math.max(0, Math.min(numBuckets - 1, Math.floor((ball.x - startX) / bucketWidth)));
-        // Snap ball position to bucket center so animation matches result
-        ball.x = startX + (ball.bucketIndex + 0.5) * bucketWidth;
-
-        // Play bucket land sound
-        soundManager.playBucketLand(ball.multiplier);
-
-        // Trigger bucket highlight
-        setHighlightedBucket(ball.bucketIndex);
-        setTimeout(() => setHighlightedBucket(null), 2000);
-
-        // ===== REVEAL RESULT ONLY NOW (Event-Driven) =====
-        if (!ball.resultRevealed) {
-          ball.resultRevealed = true;
-
-          // Update UI with result
-          setLastResult({ multiplier: ball.multiplier, payout: ball.payout });
-          setHistory(prev => [
-            { multiplier: ball.multiplier, payout: ball.payout, isWin: ball.payout > betAmount },
-            ...prev.slice(0, 19), // Keep 20 items in history
-          ]);
-
-          // Play win/lose sound
-          if (ball.payout > betAmount) {
-            soundManager.playWin(ball.multiplier >= 50);
-          } else {
-            soundManager.playLose();
-          }
-
-          // NOW refresh balance from server
-          refreshUser();
-          activeBallsRef.current = Math.max(0, activeBallsRef.current - 1);
-          setActiveBalls(activeBallsRef.current);
-          if (activeBallsRef.current === 0) {
-            setIsPlaying(false);
-          }
-
-          // Auto-bet: trigger next bet if enabled
-          const currentAutoBet = autoBetRef.current;
-          if (currentAutoBet.enabled && currentAutoBet.betsRemaining > 0) {
-            const newProfit = currentAutoBet.totalProfit + ball.profit;
-            const shouldStop =
-              (currentAutoBet.stopOnWin && ball.profit > 0 && newProfit >= currentAutoBet.stopOnWinAmount) ||
-              (currentAutoBet.stopOnLoss && ball.profit < 0 && Math.abs(newProfit) >= currentAutoBet.stopOnLossAmount);
-
-            if (shouldStop || currentAutoBet.betsRemaining <= 1) {
-              setAutoBet(prev => ({ ...prev, enabled: false, betsRemaining: 0, totalProfit: newProfit }));
-            } else {
-              setAutoBet(prev => ({
-                ...prev,
-                betsRemaining: prev.betsRemaining - 1,
-                totalProfit: newProfit,
-              }));
-              // Schedule next auto-bet with a small delay
-              setTimeout(() => placeBetInternal(), 800);
-            }
-          }
-        }
-
+        forceLandBall(ball, startX, bucketWidth);
         return false;
       }
 
       return true;
     });
-  }, [getPinPositions, rows, numBuckets, betAmount, refreshUser]);
+  }, [getPinPositions, rows, numBuckets, betAmount, refreshUser, forceLandBall]);
 
   // Animation loop
   useEffect(() => {
@@ -711,7 +754,7 @@ const PlinkoGame: React.FC = () => {
       // Play ball drop sound
       soundManager.playBallDrop();
 
-      // Create ball with result data attached (NO setTimeout for reveal!)
+      // Create ball with result data attached + anti-stuck tracking
       const newBall: Ball = {
         x: CANVAS_WIDTH / 2 + (Math.random() - 0.5) * 10,
         y: 30,
@@ -722,19 +765,22 @@ const PlinkoGame: React.FC = () => {
         path: result.path,
         landed: false,
         bucketIndex: -1,
-        targetBucketIndex: result.bucketIndex, // Backend's correct bucket
+        targetBucketIndex: result.bucketIndex,
         multiplier: result.multiplier,
         payout: result.payout,
         profit: result.profit,
         startTime: Date.now(),
         lastPinHit: 0,
-        resultRevealed: false, // Will be set to true ONLY when ball hits bucket
+        resultRevealed: false,
+        // Anti-stuck tracking
+        stuckFrames: 0,
+        lastY: 30,
+        lastX: CANVAS_WIDTH / 2,
       };
 
       ballsRef.current.push(newBall);
 
     } catch (error: any) {
-      // 'Bet error:', error);
       activeBallsRef.current = Math.max(0, activeBallsRef.current - 1);
       setActiveBalls(activeBallsRef.current);
       if (activeBallsRef.current === 0) {
@@ -744,7 +790,6 @@ const PlinkoGame: React.FC = () => {
       if (autoBetRef.current.enabled) {
         setAutoBet(prev => ({ ...prev, enabled: false, betsRemaining: 0 }));
       }
-      // Show toast-style error instead of alert
       setLastResult(null);
       alert(error.message || 'Failed to place bet');
     }
@@ -756,7 +801,6 @@ const PlinkoGame: React.FC = () => {
       alert('Please login to play');
       return;
     }
-    // Multi-ball: allow new bets while balls are falling (up to 10)
     if (activeBallsRef.current >= 10) return;
     await placeBetInternal();
   };
@@ -764,10 +808,8 @@ const PlinkoGame: React.FC = () => {
   // Auto-bet start/stop
   const toggleAutoBet = () => {
     if (autoBet.enabled) {
-      // Stop auto-bet
       setAutoBet(prev => ({ ...prev, enabled: false, betsRemaining: 0 }));
     } else {
-      // Start auto-bet
       setAutoBet(prev => ({
         ...prev,
         enabled: true,
@@ -804,7 +846,7 @@ const PlinkoGame: React.FC = () => {
               <h2 className="text-xl sm:text-2xl font-bold text-white">Plinko</h2>
             </div>
             <div className="flex items-center gap-2">
-              {/* Sound Toggle Button - synced with global Settings */}
+              {/* Sound Toggle Button */}
               <button
                 onClick={toggleGameSound}
                 className={`p-2 rounded-lg transition-all ${

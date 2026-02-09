@@ -1,6 +1,6 @@
 /**
  * ============================================
- * OLYMPUS CONTROLLER - Unit Tests
+ * 🏛️ OLYMPUS CONTROLLER - Unit Tests
  * ============================================
  * Tests: Route handling, Auth guards, DTO validation, Response format
  */
@@ -10,7 +10,7 @@ import { OlympusController } from './olympus.controller';
 import { OlympusService } from './olympus.service';
 import { BadRequestException } from '@nestjs/common';
 
-describe('OlympusController', () => {
+describe('🏛️ OlympusController', () => {
   let controller: OlympusController;
   let service: OlympusService;
 
@@ -37,8 +37,8 @@ describe('OlympusController', () => {
     tumbles: [],
     spinWin: 3.0,
     cumulativeMultiplier: 5,
-    spinsRemaining: 10,
-    totalSpins: 15,
+    spinsRemaining: 8,
+    totalSpins: 10,
     totalWin: 20.0,
     isComplete: false,
     scatterCount: 1,
@@ -55,8 +55,16 @@ describe('OlympusController', () => {
             spin: jest.fn().mockResolvedValue(mockSpinResult),
             freeSpin: jest.fn().mockResolvedValue(mockFreeSpinResult),
             getState: jest.fn().mockReturnValue({ hasActiveSession: false }),
-            getPaytable: jest.fn().mockReturnValue({ paytable: {}, symbols: [] }),
-            verify: jest.fn().mockReturnValue({ grid: [], serverSeedHash: 'hash' }),
+            getPaytable: jest.fn().mockReturnValue({
+              paytable: {},
+              symbols: [],
+              freeSpins: { count: 10, retrigger: 2 },
+              multiplierValues: [],
+              rtp: 0.96,
+              houseEdge: 0.04,
+              maxWin: 5000,
+            }),
+            verify: jest.fn().mockReturnValue({ initialGrid: [], serverSeedHash: 'hash', tumbles: [] }),
             getHistory: jest.fn().mockResolvedValue([]),
           },
         },
@@ -159,16 +167,17 @@ describe('OlympusController', () => {
       expect(service.getPaytable).toHaveBeenCalled();
     });
 
-    it('should return paytable data', () => {
+    it('should return paytable data with free spins info', () => {
       const result = controller.getPaytable();
 
       expect(result).toHaveProperty('paytable');
       expect(result).toHaveProperty('symbols');
+      expect(result).toHaveProperty('freeSpins');
+      expect(result.freeSpins.count).toBe(10);
+      expect(result.freeSpins.retrigger).toBe(2);
     });
 
     it('should not require authentication', () => {
-      // getPaytable has no @UseGuards decorator
-      // This test verifies it can be called without a request object
       expect(() => controller.getPaytable()).not.toThrow();
     });
   });
@@ -196,7 +205,7 @@ describe('OlympusController', () => {
 
       const result = controller.verify(body);
 
-      expect(result).toHaveProperty('grid');
+      expect(result).toHaveProperty('initialGrid');
       expect(result).toHaveProperty('serverSeedHash');
     });
   });

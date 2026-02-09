@@ -1,19 +1,15 @@
 /**
  * ============================================
- * OLYMPUS - Frontend-Backend Consistency Test
+ * 🏛️ OLYMPUS - Frontend-Backend Consistency Test
  * ============================================
  * Verifies that the backend's grid, tumble, and payout data
  * is internally consistent, ensuring the frontend displays
  * correct results.
  *
- * Tests:
- * - Grid dimensions (6 columns × 5 rows)
- * - Tumble chain consistency (each tumble has valid grid)
- * - Payout matches win calculation
- * - Scatter count matches actual scatters in grid
- * - Free spins awarded when 4+ scatters
- * - Multiplier sum is consistent
- * - Provably fair fields present
+ * Updated for new constants:
+ *   - FREE_SPINS_COUNT: 10 (was 15)
+ *   - Separate FREE_SPIN_PAYTABLE
+ *   - Multiplier orbs cosmetic only
  */
 
 import { OlympusService } from './olympus.service';
@@ -32,10 +28,7 @@ afterAll(() => {
   Date.now = originalDateNow;
 });
 
-// Clear free spin sessions between tests
-const freeSpinSessions = new Map();
-
-describe('Olympus Frontend-Backend Consistency', () => {
+describe('🏛️ Olympus Frontend-Backend Consistency', () => {
   let service: OlympusService;
   let mockPrisma: any;
 
@@ -57,7 +50,6 @@ describe('Olympus Frontend-Backend Consistency', () => {
     };
 
     service = new OlympusService(mockPrisma);
-    // Clear any active free spin sessions
     if ((service as any).freeSpinSessions) {
       (service as any).freeSpinSessions.clear();
     }
@@ -72,7 +64,6 @@ describe('Olympus Frontend-Backend Consistency', () => {
 
       expect(result.initialGrid).toBeDefined();
       expect(Array.isArray(result.initialGrid)).toBe(true);
-      // Grid is returned as rows (5 rows × 6 columns)
       expect(result.initialGrid.length).toBe(5);
       for (const row of result.initialGrid) {
         expect(Array.isArray(row)).toBe(true);
@@ -175,7 +166,6 @@ describe('Olympus Frontend-Backend Consistency', () => {
         const result = await service.spin(userId, { betAmount: 1 });
 
         if (result.tumbles && result.tumbles.length > 0) {
-          // Each tumble should have wins
           for (const tumble of result.tumbles) {
             expect(tumble.wins).toBeDefined();
           }
@@ -196,7 +186,6 @@ describe('Olympus Frontend-Backend Consistency', () => {
         const userId = `scatter-${i}`;
         const result = await service.spin(userId, { betAmount: 1 });
 
-        // Count scatters in the initial grid
         let scatterCount = 0;
         for (const row of result.initialGrid) {
           for (const cell of row) {
@@ -206,8 +195,6 @@ describe('Olympus Frontend-Backend Consistency', () => {
           }
         }
 
-        // scatterCount from backend may include scatters found in tumbles too
-        // so it can be >= the initial grid scatter count
         expect(result.scatterCount).toBeGreaterThanOrEqual(scatterCount);
         if ((service as any).freeSpinSessions) {
           (service as any).freeSpinSessions.clear();
@@ -256,7 +243,7 @@ describe('Olympus Frontend-Backend Consistency', () => {
       });
 
       expect(result.anteBet).toBe(true);
-      expect(result.betAmount).toBe(12.5); // 10 × 1.25
+      expect(result.betAmount).toBe(12.5);
     });
 
     it('should charge normal amount when anteBet is false', async () => {
