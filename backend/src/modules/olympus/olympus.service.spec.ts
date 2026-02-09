@@ -679,6 +679,7 @@ describe('OlympusService', () => {
     it('should NOT affect base game payout (cosmetic only)', async () => {
       // In base game, totalWin = totalWinMultiplier * bet (no multiplier applied)
       for (let i = 0; i < 20; i++) {
+        (service as any).freeSpinSessions.clear();
         const result = await service.spin(testUserId, { betAmount: 1 });
         // totalWin should be totalMultiplier * betAmount (within rounding)
         if (result.totalWin > 0 && result.totalWin < MAX_WIN_MULTIPLIER) {
