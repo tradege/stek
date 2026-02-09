@@ -12,6 +12,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { PlinkoModule } from './modules/plinko/plinko.module';
 import { DiceModule } from './modules/dice/dice.module';
 import { MinesModule } from './modules/mines/mines.module';
+import { OlympusModule } from './modules/olympus/olympus.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { GamesModule } from './modules/games/games.module';
 import { UsersModule } from './modules/users/users.module';
@@ -50,6 +51,7 @@ import { UsersModule } from './modules/users/users.module';
     PlinkoModule,
     DiceModule,
     MinesModule,
+    OlympusModule,
     
     // Bot module (Ghost Protocol - Traffic Bots)
     BotModule,

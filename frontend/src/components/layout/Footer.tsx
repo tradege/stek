@@ -33,6 +33,7 @@ const Footer: React.FC = () => {
               <li><Link href="/games/plinko" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Plinko</Link></li>
               <li><Link href="/games/dice" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Dice</Link></li>
               <li><Link href="/games/mines" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Mines</Link></li>
+              <li><Link href="/games/olympus" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Olympus</Link></li>
               <li><Link href="/sports" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Sports</Link></li>
             </ul>
           </div>

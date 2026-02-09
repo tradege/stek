@@ -380,6 +380,7 @@ enum GameType {
   BLACKJACK
   ROULETTE
   BACCARAT
+  OLYMPUS
   EXTERNAL  // For external provider games
 }
 
