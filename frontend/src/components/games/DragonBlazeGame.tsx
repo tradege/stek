@@ -916,29 +916,31 @@ function createDragonState(baseY: number, zDepth: number, seed: number): DragonS
 function updateDragonFlight(dragon: DragonState, perlin: PerlinNoise1D, dt: number, globalTime: number, canvasH: number) {
   if (dragon.isFalling || dragon.isGone) return;
   
-  dragon.flightPhase += dt * 0.8;
+  dragon.flightPhase += dt * 1.0;
   
-  // Perlin noise for organic movement
-  const noiseY = perlin.noise(globalTime * 0.004 + dragon.perlinSeedY) * 25;
-  const noiseX = perlin.noise(globalTime * 0.003 + dragon.perlinSeedX) * 8;
+  // Perlin noise for organic movement — VERY large amplitude for dramatic independent paths
+  const noiseY = perlin.noise(globalTime * 0.008 + dragon.perlinSeedY) * 65;
+  const noiseX = perlin.noise(globalTime * 0.007 + dragon.perlinSeedX) * 35;
   
-  // Sine wave for gentle bobbing
-  const sineY = Math.sin(dragon.flightPhase * 0.05) * 12;
+  // Multiple sine waves for complex, lifelike bobbing
+  const sineY = Math.sin(dragon.flightPhase * 0.09) * 22 + Math.sin(dragon.flightPhase * 0.04) * 12;
+  const sineX = Math.sin(dragon.flightPhase * 0.06 + 1.5) * 10;
   
   // Combined target position
   const targetY = dragon.baseY + noiseY + sineY;
   
   if (!dragon.isDodging) {
-    // Smooth interpolation to target
-    dragon.vy += (targetY - dragon.y) * 0.03 * dt;
-    dragon.vy *= 0.92;
-    dragon.y += dragon.vy * dt * 0.06;
-    dragon.vx = noiseX * 0.1;
-  } else {
-    // Dodging - move quickly to dodge target
-    dragon.vy += (dragon.dodgeTargetY - dragon.y) * 0.08 * dt;
+    // Smooth but visible interpolation to target
+    dragon.vy += (targetY - dragon.y) * 0.06 * dt;
     dragon.vy *= 0.88;
-    dragon.y += dragon.vy * dt * 0.06;
+    dragon.y += dragon.vy * dt * 0.12;
+    // X offset from Perlin noise + sine for non-linear, weaving flight
+    dragon.vx = (noiseX + sineX) * 0.4;
+  } else {
+    // Dodging — FAST dramatic evasion
+    dragon.vy += (dragon.dodgeTargetY - dragon.y) * 0.18 * dt;
+    dragon.vy *= 0.82;
+    dragon.y += dragon.vy * dt * 0.15;
   }
   
   // Clamp Y position
@@ -968,9 +970,9 @@ function updateDragonDodging(dragon: DragonState, arrows: Arrow[], dt: number, c
   
   const THREAT_DISTANCE_X = canvasW * 0.35;
   const THREAT_DISTANCE_Y = 50;
-  const DODGE_OFFSET = 60;
-  const FIRE_BREATH_CHANCE = 0.012;
-  const FIRE_BREATH_COOLDOWN = 180; // frames
+  const DODGE_OFFSET = 80; // Dramatic dodging
+  const FIRE_BREATH_CHANCE = 0.15; // Very aggressive — dragons actively defend
+  const FIRE_BREATH_COOLDOWN = 25; // Very short cooldown — dragons breathe fire frequently
   
   let closestThreat: Arrow | null = null;
   let closestDist = Infinity;
@@ -991,8 +993,8 @@ function updateDragonDodging(dragon: DragonState, arrows: Arrow[], dt: number, c
   if (closestThreat) {
     const dy = closestThreat.y - dragon.y;
     
-    // Decide: dodge or fire breath
-    if (dragon.fireBreathCooldown <= 0 && Math.random() < FIRE_BREATH_CHANCE * dt && closestDist < THREAT_DISTANCE_X * 0.7) {
+    // Decide: dodge or fire breath — dragons ALWAYS try to fire first, then dodge
+    if (dragon.fireBreathCooldown <= 0 && Math.random() < FIRE_BREATH_CHANCE && closestDist < THREAT_DISTANCE_X * 0.8) {
       // FIRE BREATH!
       dragon.isBreathingFire = true;
       dragon.fireBreathTimer = 40; // frames
@@ -1002,14 +1004,16 @@ function updateDragonDodging(dragon: DragonState, arrows: Arrow[], dt: number, c
       dragon.jawOpen = 1;
       dragon.isDodging = false;
     } else if (!dragon.isBreathingFire) {
-      // DODGE
+      // DODGE — dramatic last-second evasion
       dragon.isDodging = true;
+      const urgency = Math.max(0, 1 - closestDist / (THREAT_DISTANCE_X * 0.8));
+      const dodgeAmount = DODGE_OFFSET + urgency * 40 + Math.random() * 25;
       if (dy > 0) {
         // Arrow below - dodge up
-        dragon.dodgeTargetY = dragon.baseY - DODGE_OFFSET - Math.random() * 20;
+        dragon.dodgeTargetY = dragon.baseY - dodgeAmount;
       } else {
-        // Arrow above - dodge down
-        dragon.dodgeTargetY = dragon.baseY + DODGE_OFFSET + Math.random() * 20;
+        // Arrow above - dodge down  
+        dragon.dodgeTargetY = dragon.baseY + dodgeAmount;
       }
       dragon.dodgeTargetY = Math.max(canvasH * 0.15, Math.min(canvasH * 0.65, dragon.dodgeTargetY));
     }
@@ -1292,7 +1296,7 @@ const DragonBlazeGame: React.FC = () => {
     }
   }, [currentMultiplier, dragon2BetStatus, dragon2Bet, dragon2Crashed]);
   
-  // Spawn arrows from city
+  // Spawn arrows from city — ALWAYS aimed directly at a dragon
   useEffect(() => {
     if (gameState !== 'RUNNING') return;
     const interval = setInterval(() => {
@@ -1300,18 +1304,29 @@ const DragonBlazeGame: React.FC = () => {
       if (!canvas) return;
       const w = canvas.width / (window.devicePixelRatio || 1);
       const h = canvas.height / (window.devicePixelRatio || 1);
+      const d1 = dragon1Ref.current;
+      const d2 = dragon2Ref.current;
       
-      const startX = w * (0.6 + Math.random() * 0.35);
-      const startY = h * (0.6 + Math.random() * 0.15);
+      // Pick which dragon to target (skip if that dragon is already gone)
+      let targetDragon: 1 | 2;
+      if (d1.isGone || d1.isFalling) targetDragon = 2;
+      else if (d2.isGone || d2.isFalling) targetDragon = 1;
+      else targetDragon = Math.random() > 0.5 ? 1 : 2;
       
-      const targetDragon = Math.random() > 0.5 ? 1 : 2;
-      const targetY = targetDragon === 1 ? dragon1Ref.current.y : dragon2Ref.current.y;
-      const targetX = dragon1Ref.current.x;
+      const targetD = targetDragon === 1 ? d1 : d2;
+      if (targetD.isGone) return; // both gone, no arrows
       
-      const dx = targetX - startX;
-      const dy = targetY - startY;
+      // Arrow starts from the city (right side, bottom area)
+      const startX = w * (0.7 + Math.random() * 0.25);
+      const startY = h * (0.55 + Math.random() * 0.25);
+      
+      // Aim DIRECTLY at the dragon — arrows look like they'll definitely hit
+      const leadX = targetD.x + targetD.vx * 5 + (Math.random() - 0.5) * 10;
+      const leadY = targetD.y + (Math.random() - 0.5) * 15;
+      const dx = leadX - startX;
+      const dy = leadY - startY;
       const angle = Math.atan2(dy, dx);
-      const speed = 3 + Math.random() * 2;
+      const speed = 5.5 + Math.random() * 3; // Fast, deadly arrows
       
       arrowsRef.current.push({
         x: startX, y: startY,
@@ -1326,7 +1341,7 @@ const DragonBlazeGame: React.FC = () => {
       });
       
       arrowFlashRef.current = 5;
-    }, 700 + Math.random() * 500);
+    }, 300 + Math.random() * 300); // Very frequent arrows — constant danger
     
     return () => clearInterval(interval);
   }, [gameState]);
@@ -1360,9 +1375,9 @@ const DragonBlazeGame: React.FC = () => {
       const d1 = dragon1Ref.current;
       const d2 = dragon2Ref.current;
       
-      // Set dragon X position
-      d1.x = w * 0.25;
-      d2.x = w * 0.25 + (d2.vx || 0);
+      // Set dragon X positions — each dragon at a different horizontal position + Perlin offset
+      d1.x = w * 0.2 + (d1.vx || 0);
+      d2.x = w * 0.38 + (d2.vx || 0);
       
       // Initialize baseY if not set properly
       if (d1.baseY < 10) { d1.baseY = h * 0.35; d1.y = d1.baseY; }
@@ -1467,14 +1482,17 @@ const DragonBlazeGame: React.FC = () => {
       if (arrowFlashRef.current > 0) arrowFlashRef.current -= dt;
       drawMedievalCity(ctx, buildingsRef.current, scrollXRef.current, w, h, arrowFlashRef.current);
       
-      // === UPDATE ANIMATION STATE ===
-      if (gameState === 'RUNNING') {
-        scrollXRef.current += 1.5 * dt * Math.min(currentMultiplier, 5);
-      }
-      
       // === UPDATE DRAGONS ===
+      // Each dragon crashes independently. Dragon 1 crashes when the round ends (gameState === 'CRASHED').
+      // Dragon 2 crashes at its own crash point. When one falls, the other continues.
       const d1Crashed = gameState === 'CRASHED';
-      const d2Crashed = dragon2Crashed || gameState === 'CRASHED';
+      const d2Crashed_local = dragon2Crashed;
+
+      // === UPDATE ANIMATION STATE ===
+      // Keep scrolling as long as at least one dragon is still flying
+      if (gameState === 'RUNNING' || (d2Crashed_local && !d1Crashed && !d1.isGone) || (d1Crashed && !d2Crashed_local && !d2.isGone)) {
+        scrollXRef.current += 1.5 * dt * Math.min(currentMultiplier || 1, 5);
+      }
       
       // Dragon 1 flight & AI
       if (!d1Crashed && !d1.isFalling) {
@@ -1507,9 +1525,15 @@ const DragonBlazeGame: React.FC = () => {
         }
       }
       
-      // Dragon 1 crash explosion
+      // Dragon 1 crash — a KILLING ARROW hits the dragon!
       if (d1Crashed && crashExplosionRef.current === 0 && !d1.isFalling) {
         crashExplosionRef.current = 1;
+        // Spawn a final arrow that visually "hits" the dragon
+        arrowsRef.current.push({
+          x: d1.x + 5, y: d1.y, // Arrow appears AT the dragon (already hit)
+          vx: 0, vy: 0, angle: Math.PI, trail: [],
+          active: false, hitDragon: 1, targetDragon: 1, destroyed: false,
+        });
         startDragonFalling(d1);
         shakeRef.current.intensity = 18;
         particleEngineRef.current.emit(d1.x, d1.y, 40, {
@@ -1556,8 +1580,8 @@ const DragonBlazeGame: React.FC = () => {
         }
       }
       
-      // Dragon 2 flight & AI
-      if (!d2Crashed && !d2.isFalling) {
+      // Dragon 2 flight & AI — continues even after Dragon 1 crashes
+      if (!d2Crashed_local && !d2.isFalling) {
         updateDragonFlight(d2, perlinRef.current, dt, globalTimeRef.current, h);
         updateDragonDodging(d2, arrowsRef.current, dt, w, h);
         updateDragonPersonality(d2, d1.isGone ? null : d1, dt);
@@ -1566,30 +1590,34 @@ const DragonBlazeGame: React.FC = () => {
         if (d2.isBreathingFire) {
           const mouthX = d2.x + 42 * d2.scale;
           const mouthY = d2.y - 2 * d2.scale;
-          particleEngineRef.current.emitDirectional(mouthX, mouthY, 3, d2.fireBreathTargetX, d2.fireBreathTargetY, {
-            type: 'firebreath', size: 5, maxLife: 16, speed: 7, color: COLORS.dragon2.fire, spreadAngle: Math.PI / 5
+          particleEngineRef.current.emitDirectional(mouthX, mouthY, 4, d2.fireBreathTargetX, d2.fireBreathTargetY, {
+            type: 'firebreath', size: 6, maxLife: 20, speed: 8, color: COLORS.dragon2.fire, spreadAngle: Math.PI / 4
           });
-          particleEngineRef.current.emitDirectional(mouthX, mouthY, 1, d2.fireBreathTargetX, d2.fireBreathTargetY, {
-            type: 'frost', size: 3, maxLife: 14, speed: 6, color: '#87CEEB', spreadAngle: Math.PI / 6
+          particleEngineRef.current.emitDirectional(mouthX, mouthY, 2, d2.fireBreathTargetX, d2.fireBreathTargetY, {
+            type: 'frost', size: 4, maxLife: 16, speed: 7, color: '#87CEEB', spreadAngle: Math.PI / 5
           });
         }
         
-        // Trail particles (ice)
-        if (gameState === 'RUNNING') {
-          particleEngineRef.current.emit(d2.x - 30 * d2.scale, d2.y, 2, {
-            type: 'frost', size: 4, maxLife: 14, speed: 1.4, color: '#4A90D9', vx: -1.5
+        // Trail particles (ice) — always show when dragon is alive
+        particleEngineRef.current.emit(d2.x - 30 * d2.scale, d2.y, 2, {
+          type: 'frost', size: 4, maxLife: 14, speed: 1.4, color: '#4A90D9', vx: -1.5
+        });
+        if (frameCountRef.current % 5 === 0) {
+          particleEngineRef.current.emit(d2.x - 20 * d2.scale, d2.y, 1, {
+            type: 'ember', size: 1.2, maxLife: 25, speed: 0.8, color: '#87CEEB', vx: -1
           });
-          if (frameCountRef.current % 5 === 0) {
-            particleEngineRef.current.emit(d2.x - 20 * d2.scale, d2.y, 1, {
-              type: 'ember', size: 1.2, maxLife: 25, speed: 0.8, color: '#87CEEB', vx: -1
-            });
-          }
         }
       }
       
-      // Dragon 2 crash explosion
-      if (dragon2Crashed && !dragon2CrashExplosionRef.current && !d2.isFalling) {
+      // Dragon 2 crash — a KILLING ARROW hits the dragon!
+      if (d2Crashed_local && !dragon2CrashExplosionRef.current && !d2.isFalling) {
         dragon2CrashExplosionRef.current = true;
+        // Spawn a final arrow that visually "hits" the dragon
+        arrowsRef.current.push({
+          x: d2.x + 5, y: d2.y,
+          vx: 0, vy: 0, angle: Math.PI, trail: [],
+          active: false, hitDragon: 2, targetDragon: 2, destroyed: false,
+        });
         startDragonFalling(d2);
         shakeRef.current.intensity = 12;
         particleEngineRef.current.emit(d2.x, d2.y, 30, {
@@ -1656,34 +1684,33 @@ const DragonBlazeGame: React.FC = () => {
           });
         }
         
-        // Collision with dragons (only if not falling/gone)
+        // Near-miss detection — arrows pass close to dragons creating tension
+        // Dragons ALWAYS dodge successfully... until the backend says crash
         if (!d1.isFalling && !d1.isGone) {
           const d1x = arrow.x - d1.x;
           const d1y = arrow.y - d1.y;
-          if (Math.sqrt(d1x * d1x + d1y * d1y) < 30 * d1.scale) {
-            arrow.active = false;
-            particleEngineRef.current.emit(arrow.x, arrow.y, 8, {
-              type: 'spark', size: 5, maxLife: 18, speed: 3.5, color: '#FFD700'
-            });
-            particleEngineRef.current.emit(arrow.x, arrow.y, 4, {
-              type: 'ember', size: 2, maxLife: 25, speed: 1.5, color: '#FF8C00'
-            });
-            // Small screen shake on hit
-            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 4);
+          const d1Dist = Math.sqrt(d1x * d1x + d1y * d1y);
+          // Near miss — sparks fly when arrow passes close
+          if (d1Dist < 45 * d1.scale && d1Dist > 20 * d1.scale) {
+            if (frameCountRef.current % 3 === 0) {
+              particleEngineRef.current.emit(arrow.x, arrow.y, 3, {
+                type: 'spark', size: 3, maxLife: 10, speed: 2.5, color: '#FFD700'
+              });
+            }
+            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 2);
           }
         }
         if (!d2.isFalling && !d2.isGone) {
           const d2x = arrow.x - d2.x;
           const d2y = arrow.y - d2.y;
-          if (Math.sqrt(d2x * d2x + d2y * d2y) < 30 * d2.scale) {
-            arrow.active = false;
-            particleEngineRef.current.emit(arrow.x, arrow.y, 8, {
-              type: 'spark', size: 5, maxLife: 18, speed: 3.5, color: '#87CEEB'
-            });
-            particleEngineRef.current.emit(arrow.x, arrow.y, 4, {
-              type: 'ember', size: 2, maxLife: 25, speed: 1.5, color: '#4A90D9'
-            });
-            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 4);
+          const d2Dist = Math.sqrt(d2x * d2x + d2y * d2y);
+          if (d2Dist < 45 * d2.scale && d2Dist > 20 * d2.scale) {
+            if (frameCountRef.current % 3 === 0) {
+              particleEngineRef.current.emit(arrow.x, arrow.y, 3, {
+                type: 'spark', size: 3, maxLife: 10, speed: 2.5, color: '#87CEEB'
+              });
+            }
+            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 2);
           }
         }
         
@@ -1700,7 +1727,7 @@ const DragonBlazeGame: React.FC = () => {
       // === DRAW DRAGONS (sorted by zDepth) ===
       const dragonsToDraw = [
         { dragon: d1, colors: COLORS.dragon1, crashed: d1Crashed, label: 'DRAGON 1', num: 1 },
-        { dragon: d2, colors: COLORS.dragon2, crashed: d2Crashed, label: 'DRAGON 2', num: 2 },
+        { dragon: d2, colors: COLORS.dragon2, crashed: d2Crashed_local, label: 'DRAGON 2', num: 2 },
       ].sort((a, b) => a.dragon.zDepth - b.dragon.zDepth);
       
       for (const { dragon, colors, crashed, label, num } of dragonsToDraw) {
@@ -1773,7 +1800,7 @@ const DragonBlazeGame: React.FC = () => {
       ctx.shadowBlur = 0;
       
       // Dragon 2 crash point display
-      if (dragon2Crashed && gameState === 'RUNNING') {
+      if (d2Crashed_local && gameState === 'RUNNING') {
         ctx.fillStyle = COLORS.danger;
         ctx.shadowColor = COLORS.danger;
         ctx.shadowBlur = 10;
@@ -1837,7 +1864,7 @@ const DragonBlazeGame: React.FC = () => {
   // Button config
   const getButtonConfig = (dragonNum: 1 | 2) => {
     const bs = dragonNum === 1 ? betStatus : dragon2BetStatus;
-    const crashed = dragonNum === 1 ? gameState === 'CRASHED' : (dragon2Crashed || gameState === 'CRASHED');
+    const crashed = dragonNum === 1 ? gameState === 'CRASHED' : dragon2Crashed;
     const pw = dragonNum === 1 ? potentialWin : dragon2PotentialWin;
     const dragonColor = dragonNum === 1 ? 'from-orange-500 to-red-600' : 'from-blue-500 to-purple-600';
     const dragonHover = dragonNum === 1 ? 'hover:from-orange-400 hover:to-red-500' : 'hover:from-blue-400 hover:to-purple-500';
@@ -1869,7 +1896,7 @@ const DragonBlazeGame: React.FC = () => {
   
   // ==================== RENDER ====================
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 rounded-2xl p-4 md:p-6 shadow-2xl border border-gray-700/50 relative overflow-hidden">
+    <div className="bg-[#0A0E17] rounded-2xl p-4 md:p-6 shadow-2xl border border-[#1E293B] relative overflow-hidden">
       {/* Header */}
       <div className="flex justify-between items-center mb-4 relative z-10">
         <div className="flex items-center gap-2">
@@ -1967,7 +1994,7 @@ const DragonBlazeGame: React.FC = () => {
       {/* Dual Betting Controls */}
       <div className="grid grid-cols-2 gap-3">
         {/* Dragon 1 Controls */}
-        <div className={`p-3 rounded-xl border transition-all ${selectedDragon === 1 ? 'border-orange-500/50 bg-orange-500/5' : 'border-gray-700/30 bg-gray-800/30'}`}>
+        <div className={`p-3 rounded-xl border transition-all ${selectedDragon === 1 ? 'border-orange-500/50 bg-orange-500/5' : 'border-[#1E293B] bg-[#131B2C]/50'}`}>
           <h4 className="text-xs font-bold text-orange-400 mb-2">🐉 DRAGON 1</h4>
           <div className="space-y-2">
             <div>
@@ -1992,7 +2019,7 @@ const DragonBlazeGame: React.FC = () => {
         </div>
         
         {/* Dragon 2 Controls */}
-        <div className={`p-3 rounded-xl border transition-all ${selectedDragon === 2 ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-700/30 bg-gray-800/30'}`}>
+        <div className={`p-3 rounded-xl border transition-all ${selectedDragon === 2 ? 'border-blue-500/50 bg-blue-500/5' : 'border-[#1E293B] bg-[#131B2C]/50'}`}>
           <h4 className="text-xs font-bold text-blue-400 mb-2">🐲 DRAGON 2</h4>
           <div className="space-y-2">
             <div>

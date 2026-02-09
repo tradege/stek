@@ -227,6 +227,8 @@ export default function Home() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { name: 'Crash', icon: '🚀', desc: 'Cash out before it crashes', href: '/games/crash', gradient: 'from-orange-600 to-red-600', edge: '4%' },
+                  { name: 'Nova Rush', icon: '🛸', desc: 'Dodge asteroids in deep space', href: '/games/nova-rush', gradient: 'from-blue-600 to-purple-600', edge: '4%', isNew: true, isHot: true },
+                  { name: 'Dragon Blaze', icon: '🐉', desc: 'Two dragons, double the thrill', href: '/games/dragon-blaze', gradient: 'from-red-600 to-orange-600', edge: '4%', isNew: true, isHot: true },
                   { name: 'Plinko', icon: '🎯', desc: 'Drop & win big multipliers', href: '/games/plinko', gradient: 'from-blue-600 to-indigo-600', edge: '4%' },
                   { name: 'Dice', icon: '🎲', desc: 'Roll over or under to win', href: '/games/dice', gradient: 'from-green-600 to-emerald-600', edge: '4%', isNew: true },
                   { name: 'Mines', icon: '💣', desc: 'Find gems, avoid mines', href: '/games/mines', gradient: 'from-yellow-600 to-amber-600', edge: '4%' },
@@ -241,6 +243,9 @@ export default function Home() {
                       <span className="text-5xl group-hover:scale-110 transition-transform">{game.icon}</span>
                       {game.isNew && (
                         <span className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full">NEW</span>
+                      )}
+                      {(game as any).isHot && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">HOT</span>
                       )}
                     </div>
                     <div className="p-3">

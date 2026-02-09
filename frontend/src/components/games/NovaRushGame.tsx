@@ -91,7 +91,7 @@ const NovaRushGame: React.FC = () => {
   const engineParticlesRef = useRef<EngineParticle[]>([]);
   const shockwavesRef = useRef<ShockwaveRing[]>([]);
   const speedLinesRef = useRef<SpeedLine[]>([]);
-  const shipPosRef = useRef({ x: 150, y: 0 });
+  const shipPosRef = useRef({ x: 150, y: 0, targetY: 0, vy: 0, vx: 0, isDodging: false, dodgeTimer: 0, leanAngle: 0 });
   const shipAngleRef = useRef(0);
   const crashAnimRef = useRef({ active: false, frame: 0 });
   const lastMeteorSpawnRef = useRef(0);
@@ -150,6 +150,12 @@ const NovaRushGame: React.FC = () => {
       crashAnimRef.current = { active: false, frame: 0 };
       gameTimeRef.current = 0;
       shakeRef.current = { x: 0, y: 0, intensity: 0, velocityX: 0, velocityY: 0 };
+      // Reset ship dodging state
+      shipPosRef.current.isDodging = false;
+      shipPosRef.current.dodgeTimer = 0;
+      shipPosRef.current.vy = 0;
+      shipPosRef.current.vx = 0;
+      shipPosRef.current.leanAngle = 0;
       setShowWinCelebration(false);
     }
   }, [gameState]);
@@ -160,11 +166,21 @@ const NovaRushGame: React.FC = () => {
       playSound('crash');
       crashAnimRef.current = { active: true, frame: 0 };
 
+      // Spawn a KILLING METEOR that visually hits the ship
+      const ship = shipPosRef.current;
+      meteorsRef.current.push({
+        x: ship.x + 5, y: ship.y,
+        size: 20, speed: 0, angle: 0,
+        rotation: 0, rotSpeed: 0,
+        alive: false, targeted: false,
+        exploding: true, explodeFrame: 0,
+        color: '#ff4400',
+      });
+
       // Trigger screen shake with spring physics
-      shakeRef.current.intensity = 18;
+      shakeRef.current.intensity = 22;
 
       // Create debris with trails
-      const ship = shipPosRef.current;
       for (let i = 0; i < 40; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * 7 + 2;
@@ -676,28 +692,95 @@ const NovaRushGame: React.FC = () => {
         return true;
       });
 
-      // Ship position with smooth bobbing
-      const shipX = 150;
-      const bobSpeed = isRunning ? 800 : 1200;
-      const bobAmount = isRunning ? 12 + Math.sin(Date.now() / 2000) * 5 : 8;
-      const shipY = h / 2 + Math.sin(Date.now() / bobSpeed) * bobAmount;
-      shipPosRef.current = { x: shipX, y: shipY };
+      // Ship position with DYNAMIC dodging AI + organic movement
+      const ship = shipPosRef.current;
+      const baseShipX = 150;
+      const bobSpeed = isRunning ? 600 : 1200;
+      const bobAmount = isRunning ? 18 + Math.sin(Date.now() / 1800) * 8 : 8;
+      const naturalY = h / 2 + Math.sin(Date.now() / bobSpeed) * bobAmount + Math.sin(Date.now() / 1300) * 6;
+      const naturalX = baseShipX + Math.sin(Date.now() / 2000) * 15 + Math.sin(Date.now() / 900) * 8;
+      
+      // Evasion AI — detect incoming meteors and dodge
+      if (isRunning && !isCrashed) {
+        let closestThreat: Meteor | null = null;
+        let closestDist = Infinity;
+        for (const m of meteorsRef.current) {
+          if (!m.alive || m.exploding) continue;
+          const dx = m.x - ship.x;
+          const dy = m.y - ship.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          // Meteor approaching from the right and within threat zone
+          if (dx > 0 && dx < 250 && dist < closestDist) {
+            closestThreat = m;
+            closestDist = dist;
+          }
+        }
+        
+        if (closestThreat && closestDist < 200) {
+          ship.isDodging = true;
+          ship.dodgeTimer = 30;
+          const meteorDy = closestThreat.y - ship.y;
+          // Dodge in opposite direction of meteor
+          if (meteorDy > 0) {
+            ship.targetY = ship.y - 60 - Math.random() * 30; // Dodge UP
+          } else {
+            ship.targetY = ship.y + 60 + Math.random() * 30; // Dodge DOWN
+          }
+          ship.targetY = Math.max(h * 0.15, Math.min(h * 0.85, ship.targetY));
+        } else if (ship.dodgeTimer > 0) {
+          ship.dodgeTimer--;
+        } else {
+          ship.isDodging = false;
+          ship.targetY = naturalY;
+        }
+      } else {
+        ship.targetY = naturalY;
+        ship.isDodging = false;
+      }
+      
+      // Smooth movement to target
+      if (ship.isDodging) {
+        ship.vy += (ship.targetY - ship.y) * 0.15;
+        ship.vy *= 0.8;
+      } else {
+        ship.vy += (ship.targetY - ship.y) * 0.06;
+        ship.vy *= 0.9;
+      }
+      ship.y += ship.vy * 0.12;
+      ship.y = Math.max(h * 0.1, Math.min(h * 0.9, ship.y));
+      
+      // X movement — slight weaving
+      ship.vx += (naturalX - ship.x) * 0.04;
+      ship.vx *= 0.92;
+      ship.x = baseShipX + ship.vx;
+      
+      // Lean angle based on vertical velocity
+      const targetLean = ship.vy * 0.015;
+      ship.leanAngle += (targetLean - ship.leanAngle) * 0.1;
+      
+      const shipX = ship.x;
+      const shipY = ship.y;
 
       if (isRunning) {
         gameTimeRef.current++;
         const now = Date.now();
 
-        // ===== SPAWN METEORS =====
-        const spawnRate = Math.max(300, 1500 - gameTimeRef.current * 5);
+        // ===== SPAWN METEORS — aimed DIRECTLY at the ship =====
+        const spawnRate = Math.max(250, 1200 - gameTimeRef.current * 5);
         if (now - lastMeteorSpawnRef.current > spawnRate) {
           lastMeteorSpawnRef.current = now;
-          const meteorY = Math.random() * h * 0.8 + h * 0.1;
+          // Spawn from right side, aimed at ship's current position
+          const spawnX = w + 50;
+          const spawnY = Math.random() * h * 0.8 + h * 0.1;
+          const aimDx = shipX - spawnX;
+          const aimDy = shipY + (Math.random() - 0.5) * 40 - spawnY; // slight scatter
+          const aimAngle = Math.atan2(aimDy, aimDx);
           meteorsRef.current.push({
-            x: w + 50,
-            y: meteorY,
+            x: spawnX,
+            y: spawnY,
             size: Math.random() * 15 + 10,
-            speed: Math.random() * 3 + 2,
-            angle: Math.PI + (Math.random() - 0.5) * 0.5,
+            speed: Math.random() * 3.5 + 2.5,
+            angle: aimAngle,
             rotation: Math.random() * Math.PI * 2,
             rotSpeed: (Math.random() - 0.5) * 0.1,
             alive: true,
@@ -791,8 +874,19 @@ const NovaRushGame: React.FC = () => {
         if (!meteor.alive) return false;
 
         meteor.x += Math.cos(meteor.angle) * meteor.speed;
-        meteor.y += Math.sin(meteor.angle) * meteor.speed * 0.3;
+        meteor.y += Math.sin(meteor.angle) * meteor.speed * 0.5;
         meteor.rotation += meteor.rotSpeed;
+
+        // Near-miss detection — sparks when meteor passes close to ship
+        if (!isCrashed) {
+          const mdx = meteor.x - shipX;
+          const mdy = meteor.y - shipY;
+          const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mDist < 50 && mDist > 20) {
+            // Near miss! Sparks and screen shake
+            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 3);
+          }
+        }
 
         if (meteor.x < -50) return false;
         drawMeteor(ctx, meteor);
@@ -906,9 +1000,14 @@ const NovaRushGame: React.FC = () => {
         return true;
       });
 
-      // ===== DRAW SHIP =====
+      // ===== DRAW SHIP with lean angle =====
       if (!isCrashed || crashAnimRef.current.frame < 12) {
+        ctx.save();
+        ctx.translate(shipX, shipY);
+        ctx.rotate(ship.leanAngle || 0);
+        ctx.translate(-shipX, -shipY);
         drawShip(ctx, shipX, shipY, isCrashed);
+        ctx.restore();
       }
       if (isCrashed) {
         crashAnimRef.current.frame++;
@@ -1071,7 +1170,7 @@ const NovaRushGame: React.FC = () => {
 
   // ============ RENDER ============
   return (
-    <div className="bg-gradient-to-br from-[#050020] via-[#0a0030] to-[#030015] rounded-2xl p-4 md:p-6 shadow-2xl border border-purple-900/30 relative overflow-hidden">
+        <div className="bg-[#0A0E17] rounded-2xl p-4 md:p-6 shadow-2xl border border-[#1E293B] relative overflow-hidden">
       <WinCelebration amount={lastWinAmount} show={showWinCelebration} />
 
       {/* Header */}
