@@ -192,6 +192,7 @@ interface Ball {
   path: number[];
   landed: boolean;
   bucketIndex: number;
+  targetBucketIndex: number; // Backend's correct bucket - used for magnet guidance
   multiplier: number;
   payout: number;
   profit: number;
@@ -223,6 +224,8 @@ const PlinkoGame: React.FC = () => {
   const [rows, setRows] = useState<number>(16);
   const [risk, setRisk] = useState<RiskLevel>('MEDIUM');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [activeBalls, setActiveBalls] = useState(0);
+  const activeBallsRef = useRef(0);
   const [lastResult, setLastResult] = useState<{ multiplier: number; payout: number } | null>(null);
   const [history, setHistory] = useState<{ multiplier: number; payout: number; isWin: boolean }[]>([]);
   const [highlightedBucket, setHighlightedBucket] = useState<number | null>(null);
@@ -575,12 +578,23 @@ const PlinkoGame: React.FC = () => {
         ball.x -= 2; // Push in slightly
       }
 
+      // ===== MAGNET GUIDANCE: Ensure ball lands on correct backend bucket =====
+      // As ball approaches the bottom (last 30% of travel), gently steer toward target bucket
+      if (progress > 0.7 && ball.targetBucketIndex >= 0) {
+        const targetX = startX + (ball.targetBucketIndex + 0.5) * bucketWidth;
+        const dx = targetX - ball.x;
+        // Strength increases as ball gets closer to bottom (0 at 70%, full at 100%)
+        const magnetStrength = (progress - 0.7) / 0.3; // 0 to 1
+        ball.vx += dx * 0.08 * magnetStrength;
+      }
+
       // ===== EVENT-DRIVEN BUCKET LANDING =====
       if (ball.y >= bucketY - PHYSICS.BALL_RADIUS) {
         ball.landed = true;
-        const relativeX = ball.x - startX;
-        ball.bucketIndex = Math.floor(relativeX / bucketWidth);
-        ball.bucketIndex = Math.max(0, Math.min(numBuckets - 1, ball.bucketIndex));
+        // Snap ball X to the correct backend bucket center for visual consistency
+        ball.bucketIndex = ball.targetBucketIndex >= 0 ? ball.targetBucketIndex : Math.max(0, Math.min(numBuckets - 1, Math.floor((ball.x - startX) / bucketWidth)));
+        // Snap ball position to bucket center so animation matches result
+        ball.x = startX + (ball.bucketIndex + 0.5) * bucketWidth;
 
         // Play bucket land sound
         soundManager.playBucketLand(ball.multiplier);
@@ -609,7 +623,11 @@ const PlinkoGame: React.FC = () => {
 
           // NOW refresh balance from server
           refreshUser();
-          setIsPlaying(false);
+          activeBallsRef.current = Math.max(0, activeBallsRef.current - 1);
+          setActiveBalls(activeBallsRef.current);
+          if (activeBallsRef.current === 0) {
+            setIsPlaying(false);
+          }
 
           // Auto-bet: trigger next bet if enabled
           const currentAutoBet = autoBetRef.current;
@@ -661,7 +679,12 @@ const PlinkoGame: React.FC = () => {
     const balance = parseFloat(user.balance?.find((b: any) => b.currency === 'USDT')?.available || '0');
     if (betAmount > balance) return;
 
+    // Multi-ball: allow up to 10 concurrent balls
+    if (activeBallsRef.current >= 10) return;
+
     setIsPlaying(true);
+    activeBallsRef.current++;
+    setActiveBalls(activeBallsRef.current);
     setLastResult(null);
     soundManager.playButtonClick();
 
@@ -699,6 +722,7 @@ const PlinkoGame: React.FC = () => {
         path: result.path,
         landed: false,
         bucketIndex: -1,
+        targetBucketIndex: result.bucketIndex, // Backend's correct bucket
         multiplier: result.multiplier,
         payout: result.payout,
         profit: result.profit,
@@ -711,7 +735,11 @@ const PlinkoGame: React.FC = () => {
 
     } catch (error: any) {
       // 'Bet error:', error);
-      setIsPlaying(false);
+      activeBallsRef.current = Math.max(0, activeBallsRef.current - 1);
+      setActiveBalls(activeBallsRef.current);
+      if (activeBallsRef.current === 0) {
+        setIsPlaying(false);
+      }
       // Stop auto-bet on error
       if (autoBetRef.current.enabled) {
         setAutoBet(prev => ({ ...prev, enabled: false, betsRemaining: 0 }));
@@ -728,7 +756,8 @@ const PlinkoGame: React.FC = () => {
       alert('Please login to play');
       return;
     }
-    if (isPlaying) return;
+    // Multi-ball: allow new bets while balls are falling (up to 10)
+    if (activeBallsRef.current >= 10) return;
     await placeBetInternal();
   };
 
@@ -752,7 +781,7 @@ const PlinkoGame: React.FC = () => {
   // Keyboard support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !isPlaying && activeTab === 'manual') {
+      if (e.code === 'Space' && activeBallsRef.current < 10 && activeTab === 'manual') {
         e.preventDefault();
         placeBet();
       }
@@ -943,7 +972,7 @@ const PlinkoGame: React.FC = () => {
                   key={r}
                   data-testid={`risk-${r.toLowerCase()}`}
                   onClick={() => { soundManager.playButtonClick(); setRisk(r); }}
-                  disabled={autoBet.enabled}
+                  disabled={autoBet.enabled || activeBalls > 0}
                   className={`flex-1 py-2.5 sm:py-3 font-bold text-sm transition-all ${
                     risk === r
                       ? r === 'LOW'
@@ -973,7 +1002,7 @@ const PlinkoGame: React.FC = () => {
                 max="16"
                 value={rows}
                 onChange={(e) => setRows(Number(e.target.value))}
-                disabled={autoBet.enabled}
+                disabled={autoBet.enabled || activeBalls > 0}
                 className="w-full h-2 bg-[#1a1f2e] rounded-lg appearance-none cursor-pointer accent-cyan-500 disabled:opacity-50"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
@@ -1052,20 +1081,17 @@ const PlinkoGame: React.FC = () => {
             <button
               data-testid="bet-button"
               onClick={placeBet}
-              disabled={isPlaying || !user || betAmount > (parseFloat(user?.balance?.find((b: any) => b.currency === 'USDT')?.available || '0'))}
+              disabled={activeBalls >= 10 || !user || betAmount > (parseFloat(user?.balance?.find((b: any) => b.currency === 'USDT')?.available || '0'))}
               className={`w-full py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all ${
-                isPlaying
+                activeBalls >= 10
                   ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 active:scale-[0.98]'
               }`}
             >
-              {isPlaying ? (
+              {activeBalls > 0 ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                  </svg>
-                  DROPPING...
+                  <span className="w-5 h-5 rounded-full bg-cyan-400/30 flex items-center justify-center text-xs font-bold text-cyan-300">{activeBalls}</span>
+                  DROP BALL [SPACE]
                 </span>
               ) : (
                 'DROP BALL [SPACE]'
