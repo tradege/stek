@@ -84,6 +84,8 @@ export default function GameGrid({ category, limit }: GameGridProps) {
   // Map game category to icon
   const getGameIcon = (game: Game) => {
     if (game.slug === 'crash') return '🚀';
+    if (game.slug === 'nova-rush') return '🛸';
+    if (game.slug === 'dragon-blaze') return '🐉';
     if (game.slug === 'plinko') return '🎯';
     if (game.slug === 'dice') return '🎲';
     if (game.slug === 'mines') return '💣';
@@ -95,6 +97,8 @@ export default function GameGrid({ category, limit }: GameGridProps) {
   // Map game category to gradient
   const getGameGradient = (game: Game) => {
     if (game.slug === 'crash') return 'from-orange-600 to-red-600';
+    if (game.slug === 'nova-rush') return 'from-blue-600 to-purple-600';
+    if (game.slug === 'dragon-blaze') return 'from-red-600 to-orange-600';
     if (game.slug === 'plinko') return 'from-[#1475e1] to-[#1475e1]';
     if (game.slug === 'dice') return 'from-blue-600 to-cyan-600';
     if (game.slug === 'mines') return 'from-gray-700 to-gray-900';

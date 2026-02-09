@@ -43,6 +43,17 @@ const icons: Record<string, JSX.Element> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
     </svg>
   ),
+  'nova-rush': (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    </svg>
+  ),
+  'dragon-blaze': (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+    </svg>
+  ),
   wallet: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -174,6 +185,8 @@ const casinoNavItems: NavItem[] = [
   { id: 'dice', label: 'Dice', icon: 'dice', href: '/games/dice' },
   { id: 'mines', label: 'Mines', icon: 'mines', href: '/games/mines' },
   { id: 'olympus', label: 'Olympus', icon: 'olympus', href: '/games/olympus', badge: 'NEW' },
+  { id: 'nova-rush', label: 'Nova Rush', icon: 'nova-rush', href: '/games/nova-rush', badge: 'NEW' },
+  { id: 'dragon-blaze', label: 'Dragon Blaze', icon: 'dragon-blaze', href: '/games/dragon-blaze', badge: 'HOT' },
 ];
 
 // Sports navigation items
