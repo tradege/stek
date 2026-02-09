@@ -56,7 +56,7 @@ const WinCelebration: React.FC<{ amount: number; show: boolean }> = ({ amount, s
       <div className="animate-win-shake">
         <div className="text-5xl font-black text-green-400 animate-multiplier-pulse"
              style={{ textShadow: '0 0 40px #00D46E, 0 0 80px #00D46E' }}>
-          +${amount.toFixed(2)}
+          +${Number(amount).toFixed(2)}
         </div>
         <div className="text-center text-2xl text-yellow-400 mt-2 animate-coin-spin inline-block">
           🎉
@@ -395,7 +395,7 @@ const CrashGamePanel: React.FC = () => {
       for (let i = 0; i <= 4; i++) {
         const val = 1 + ((maxMult - 1) * (4 - i)) / 4;
         const y = padding.top + (graphHeight * i) / 4;
-        ctx.fillText(`${val.toFixed(1)}x`, padding.left - 8, y + 4);
+        ctx.fillText(`${Number(val).toFixed(1)}x`, padding.left - 8, y + 4);
       }
 
       // Draw graph line
@@ -625,9 +625,9 @@ const CrashGamePanel: React.FC = () => {
       return countdown > 0 ? `${Math.ceil(countdown)}s` : 'Starting...';
     }
     if (gameState === 'CRASHED') {
-      return `CRASHED @ ${crashPoint?.toFixed(2)}x`;
+      return `CRASHED @ ${Number(crashPoint || 0).toFixed(2)}x`;
     }
-    return `${currentMultiplier.toFixed(2)}x`;
+    return `${Number(currentMultiplier).toFixed(2)}x`;
   };
 
   const getButtonConfig = () => {
@@ -643,7 +643,7 @@ const CrashGamePanel: React.FC = () => {
     if (gameState === 'RUNNING') {
       if (betStatus === 'PLACED') {
         return {
-          text: `CASHOUT $${potentialWin?.toFixed(2)} [SPACE]`,
+          text: `CASHOUT $${Number(potentialWin || 0).toFixed(2)} [SPACE]`,
           disabled: false,
           className: 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 animate-multiplier-pulse btn-shine'
         };
@@ -652,7 +652,7 @@ const CrashGamePanel: React.FC = () => {
     }
     if (gameState === 'CRASHED') {
       if (betStatus === 'CASHED_OUT') {
-        return { text: `WON $${potentialWin?.toFixed(2)}!`, disabled: true, className: 'bg-gradient-to-r from-green-500 to-emerald-500 animate-win-shake' };
+        return { text: `WON $${Number(potentialWin || 0).toFixed(2)}!`, disabled: true, className: 'bg-gradient-to-r from-green-500 to-emerald-500 animate-win-shake' };
       }
       if (betStatus === 'LOST') {
         return { text: 'BUSTED', disabled: true, className: 'bg-gradient-to-r from-red-600 to-red-500' };
@@ -822,7 +822,7 @@ const CrashGamePanel: React.FC = () => {
               'bg-red-500/20 text-red-400 border border-red-500/20'
             }`}
           >
-            {crash.toFixed(2)}x
+            {Number(crash).toFixed(2)}x
           </div>
         ))}
       </div>
@@ -984,7 +984,7 @@ const CrashGamePanel: React.FC = () => {
       {currentBet && (
         <div className="mt-3 md:mt-4 p-3 bg-gray-800/60 rounded-lg flex justify-between items-center backdrop-blur-sm border border-gray-700/30 animate-slide-in">
           <span className="text-gray-400 text-sm">Your Bet:</span>
-          <span className="text-cyan-400 font-bold font-mono">${currentBet?.betAmount?.toFixed(2) || "0.00"}</span>
+          <span className="text-cyan-400 font-bold font-mono">${Number(currentBet?.betAmount || 0).toFixed(2) || "0.00"}</span>
         </div>
       )}
 

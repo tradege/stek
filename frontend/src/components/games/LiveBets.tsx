@@ -185,7 +185,7 @@ const LiveBets: React.FC = () => {
 
   // Format currency
   const formatAmount = (amount: number, currency: string = 'USDT') => {
-    return `${amount.toFixed(2)} ${currency}`;
+    return `${Number(amount).toFixed(2)} ${currency}`;
   };
 
   // Get row style based on status
@@ -312,7 +312,7 @@ const LiveBets: React.FC = () => {
                   <td className="px-4 py-2 text-right">
                     {bet.status === 'CASHED_OUT' && bet.cashoutMultiplier ? (
                       <span className={`text-sm font-mono tabular-nums ${bet.isBigWin ? 'text-yellow-400 font-bold' : 'text-green-400'}`}>
-                        {bet.cashoutMultiplier.toFixed(2)}x
+                        {Number(bet.cashoutMultiplier).toFixed(2)}x
                       </span>
                     ) : bet.status === 'LOST' ? (
                       <span className="text-sm font-mono tabular-nums text-red-400">

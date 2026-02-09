@@ -207,7 +207,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({ isOpen, onClose }) =>
                       <p className="text-text-secondary text-sm">Best cashout</p>
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-[#1475e1]">{stats.biggestMultiplier.toFixed(2)}x</p>
+                  <p className="text-xl font-bold text-[#1475e1]">{Number(stats.biggestMultiplier).toFixed(2)}x</p>
                 </div>
               </div>
 

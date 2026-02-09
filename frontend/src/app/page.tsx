@@ -176,7 +176,7 @@ export default function Home() {
                     <span className="text-gray-400 text-sm">{win.user}</span>
                     <span className={`text-xs font-medium ${win.color}`}>{win.game}</span>
                     <span className="text-white font-bold text-sm">{win.multiplier}x</span>
-                    <span className="text-green-400 font-mono text-sm">${win.amount.toFixed(2)}</span>
+                    <span className="text-green-400 font-mono text-sm">${Number(win.amount).toFixed(2)}</span>
                   </div>
                 ))}
               </div>

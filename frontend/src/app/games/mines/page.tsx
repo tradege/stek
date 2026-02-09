@@ -296,14 +296,14 @@ export default function MinesPage() {
                 <div className="bg-[#0f1923] rounded-lg p-3 text-center">
                   <div className="text-xs text-gray-400 mb-1">Current Multi</div>
                   <div className="text-[#00F0FF] font-mono font-bold text-lg">
-                    {gameState.currentMultiplier.toFixed(2)}×
+                    {Number(gameState.currentMultiplier).toFixed(2)}×
                   </div>
                 </div>
               </div>
               <div className="bg-[#0f1923] rounded-lg p-3 text-center">
                 <div className="text-xs text-gray-400 mb-1">Current Payout</div>
                 <div className="text-yellow-400 font-mono font-bold text-xl">
-                  ${gameState.currentPayout.toFixed(2)}
+                  ${Number(gameState.currentPayout).toFixed(2)}
                 </div>
               </div>
               {gameState.nextMultiplier > 0 && (
@@ -353,7 +353,7 @@ export default function MinesPage() {
               {gameState.status === "WON" ? (
                 <>
                   <div className="text-2xl mb-1">You Won!</div>
-                  <div className="text-lg">${gameState.currentPayout.toFixed(2)} ({gameState.currentMultiplier.toFixed(2)}×)</div>
+                  <div className="text-lg">${Number(gameState.currentPayout).toFixed(2)} ({Number(gameState.currentMultiplier).toFixed(2)}×)</div>
                 </>
               ) : (
                 <>
