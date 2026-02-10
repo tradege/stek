@@ -1152,7 +1152,7 @@ const NovaRushGame: React.FC = () => {
     if (!isConnected) return { text: 'CONNECTING...', disabled: true, className: 'bg-gray-600' };
     if (gameState === 'WAITING') {
       if (betStatus === 'PLACED') return { text: 'BET PLACED ✓', disabled: true, className: 'bg-green-600' };
-      return { text: 'LAUNCH BET [SPACE]', disabled: false, className: 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500' };
+      return { text: 'LAUNCH BET [SPACE]', disabled: false, className: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500' };
     }
     if (gameState === 'RUNNING') {
       if (betStatus === 'PLACED') return { text: `EJECT $${Number(potentialWin || 0).toFixed(2)} [SPACE]`, disabled: false, className: 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 animate-multiplier-pulse' };
@@ -1176,21 +1176,21 @@ const NovaRushGame: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-4 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-xl">🚀</div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Nova Rush</h2>
+          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-xl">🚀</div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Nova Rush</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={toggleGameSound} className={`p-2 rounded-lg transition-all ${isSoundActive ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-gray-700/50 text-gray-500 border border-gray-600/30'}`}>
+          <button onClick={toggleGameSound} className={`p-2 rounded-lg transition-all ${isSoundActive ? 'bg-[#2f4553] text-[#00F0FF] border border-[#2f4553]' : 'bg-[#2f4553] text-gray-500 border border-[#2f4553]'}`}>
             {isSoundActive ? '🔊' : '🔇'}
           </button>
-          <button onClick={() => setShowFairPanel(!showFairPanel)} className="p-2 rounded-lg bg-gray-700/50 text-gray-400 border border-gray-600/30 hover:bg-gray-600/50 text-xs">🛡️</button>
+          <button onClick={() => setShowFairPanel(!showFairPanel)} className="p-2 rounded-lg bg-[#2f4553] text-gray-400 border border-[#2f4553] hover:bg-[#3d5a6e] text-xs">🛡️</button>
           <span className="px-3 py-1.5 bg-green-500/20 text-green-400 text-xs font-bold rounded-full border border-green-500/30 animate-pulse">● LIVE</span>
         </div>
       </div>
 
       {/* Provably Fair Panel */}
       {showFairPanel && (
-        <div className="mb-4 p-4 bg-[#0a0025] rounded-xl border border-purple-700/30">
+        <div className="mb-4 p-4 bg-[#1a2c38] rounded-xl border border-[#2f4553]/50">
           <h3 className="text-white font-bold mb-3">🛡️ Provably Fair</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-gray-400">Server Seed Hash:</span><span className="text-blue-400 font-mono text-xs max-w-[200px] truncate">{lastServerSeedHash || 'N/A'}</span></div>
@@ -1201,7 +1201,7 @@ const NovaRushGame: React.FC = () => {
       )}
 
       {/* Game Canvas */}
-      <div ref={containerRef} className="relative w-full aspect-[16/9] max-h-[400px] rounded-xl overflow-hidden border border-purple-800/30 mb-4">
+      <div ref={containerRef} className="relative w-full aspect-[16/9] max-h-[400px] rounded-xl overflow-hidden border border-[#2f4553]/50 mb-4">
         <canvas ref={canvasRef} className="w-full h-full" />
       </div>
 
@@ -1219,9 +1219,9 @@ const NovaRushGame: React.FC = () => {
         {/* Left: Bet Controls */}
         <div className="space-y-3">
           {/* Tab Switcher */}
-          <div className="flex rounded-xl overflow-hidden border border-purple-700/30">
-            <button onClick={() => setActiveTab('MANUAL')} className={`flex-1 py-2 font-bold text-sm ${activeTab === 'MANUAL' ? 'bg-blue-600 text-white' : 'bg-[#0a0025] text-gray-400 hover:bg-[#150040]'}`}>MANUAL</button>
-            <button onClick={() => setActiveTab('AUTO')} className={`flex-1 py-2 font-bold text-sm ${activeTab === 'AUTO' ? 'bg-purple-600 text-white' : 'bg-[#0a0025] text-gray-400 hover:bg-[#150040]'}`}>AUTO</button>
+          <div className="flex rounded-xl overflow-hidden border border-[#2f4553]/50">
+            <button onClick={() => setActiveTab('MANUAL')} className={`flex-1 py-2 font-bold text-sm ${activeTab === 'MANUAL' ? 'bg-[#00F0FF] text-[#0A0E17]' : 'bg-[#1a2c38] text-gray-400 hover:bg-[#2f4553]'}`}>MANUAL</button>
+            <button onClick={() => setActiveTab('AUTO')} className={`flex-1 py-2 font-bold text-sm ${activeTab === 'AUTO' ? 'bg-[#00F0FF] text-[#0A0E17]' : 'bg-[#1a2c38] text-gray-400 hover:bg-[#2f4553]'}`}>AUTO</button>
           </div>
 
           {/* Bet Amount */}
@@ -1230,10 +1230,10 @@ const NovaRushGame: React.FC = () => {
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#0a0025] border border-purple-700/30 rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50" min="0.1" step="0.1" disabled={autoBetActive} />
+                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-[#00F0FF]/50" min="0.1" step="0.1" disabled={autoBetActive} />
               </div>
-              <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} disabled={autoBetActive} className="px-3 py-2 bg-[#0a0025] border border-purple-700/30 rounded-xl text-white hover:bg-[#150040] disabled:opacity-50">2x</button>
-              <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} disabled={autoBetActive} className="px-3 py-2 bg-[#0a0025] border border-purple-700/30 rounded-xl text-white hover:bg-[#150040] disabled:opacity-50">½</button>
+              <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} disabled={autoBetActive} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e] disabled:opacity-50">2x</button>
+              <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} disabled={autoBetActive} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e] disabled:opacity-50">½</button>
             </div>
           </div>
 
@@ -1241,20 +1241,20 @@ const NovaRushGame: React.FC = () => {
           <div>
             <label className="block text-xs text-gray-400 mb-1">AUTO EJECT AT</label>
             <div className="relative">
-              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#0a0025] border border-purple-700/30 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50" min="1.01" step="0.01" disabled={autoBetActive} />
+              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-[#00F0FF]/50" min="1.01" step="0.01" disabled={autoBetActive} />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">x</span>
             </div>
           </div>
 
           {/* Auto-bet settings */}
           {activeTab === 'AUTO' && (
-            <div className="space-y-2 p-3 bg-[#0a0025]/50 rounded-xl border border-purple-500/20">
-              <div><label className="block text-xs text-gray-400 mb-1">NUMBER OF BETS</label><input type="number" value={autoBetCount} onChange={(e) => setAutoBetCount(e.target.value)} disabled={autoBetActive} className="w-full bg-[#050015] border border-purple-700/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none disabled:opacity-50" min="1" max="1000" /></div>
+            <div className="space-y-2 p-3 bg-[#1a2c38]/50 rounded-xl border border-[#2f4553]/50">
+              <div><label className="block text-xs text-gray-400 mb-1">NUMBER OF BETS</label><input type="number" value={autoBetCount} onChange={(e) => setAutoBetCount(e.target.value)} disabled={autoBetActive} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-3 py-2 text-white text-sm focus:outline-none disabled:opacity-50" min="1" max="1000" /></div>
               <div className="flex gap-2">
-                <div className="flex-1"><label className="block text-xs text-gray-400 mb-1">Stop Win $</label><input type="number" value={stopOnWin} onChange={(e) => setStopOnWin(e.target.value)} disabled={autoBetActive} className="w-full bg-[#050015] border border-purple-700/30 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none disabled:opacity-50" /></div>
-                <div className="flex-1"><label className="block text-xs text-gray-400 mb-1">Stop Loss $</label><input type="number" value={stopOnLoss} onChange={(e) => setStopOnLoss(e.target.value)} disabled={autoBetActive} className="w-full bg-[#050015] border border-purple-700/30 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none disabled:opacity-50" /></div>
+                <div className="flex-1"><label className="block text-xs text-gray-400 mb-1">Stop Win $</label><input type="number" value={stopOnWin} onChange={(e) => setStopOnWin(e.target.value)} disabled={autoBetActive} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none disabled:opacity-50" /></div>
+                <div className="flex-1"><label className="block text-xs text-gray-400 mb-1">Stop Loss $</label><input type="number" value={stopOnLoss} onChange={(e) => setStopOnLoss(e.target.value)} disabled={autoBetActive} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none disabled:opacity-50" /></div>
               </div>
-              {autoBetActive && <div className="text-center text-xs text-purple-400">Bets remaining: {autoBetRemaining}</div>}
+              {autoBetActive && <div className="text-center text-xs text-[#00F0FF]">Bets remaining: {autoBetRemaining}</div>}
             </div>
           )}
         </div>
@@ -1275,7 +1275,7 @@ const NovaRushGame: React.FC = () => {
               {buttonConfig.text}
             </button>
           ) : (
-            <button onClick={autoBetActive ? handleStopAutoBet : handleStartAutoBet} className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${autoBetActive ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-400 hover:to-blue-400'} active:scale-[0.98]`}>
+            <button onClick={autoBetActive ? handleStopAutoBet : handleStartAutoBet} className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${autoBetActive ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400'} active:scale-[0.98]`}>
               {autoBetActive ? 'STOP AUTO-BET' : 'START AUTO-BET'}
             </button>
           )}

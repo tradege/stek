@@ -1906,13 +1906,13 @@ const DragonBlazeGame: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowFairPanel(!showFairPanel)}
-            className="p-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/60 transition-colors text-xs text-gray-400 hover:text-green-400 border border-gray-700/50">
+            className="p-2 rounded-lg bg-[#2f4553] hover:bg-[#3d5a6e] transition-colors text-xs text-gray-400 hover:text-[#00F0FF] border border-[#2f4553]">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </button>
           <button onClick={toggleGameSound}
-            className={`p-2 rounded-lg bg-gray-800/60 hover:bg-gray-700/60 transition-colors border border-gray-700/50 ${!isSoundActive ? 'text-red-400' : 'text-gray-400 hover:text-white'}`}>
+            className={`p-2 rounded-lg bg-[#2f4553] hover:bg-[#3d5a6e] transition-colors border border-[#2f4553] ${!isSoundActive ? 'text-red-400' : 'text-gray-400 hover:text-white'}`}>
             {!isSoundActive ? (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
@@ -1929,7 +1929,7 @@ const DragonBlazeGame: React.FC = () => {
       
       {/* Provably Fair Panel */}
       {showFairPanel && (
-        <div className="mb-4 p-4 bg-gray-800/80 rounded-xl border border-gray-700/50 backdrop-blur-sm relative z-10">
+        <div className="mb-4 p-4 bg-[#1a2c38] rounded-xl border border-[#2f4553]/50 backdrop-blur-sm relative z-10">
           <h3 className="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -1939,13 +1939,13 @@ const DragonBlazeGame: React.FC = () => {
           <div className="space-y-2">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Server Seed Hash</label>
-              <div className="bg-gray-900/60 rounded-lg px-3 py-2 text-xs font-mono text-gray-300 break-all border border-gray-700/30">
+              <div className="bg-[#0f1923] rounded-lg px-3 py-2 text-xs font-mono text-gray-300 break-all border border-[#2f4553]/50">
                 {lastServerSeedHash || 'Play a round to see the hash'}
               </div>
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Client Seed</label>
-              <div className="bg-gray-900/60 rounded-lg px-3 py-2 text-xs font-mono text-gray-300 border border-gray-700/30">
+              <div className="bg-[#0f1923] rounded-lg px-3 py-2 text-xs font-mono text-gray-300 border border-[#2f4553]/50">
                 {clientSeed || 'Set in Settings'}
               </div>
             </div>
@@ -1956,7 +1956,7 @@ const DragonBlazeGame: React.FC = () => {
       {/* Canvas */}
       <div className="relative mb-4 md:mb-6" ref={containerRef}>
         <canvas ref={canvasRef}
-          className="w-full rounded-xl border border-gray-700/50"
+          className="w-full rounded-xl border border-[#2f4553]/50"
           style={{ height: 'clamp(250px, 45vw, 350px)', background: '#050510' }}
         />
       </div>
@@ -1976,7 +1976,7 @@ const DragonBlazeGame: React.FC = () => {
       </div>
       
       {/* Dragon selector tabs */}
-      <div className="flex mb-4 bg-gray-800/60 rounded-xl p-1 border border-gray-700/30">
+      <div className="flex mb-4 bg-[#1a2c38] rounded-xl p-1 border border-[#2f4553]/50">
         <button onClick={() => setSelectedDragon(1)}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
             selectedDragon === 1 ? 'bg-gradient-to-r from-orange-600/80 to-red-600/80 text-white shadow-lg' : 'text-gray-400 hover:text-white'
@@ -2000,13 +2000,13 @@ const DragonBlazeGame: React.FC = () => {
             <div>
               <label className="block text-[10px] text-gray-400 mb-1">BET AMOUNT</label>
               <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)}
-                className="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-500"
+                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-500"
                 placeholder="10" min={MIN_BET} max={MAX_BET} disabled={betStatus !== 'NONE'} />
             </div>
             <div>
               <label className="block text-[10px] text-gray-400 mb-1">AUTO CASHOUT</label>
               <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)}
-                className="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-500"
+                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-500"
                 placeholder="2.00" step="0.1" min="1.01" disabled={betStatus !== 'NONE'} />
             </div>
             <button
@@ -2025,13 +2025,13 @@ const DragonBlazeGame: React.FC = () => {
             <div>
               <label className="block text-[10px] text-gray-400 mb-1">BET AMOUNT</label>
               <input type="number" value={dragon2Bet} onChange={(e) => setDragon2Bet(e.target.value)}
-                className="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
+                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
                 placeholder="10" min={MIN_BET} max={MAX_BET} disabled={dragon2BetStatus !== 'NONE'} />
             </div>
             <div>
               <label className="block text-[10px] text-gray-400 mb-1">AUTO CASHOUT</label>
               <input type="number" value={dragon2AutoCashout} onChange={(e) => setDragon2AutoCashout(e.target.value)}
-                className="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
+                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
                 placeholder="2.00" step="0.1" min="1.01" disabled={dragon2BetStatus !== 'NONE'} />
             </div>
             <button
@@ -2064,7 +2064,7 @@ const DragonBlazeGame: React.FC = () => {
       
       {/* Hotkey hint */}
       <div className="mt-3 text-center text-xs text-gray-500">
-        Press <kbd className="px-2 py-1 bg-gray-800/80 rounded text-gray-400 border border-gray-700/50 font-mono">SPACE</kbd> to {gameState === 'RUNNING' && (betStatus === 'PLACED' || dragon2BetStatus === 'PLACED') ? 'Cashout' : 'Bet'} Dragon {selectedDragon}
+        Press <kbd className="px-2 py-1 bg-[#2f4553] rounded text-gray-400 border border-[#2f4553] font-mono">SPACE</kbd> to {gameState === 'RUNNING' && (betStatus === 'PLACED' || dragon2BetStatus === 'PLACED') ? 'Cashout' : 'Bet'} Dragon {selectedDragon}
       </div>
     </div>
   );
