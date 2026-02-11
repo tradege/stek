@@ -56,14 +56,22 @@ const NovaRushGame: React.FC = () => {
     gameState, currentMultiplier, crashPoint, countdown, gameId,
     betStatus, currentBet, potentialWin, recentCrashes,
     placeBet, cashOut, isConnected, error,
+    betStatus2, currentBet2, potentialWin2,
+    placeBet2, cashOut2,
+    currentMultiplier2, crashPoint2,
+    dragon1Crashed, dragon2Crashed,
   } = useCrashGame();
 
   const { socket } = useSocket();
   const { playSound, toggleGameSound, gameSoundEnabled, isSoundActive, clientSeed: globalClientSeed, setClientSeed: setGlobalClientSeed } = useSoundContextSafe();
 
-  // State
+  // State - Bet 1
   const [betAmount, setBetAmount] = useState<string>('100');
   const [autoCashout, setAutoCashout] = useState<string>('2.00');
+  // State - Bet 2
+  const [betAmount2, setBetAmount2] = useState<string>('100');
+  const [autoCashout2, setAutoCashout2] = useState<string>('2.00');
+  const [betMode, setBetMode] = useState<'single' | 'both'>('both');
   const [showError, setShowError] = useState(false);
   const [showWinCelebration, setShowWinCelebration] = useState(false);
   const [lastWinAmount, setLastWinAmount] = useState(0);
@@ -177,8 +185,8 @@ const NovaRushGame: React.FC = () => {
         color: '#ff4400',
       });
 
-      // Trigger screen shake with spring physics
-      shakeRef.current.intensity = 22;
+      // Screen shake disabled
+      // shakeRef.current.intensity = 22;
 
       // Create debris with trails
       for (let i = 0; i < 40; i++) {
@@ -573,27 +581,8 @@ const NovaRushGame: React.FC = () => {
 
       ctx.clearRect(0, 0, w, h);
 
-      // === UPDATE SCREEN SHAKE (Spring Physics) ===
-      const shake = shakeRef.current;
-      if (shake.intensity > 0) {
-        const springForce = 0.15;
-        const damping = 0.85;
-        shake.velocityX += (-shake.x * springForce + (Math.random() - 0.5) * shake.intensity * 2);
-        shake.velocityY += (-shake.y * springForce + (Math.random() - 0.5) * shake.intensity * 2);
-        shake.velocityX *= damping;
-        shake.velocityY *= damping;
-        shake.x += shake.velocityX;
-        shake.y += shake.velocityY;
-        shake.intensity *= 0.93;
-        if (shake.intensity < 0.2) {
-          shake.intensity = 0;
-          shake.x = 0; shake.y = 0;
-          shake.velocityX = 0; shake.velocityY = 0;
-        }
-      }
-
+      // === SCREEN SHAKE DISABLED ===
       ctx.save();
-      ctx.translate(shake.x, shake.y);
 
       // === DEEP SPACE BACKGROUND ===
       const bgGrad = ctx.createLinearGradient(0, 0, w, h);
@@ -883,8 +872,8 @@ const NovaRushGame: React.FC = () => {
           const mdy = meteor.y - shipY;
           const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
           if (mDist < 50 && mDist > 20) {
-            // Near miss! Sparks and screen shake
-            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 3);
+            // Near miss! (screen shake disabled)
+            // shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 3);
           }
         }
 
@@ -1119,24 +1108,40 @@ const NovaRushGame: React.FC = () => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.code === 'Space') {
         e.preventDefault();
-        if (gameState === 'WAITING' && betStatus === 'NONE') handlePlaceBet();
-        else if (gameState === 'RUNNING' && betStatus === 'PLACED') handleCashOut();
+        if (gameState === 'WAITING' || gameState === 'STARTING') {
+          // Place bets
+          if (betStatus === 'NONE') handlePlaceBet(1);
+          if (betMode === 'both' && betStatus2 === 'NONE') handlePlaceBet(2);
+        } else if (gameState === 'RUNNING') {
+          // Cashout - first bet 1, then bet 2
+          if (betStatus === 'PLACED') handleCashOut(1);
+          else if (betStatus2 === 'PLACED') handleCashOut(2);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, betStatus]);
+  }, [gameState, betStatus, betStatus2, betMode]);
 
   // ============ BET HANDLERS ============
-  const handlePlaceBet = () => {
-    const amount = parseFloat(betAmount);
-    const autoCashoutValue = parseFloat(autoCashout);
+  const handlePlaceBet = (slot: 1 | 2 = 1) => {
+    const amt = slot === 1 ? betAmount : betAmount2;
+    const ac = slot === 1 ? autoCashout : autoCashout2;
+    const amount = parseFloat(amt);
+    const autoCashoutValue = parseFloat(ac);
     if (isNaN(amount) || amount < MIN_BET || amount > MAX_BET) return;
     playSound('bet');
-    placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+    if (slot === 1) {
+      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+    } else {
+      placeBet2(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+    }
   };
 
-  const handleCashOut = () => { playSound('win'); cashOut(); };
+  const handleCashOut = (slot: 1 | 2 = 1) => {
+    playSound('win');
+    if (slot === 1) cashOut(); else cashOut2();
+  };
 
   const handleStartAutoBet = () => {
     const count = parseInt(autoBetCount);
@@ -1148,25 +1153,33 @@ const NovaRushGame: React.FC = () => {
     autoBetRef.current = false; setAutoBetActive(false); setAutoBetRemaining(0);
   };
 
-  const getButtonConfig = () => {
+  const getButtonConfig = (slot: 1 | 2 = 1) => {
+    const bs = slot === 1 ? betStatus : betStatus2;
+    const pw = slot === 1 ? potentialWin : potentialWin2;
+    const slotColor = slot === 1 ? 'from-cyan-500 to-blue-600' : 'from-purple-500 to-pink-600';
+    const slotHover = slot === 1 ? 'hover:from-cyan-400 hover:to-blue-500' : 'hover:from-purple-400 hover:to-pink-500';
+    const slotLabel = slot === 1 ? 'BET 1' : 'BET 2';
+    
     if (!isConnected) return { text: 'CONNECTING...', disabled: true, className: 'bg-gray-600' };
-    if (gameState === 'WAITING') {
-      if (betStatus === 'PLACED') return { text: 'BET PLACED ✓', disabled: true, className: 'bg-green-600' };
-      return { text: 'LAUNCH BET [SPACE]', disabled: false, className: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500' };
+    if (gameState === 'WAITING' || gameState === 'STARTING') {
+      if (bs === 'PLACED') return { text: `${slotLabel} PLACED ✓`, disabled: true, className: slot === 1 ? 'bg-cyan-600' : 'bg-purple-600' };
+      return { text: `LAUNCH ${slotLabel}`, disabled: false, className: `bg-gradient-to-r ${slotColor} ${slotHover}` };
     }
     if (gameState === 'RUNNING') {
-      if (betStatus === 'PLACED') return { text: `EJECT $${Number(potentialWin || 0).toFixed(2)} [SPACE]`, disabled: false, className: 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 animate-multiplier-pulse' };
+      if (bs === 'PLACED') return { text: `EJECT $${Number(pw || 0).toFixed(2)}`, disabled: false, className: 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 animate-multiplier-pulse' };
+      if (bs === 'CASHED_OUT' || bs === 'WON') return { text: `EJECTED $${Number(pw || 0).toFixed(2)}!`, disabled: true, className: 'bg-gradient-to-r from-green-500 to-emerald-500' };
       return { text: 'IN FLIGHT...', disabled: true, className: 'bg-gray-600' };
     }
     if (gameState === 'CRASHED') {
-      if (betStatus === 'CASHED_OUT') return { text: `EJECTED $${Number(potentialWin || 0).toFixed(2)}!`, disabled: true, className: 'bg-gradient-to-r from-green-500 to-emerald-500' };
-      if (betStatus === 'LOST') return { text: 'DESTROYED', disabled: true, className: 'bg-gradient-to-r from-red-600 to-red-500' };
+      if (bs === 'CASHED_OUT' || bs === 'WON') return { text: `EJECTED $${Number(pw || 0).toFixed(2)}!`, disabled: true, className: 'bg-gradient-to-r from-green-500 to-emerald-500' };
+      if (bs === 'PLACED' || bs === 'LOST') return { text: 'DESTROYED', disabled: true, className: 'bg-gradient-to-r from-red-600 to-red-500' };
       return { text: 'NEXT FLIGHT...', disabled: true, className: 'bg-gray-600' };
     }
-    return { text: 'LAUNCH BET', disabled: true, className: 'bg-gray-600' };
+    return { text: `LAUNCH ${slotLabel}`, disabled: true, className: 'bg-gray-600' };
   };
 
-  const buttonConfig = getButtonConfig();
+  const btn1 = getButtonConfig(1);
+  const btn2 = getButtonConfig(2);
 
   // ============ RENDER ============
   return (
@@ -1214,78 +1227,79 @@ const NovaRushGame: React.FC = () => {
         ))}
       </div>
 
-      {/* Controls */}
+      {/* Dual Bet Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left: Bet Controls */}
-        <div className="space-y-3">
-          {/* Tab Switcher */}
-          <div className="flex rounded-xl overflow-hidden border border-[#2f4553]/50">
-            <button onClick={() => setActiveTab('MANUAL')} className={`flex-1 py-2 font-bold text-sm ${activeTab === 'MANUAL' ? 'bg-[#00F0FF] text-[#0A0E17]' : 'bg-[#1a2c38] text-gray-400 hover:bg-[#2f4553]'}`}>MANUAL</button>
-            <button onClick={() => setActiveTab('AUTO')} className={`flex-1 py-2 font-bold text-sm ${activeTab === 'AUTO' ? 'bg-[#00F0FF] text-[#0A0E17]' : 'bg-[#1a2c38] text-gray-400 hover:bg-[#2f4553]'}`}>AUTO</button>
-          </div>
-
+        {/* === BET 1 Panel === */}
+        <div className="space-y-3 p-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5">
+          <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Bet 1</div>
           {/* Bet Amount */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">BET AMOUNT</label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-[#00F0FF]/50" min="0.1" step="0.1" disabled={autoBetActive} />
+                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50" min="0.1" step="0.1" />
               </div>
-              <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} disabled={autoBetActive} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e] disabled:opacity-50">2x</button>
-              <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} disabled={autoBetActive} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e] disabled:opacity-50">½</button>
+              <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">2x</button>
+              <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">½</button>
             </div>
           </div>
-
-          {/* Auto Cashout */}
+          {/* Auto Eject */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">AUTO EJECT AT</label>
             <div className="relative">
-              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-[#00F0FF]/50" min="1.01" step="0.01" disabled={autoBetActive} />
+              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50" min="1.01" step="0.01" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">x</span>
             </div>
           </div>
-
-          {/* Auto-bet settings */}
-          {activeTab === 'AUTO' && (
-            <div className="space-y-2 p-3 bg-[#1a2c38]/50 rounded-xl border border-[#2f4553]/50">
-              <div><label className="block text-xs text-gray-400 mb-1">NUMBER OF BETS</label><input type="number" value={autoBetCount} onChange={(e) => setAutoBetCount(e.target.value)} disabled={autoBetActive} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-3 py-2 text-white text-sm focus:outline-none disabled:opacity-50" min="1" max="1000" /></div>
-              <div className="flex gap-2">
-                <div className="flex-1"><label className="block text-xs text-gray-400 mb-1">Stop Win $</label><input type="number" value={stopOnWin} onChange={(e) => setStopOnWin(e.target.value)} disabled={autoBetActive} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none disabled:opacity-50" /></div>
-                <div className="flex-1"><label className="block text-xs text-gray-400 mb-1">Stop Loss $</label><input type="number" value={stopOnLoss} onChange={(e) => setStopOnLoss(e.target.value)} disabled={autoBetActive} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none disabled:opacity-50" /></div>
-              </div>
-              {autoBetActive && <div className="text-center text-xs text-[#00F0FF]">Bets remaining: {autoBetRemaining}</div>}
-            </div>
-          )}
+          {/* Bet 1 Button */}
+          <button
+            onClick={gameState === 'RUNNING' && betStatus === 'PLACED' ? () => handleCashOut(1) : () => handlePlaceBet(1)}
+            disabled={btn1.disabled}
+            className={`w-full py-3 rounded-xl font-bold text-base transition-all shadow-lg ${btn1.className} disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]`}
+          >
+            {btn1.text}
+          </button>
         </div>
 
-        {/* Right: Action Button + Info */}
-        <div className="space-y-3 flex flex-col justify-end">
-          {/* Current bet info */}
-          {betStatus === 'PLACED' && gameState === 'RUNNING' && (
-            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-center">
-              <div className="text-xs text-gray-400">POTENTIAL WIN</div>
-              <div className="text-2xl font-bold text-blue-400">${Number(potentialWin || 0).toFixed(2)}</div>
+        {/* === BET 2 Panel === */}
+        <div className="space-y-3 p-3 rounded-xl border border-purple-500/20 bg-purple-500/5">
+          <div className="text-xs font-bold text-purple-400 uppercase tracking-wider">Bet 2</div>
+          {/* Bet Amount */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">BET AMOUNT</label>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input type="number" value={betAmount2} onChange={(e) => setBetAmount2(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50" min="0.1" step="0.1" />
+              </div>
+              <button onClick={() => setBetAmount2(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">2x</button>
+              <button onClick={() => setBetAmount2(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">½</button>
             </div>
-          )}
-
-          {/* Main Button */}
-          {activeTab === 'MANUAL' ? (
-            <button onClick={gameState === 'RUNNING' && betStatus === 'PLACED' ? handleCashOut : handlePlaceBet} disabled={buttonConfig.disabled} className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${buttonConfig.className} disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]`}>
-              {buttonConfig.text}
-            </button>
-          ) : (
-            <button onClick={autoBetActive ? handleStopAutoBet : handleStartAutoBet} className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${autoBetActive ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400'} active:scale-[0.98]`}>
-              {autoBetActive ? 'STOP AUTO-BET' : 'START AUTO-BET'}
-            </button>
-          )}
-
-          {/* Error */}
-          {showError && error && (
-            <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">{error}</div>
-          )}
+          </div>
+          {/* Auto Eject */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">AUTO EJECT AT</label>
+            <div className="relative">
+              <input type="number" value={autoCashout2} onChange={(e) => setAutoCashout2(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50" min="1.01" step="0.01" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">x</span>
+            </div>
+          </div>
+          {/* Bet 2 Button */}
+          <button
+            onClick={gameState === 'RUNNING' && betStatus2 === 'PLACED' ? () => handleCashOut(2) : () => handlePlaceBet(2)}
+            disabled={btn2.disabled}
+            className={`w-full py-3 rounded-xl font-bold text-base transition-all shadow-lg ${btn2.className} disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]`}
+          >
+            {btn2.text}
+          </button>
         </div>
       </div>
+
+      {/* Error */}
+      {showError && error && (
+        <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs text-center">{error}</div>
+      )}
     </div>
   );
 };

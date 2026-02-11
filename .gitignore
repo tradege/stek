@@ -10,3 +10,7 @@ SECRET_ENV_BACKUP.txt
 DATABASE_BACKUP.sql
 NGINX_CONFIG_BACKUP.conf
 PM2_BACKUP.json
+.next/
+*.bak
+*.bak2
+*.bak_debug

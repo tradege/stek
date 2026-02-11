@@ -1176,29 +1176,31 @@ const DragonBlazeGame: React.FC = () => {
   const perlinRef = useRef(new PerlinNoise1D(Math.floor(Math.random() * 10000)));
   
   const {
-    gameState, currentMultiplier, crashPoint, countdown,
+    gameState, currentMultiplier, currentMultiplier2, crashPoint, crashPoint2, countdown,
     gameId, betStatus, currentBet, potentialWin,
-    recentCrashes, placeBet, cashOut, isConnected, error
+    recentCrashes, placeBet, cashOut, isConnected, error,
+    placeBet2, cashOut2, betStatus2, currentBet2, potentialWin2,
+    dragon1Crashed: d1CrashedBackend, dragon2Crashed: d2CrashedBackend
   } = useCrashGame();
   
   const { gameSoundEnabled, toggleGameSound, isSoundActive, playSound, clientSeed } = useSoundContextSafe();
   
   // Local state
   const [betAmount, setBetAmount] = useState('10');
-  const [autoCashout, setAutoCashout] = useState('2.00');
+  const [autoCashout, setAutoCashout] = useState('');
   const [activeTab, setActiveTab] = useState<'MANUAL' | 'AUTO'>('MANUAL');
   const [showFairPanel, setShowFairPanel] = useState(false);
   const [lastServerSeedHash, setLastServerSeedHash] = useState('');
   const [lastNonce, setLastNonce] = useState(0);
   
-  // Dragon 2 state
-  const [dragon2Crashed, setDragon2Crashed] = useState(false);
-  const [dragon2CrashPoint, setDragon2CrashPoint] = useState(0);
-  const [dragon2Bet, setDragon2Bet] = useState('');
-  const [dragon2AutoCashout, setDragon2AutoCashout] = useState('2.00');
-  const [dragon2BetStatus, setDragon2BetStatus] = useState<'NONE' | 'PLACED' | 'CASHED_OUT' | 'LOST'>('NONE');
-  const [dragon2PotentialWin, setDragon2PotentialWin] = useState(0);
-  const [selectedDragon, setSelectedDragon] = useState<1 | 2>(1);
+  // Dragon 2 local UI state (betting handled by useCrashGame slot 2)
+  const [dragon2Bet, setDragon2Bet] = useState('10');
+  const [dragon2AutoCashout, setDragon2AutoCashout] = useState('');
+  const [betMode, setBetMode] = useState<'dragon1' | 'dragon2' | 'both'>('both');
+  
+  // Use backend state for dragon crash and betting
+  const dragon2BetStatus = betStatus2;
+  const dragon2PotentialWin = potentialWin2;
   
   // Animation state refs
   const scrollXRef = useRef(0);
@@ -1209,6 +1211,9 @@ const DragonBlazeGame: React.FC = () => {
   const shakeRef = useRef({ x: 0, y: 0, intensity: 0, velocityX: 0, velocityY: 0 });
   const crashExplosionRef = useRef(0);
   const dragon2CrashExplosionRef = useRef(false);
+  // Track previous backend crash states to detect transitions
+  const prevD1CrashedRef = useRef(false);
+  const prevD2CrashedRef = useRef(false);
   const shockwavesRef = useRef<ShockwaveRing[]>([]);
   
   // Dragon state refs (mutable for animation loop)
@@ -1264,41 +1269,20 @@ const DragonBlazeGame: React.FC = () => {
       dragon2Ref.current = createDragonState(h * 0.5, 0.85, Math.random() * 1000 + 500);
       crashExplosionRef.current = 0;
       dragon2CrashExplosionRef.current = false;
-      setDragon2Crashed(false);
-      setDragon2CrashPoint(0);
-      if (dragon2BetStatus === 'LOST' || dragon2BetStatus === 'CASHED_OUT') {
-        setDragon2BetStatus('NONE');
-      }
+      prevD1CrashedRef.current = false;
+      prevD2CrashedRef.current = false;
+      // Dragon 2 bet status is now managed by useCrashGame hook (slot 2)
     }
   }, [gameState]);
   
-  // Dragon 2 crash simulation
-  useEffect(() => {
-    if (gameState === 'RUNNING' && !dragon2Crashed) {
-      if (dragon2CrashPoint === 0) {
-        const baseCrash = crashPoint || 2;
-        const variance = (Math.random() - 0.5) * baseCrash * 0.4;
-        setDragon2CrashPoint(Math.max(1.01, baseCrash + variance));
-      }
-      if (dragon2CrashPoint > 0 && currentMultiplier >= dragon2CrashPoint) {
-        setDragon2Crashed(true);
-        if (dragon2BetStatus === 'PLACED') {
-          setDragon2BetStatus('LOST');
-        }
-      }
-    }
-  }, [gameState, currentMultiplier, dragon2CrashPoint, crashPoint, dragon2Crashed, dragon2BetStatus]);
-  
-  // Update dragon 2 potential win
-  useEffect(() => {
-    if (dragon2BetStatus === 'PLACED' && !dragon2Crashed) {
-      setDragon2PotentialWin(parseFloat(dragon2Bet || '0') * currentMultiplier);
-    }
-  }, [currentMultiplier, dragon2BetStatus, dragon2Bet, dragon2Crashed]);
+  // Dragon crash states are now fully managed by the backend via useCrashGame hook
+  // No local simulation needed — d1CrashedBackend and d2CrashedBackend come from the server
   
   // Spawn arrows from city — ALWAYS aimed directly at a dragon
   useEffect(() => {
-    if (gameState !== 'RUNNING') return;
+    if (gameState !== 'RUNNING' && gameState !== 'CRASHED') return;
+    // Don't spawn arrows if both dragons are gone
+    // (arrows are spawned during RUNNING, and continue briefly during CRASHED for visual effect)
     const interval = setInterval(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -1483,15 +1467,21 @@ const DragonBlazeGame: React.FC = () => {
       drawMedievalCity(ctx, buildingsRef.current, scrollXRef.current, w, h, arrowFlashRef.current);
       
       // === UPDATE DRAGONS ===
-      // Each dragon crashes independently. Dragon 1 crashes when the round ends (gameState === 'CRASHED').
-      // Dragon 2 crashes at its own crash point. When one falls, the other continues.
-      const d1Crashed = gameState === 'CRASHED';
-      const d2Crashed_local = dragon2Crashed;
+      // Each dragon crashes independently based on backend crash states.
+      // When one falls, the other continues flying.
+      const d1Crashed = d1CrashedBackend;
+      const d2Crashed_local = d2CrashedBackend;
 
       // === UPDATE ANIMATION STATE ===
       // Keep scrolling as long as at least one dragon is still flying
-      if (gameState === 'RUNNING' || (d2Crashed_local && !d1Crashed && !d1.isGone) || (d1Crashed && !d2Crashed_local && !d2.isGone)) {
-        scrollXRef.current += 1.5 * dt * Math.min(currentMultiplier || 1, 5);
+      const anyDragonFlying = (!d1Crashed || !d1.isGone) || (!d2Crashed_local || !d2.isGone);
+      if (gameState === 'RUNNING' && anyDragonFlying) {
+        // Use the higher of the two active multipliers for scroll speed
+        const activeMultiplier = Math.max(
+          d1Crashed ? 1 : (currentMultiplier || 1),
+          d2Crashed_local ? 1 : (currentMultiplier2 || 1)
+        );
+        scrollXRef.current += 1.5 * dt * Math.min(activeMultiplier, 5);
       }
       
       // Dragon 1 flight & AI
@@ -1525,7 +1515,10 @@ const DragonBlazeGame: React.FC = () => {
         }
       }
       
-      // Dragon 1 crash — a KILLING ARROW hits the dragon!
+      // Dragon 1 crash — detect transition from not-crashed to crashed
+      if (d1Crashed && !prevD1CrashedRef.current && !d1.isFalling) {
+        prevD1CrashedRef.current = true;
+      }
       if (d1Crashed && crashExplosionRef.current === 0 && !d1.isFalling) {
         crashExplosionRef.current = 1;
         // Spawn a final arrow that visually "hits" the dragon
@@ -1769,44 +1762,52 @@ const DragonBlazeGame: React.FC = () => {
         return true;
       });
       
-      // === MULTIPLIER DISPLAY ===
-      const multText = gameState === 'CRASHED' 
-        ? `${(crashPoint || currentMultiplier).toFixed(2)}x`
-        : gameState === 'RUNNING'
-        ? `${currentMultiplier.toFixed(2)}x`
-        : gameState === 'STARTING'
-        ? `${countdown}s`
-        : 'WAITING...';
-      
-      const multColor = gameState === 'CRASHED' ? COLORS.danger 
-        : currentMultiplier >= 5 ? COLORS.warning 
-        : currentMultiplier >= 2 ? COLORS.success 
-        : COLORS.accent;
-      
-      const fontSize = Math.min(w * 0.08, 48);
-      ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
-      ctx.textAlign = 'center';
-      
-      ctx.shadowColor = multColor;
-      ctx.shadowBlur = 40;
-      ctx.fillStyle = multColor + '33';
-      ctx.fillText(multText, w / 2, h * 0.2);
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = multColor + '77';
-      ctx.fillText(multText, w / 2, h * 0.2);
-      ctx.shadowBlur = 8;
-      ctx.fillStyle = multColor;
-      ctx.fillText(multText, w / 2, h * 0.2);
-      ctx.shadowBlur = 0;
-      
-      // Dragon 2 crash point display
-      if (d2Crashed_local && gameState === 'RUNNING') {
-        ctx.fillStyle = COLORS.danger;
-        ctx.shadowColor = COLORS.danger;
-        ctx.shadowBlur = 10;
-        ctx.font = `bold ${Math.min(w * 0.04, 24)}px 'JetBrains Mono', monospace`;
-        ctx.fillText(`Dragon 2 crashed at ${dragon2CrashPoint.toFixed(2)}x`, w / 2, h * 0.28);
+      // === MULTIPLIER DISPLAY (Dual Dragon) ===
+      if (gameState === 'WAITING' || gameState === 'STARTING') {
+        // Show countdown or waiting
+        const waitText = countdown > 0 ? `${countdown}s` : 'WAITING...';
+        const fontSize = Math.min(w * 0.08, 48);
+        ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = COLORS.accent;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = COLORS.accent;
+        ctx.fillText(waitText, w / 2, h * 0.2);
         ctx.shadowBlur = 0;
+      } else {
+        // Show two multipliers side by side
+        const fontSize = Math.min(w * 0.06, 38);
+        ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+        ctx.textAlign = 'center';
+        
+        // Dragon 1 multiplier (left side)
+        const m1 = d1Crashed ? (crashPoint || currentMultiplier) : currentMultiplier;
+        const m1Color = d1Crashed ? COLORS.danger : m1 >= 5 ? COLORS.warning : m1 >= 2 ? COLORS.success : '#FF6B00';
+        const m1Text = `${m1.toFixed(2)}x`;
+        ctx.shadowColor = m1Color;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = m1Color;
+        ctx.fillText(m1Text, w * 0.3, h * 0.15);
+        ctx.shadowBlur = 0;
+        // Dragon 1 label
+        ctx.font = `bold ${Math.min(w * 0.025, 14)}px Inter, sans-serif`;
+        ctx.fillStyle = d1Crashed ? COLORS.danger + '99' : '#FF6B00AA';
+        ctx.fillText(d1Crashed ? 'DRAGON 1 CRASHED' : 'DRAGON 1', w * 0.3, h * 0.15 + fontSize * 0.6);
+        
+        // Dragon 2 multiplier (right side)
+        const m2 = d2Crashed_local ? (crashPoint2 || currentMultiplier2) : currentMultiplier2;
+        const m2Color = d2Crashed_local ? COLORS.danger : m2 >= 5 ? COLORS.warning : m2 >= 2 ? COLORS.success : '#4A90D9';
+        const m2Text = `${m2.toFixed(2)}x`;
+        ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
+        ctx.shadowColor = m2Color;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = m2Color;
+        ctx.fillText(m2Text, w * 0.7, h * 0.15);
+        ctx.shadowBlur = 0;
+        // Dragon 2 label
+        ctx.font = `bold ${Math.min(w * 0.025, 14)}px Inter, sans-serif`;
+        ctx.fillStyle = d2Crashed_local ? COLORS.danger + '99' : '#4A90D9AA';
+        ctx.fillText(d2Crashed_local ? 'DRAGON 2 CRASHED' : 'DRAGON 2', w * 0.7, h * 0.15 + fontSize * 0.6);
       }
       
       ctx.restore(); // restore shake transform
@@ -1816,7 +1817,7 @@ const DragonBlazeGame: React.FC = () => {
     
     animFrameRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, [gameState, currentMultiplier, crashPoint, countdown, dragon2Crashed, dragon2CrashPoint]);
+  }, [gameState, currentMultiplier, currentMultiplier2, crashPoint, crashPoint2, countdown, d1CrashedBackend, d2CrashedBackend]);
   
   // ==================== HANDLERS ====================
   const handlePlaceBet = useCallback((dragonNum: 1 | 2) => {
@@ -1829,43 +1830,99 @@ const DragonBlazeGame: React.FC = () => {
     } else {
       const amount = parseFloat(dragon2Bet);
       if (isNaN(amount) || amount < MIN_BET || amount > MAX_BET) return;
-      setDragon2BetStatus('PLACED');
+      const ac2 = parseFloat(dragon2AutoCashout);
+      placeBet2(amount, isNaN(ac2) || ac2 <= 1 ? undefined : ac2);
       playSound('bet');
     }
-  }, [betAmount, autoCashout, dragon2Bet, placeBet, playSound]);
+  }, [betAmount, autoCashout, dragon2Bet, dragon2AutoCashout, placeBet, placeBet2, playSound]);
+  
+  // Cashout lock to prevent double-trigger on mobile touch
+  const cashoutLockRef = useRef<{ [key: number]: boolean }>({});
   
   const handleCashOut = useCallback((dragonNum: 1 | 2) => {
+    // Prevent double-trigger: if this dragon is already being cashed out, ignore
+    if (cashoutLockRef.current[dragonNum]) {
+      console.log("[Crash] Cashout already in progress for Dragon", dragonNum, "- ignoring");
+      return;
+    }
+    cashoutLockRef.current[dragonNum] = true;
+    setTimeout(() => { cashoutLockRef.current[dragonNum] = false; }, 2000);
+    
     if (dragonNum === 1) {
       cashOut();
       playSound('win');
-    } else {
-      setDragon2BetStatus('CASHED_OUT');
-      setDragon2PotentialWin(parseFloat(dragon2Bet || '0') * currentMultiplier);
+    } else if (dragonNum === 2) {
+      cashOut2();
       playSound('win');
     }
-  }, [cashOut, dragon2Bet, currentMultiplier, playSound]);
+  }, [cashOut, cashOut2, playSound]);
   
-  // Keyboard shortcut
+  // Keyboard shortcuts:
+  // SPACE = bet/cashout based on mode (in 'both' mode: one at a time, dragon 1 first)
+  // Key '1' = bet/cashout Dragon 1 only
+  // Key '2' = bet/cashout Dragon 2 only
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && e.target === document.body) {
+      if (e.target !== document.body) return;
+      
+      // Key '1' - Dragon 1 only
+      if (e.code === 'Digit1' || e.code === 'Numpad1') {
         e.preventDefault();
         if (gameState === 'RUNNING' && betStatus === 'PLACED') {
-          handleCashOut(selectedDragon);
+          handleCashOut(1);
+        } else if (gameState === 'WAITING' && betStatus === 'NONE' && (betMode === 'dragon1' || betMode === 'both')) {
+          handlePlaceBet(1);
+        }
+        return;
+      }
+      
+      // Key '2' - Dragon 2 only
+      if (e.code === 'Digit2' || e.code === 'Numpad2') {
+        e.preventDefault();
+        if (gameState === 'RUNNING' && betStatus2 === 'PLACED') {
+          handleCashOut(2);
+        } else if (gameState === 'WAITING' && betStatus2 === 'NONE' && (betMode === 'dragon2' || betMode === 'both')) {
+          handlePlaceBet(2);
+        }
+        return;
+      }
+      
+      // SPACE - smart bet/cashout
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameState === 'RUNNING') {
+          // In 'both' mode: cash out one at a time (dragon 1 first, then dragon 2)
+          if (betMode === 'both') {
+            if (betStatus === 'PLACED') {
+              handleCashOut(1);
+            } else if (betStatus2 === 'PLACED') {
+              handleCashOut(2);
+            }
+          } else if (betMode === 'dragon1' && betStatus === 'PLACED') {
+            handleCashOut(1);
+          } else if (betMode === 'dragon2' && betStatus2 === 'PLACED') {
+            handleCashOut(2);
+          }
         } else if (gameState === 'WAITING') {
-          handlePlaceBet(selectedDragon);
+          // SPACE places bets on all active modes
+          if (betMode === 'dragon1' || betMode === 'both') {
+            if (betStatus === 'NONE') handlePlaceBet(1);
+          }
+          if (betMode === 'dragon2' || betMode === 'both') {
+            if (betStatus2 === 'NONE') handlePlaceBet(2);
+          }
         }
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [gameState, betStatus, selectedDragon, handleCashOut, handlePlaceBet]);
+  }, [gameState, betStatus, betStatus2, betMode, handleCashOut, handlePlaceBet]);
   
   // Button config
   const getButtonConfig = (dragonNum: 1 | 2) => {
-    const bs = dragonNum === 1 ? betStatus : dragon2BetStatus;
-    const crashed = dragonNum === 1 ? gameState === 'CRASHED' : dragon2Crashed;
-    const pw = dragonNum === 1 ? potentialWin : dragon2PotentialWin;
+    const bs = dragonNum === 1 ? betStatus : betStatus2;
+    const crashed = dragonNum === 1 ? d1CrashedBackend : d2CrashedBackend;
+    const pw = dragonNum === 1 ? potentialWin : potentialWin2;
     const dragonColor = dragonNum === 1 ? 'from-orange-500 to-red-600' : 'from-blue-500 to-purple-600';
     const dragonHover = dragonNum === 1 ? 'hover:from-orange-400 hover:to-red-500' : 'hover:from-blue-400 hover:to-purple-500';
     
@@ -1975,96 +2032,170 @@ const DragonBlazeGame: React.FC = () => {
         ))}
       </div>
       
-      {/* Dragon selector tabs */}
+      {/* Bet Mode Selector - Aviator-style tabs */}
       <div className="flex mb-4 bg-[#1a2c38] rounded-xl p-1 border border-[#2f4553]/50">
-        <button onClick={() => setSelectedDragon(1)}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            selectedDragon === 1 ? 'bg-gradient-to-r from-orange-600/80 to-red-600/80 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+        <button onClick={() => setBetMode('dragon1')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+            betMode === 'dragon1' ? 'bg-gradient-to-r from-orange-600/80 to-red-600/80 text-white shadow-lg shadow-orange-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}>
           🐉 Dragon 1
         </button>
-        <button onClick={() => setSelectedDragon(2)}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            selectedDragon === 2 ? 'bg-gradient-to-r from-blue-600/80 to-purple-600/80 text-white shadow-lg' : 'text-gray-400 hover:text-white'
+        <button onClick={() => setBetMode('both')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+            betMode === 'both' ? 'bg-gradient-to-r from-orange-500/70 via-purple-500/70 to-blue-500/70 text-white shadow-lg shadow-purple-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}>
+          🐉🐲 Both
+        </button>
+        <button onClick={() => setBetMode('dragon2')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+            betMode === 'dragon2' ? 'bg-gradient-to-r from-blue-600/80 to-purple-600/80 text-white shadow-lg shadow-blue-500/20' : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}>
           🐲 Dragon 2
         </button>
       </div>
       
-      {/* Dual Betting Controls */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Dragon 1 Controls */}
-        <div className={`p-3 rounded-xl border transition-all ${selectedDragon === 1 ? 'border-orange-500/50 bg-orange-500/5' : 'border-[#1E293B] bg-[#131B2C]/50'}`}>
-          <h4 className="text-xs font-bold text-orange-400 mb-2">🐉 DRAGON 1</h4>
-          <div className="space-y-2">
-            <div>
-              <label className="block text-[10px] text-gray-400 mb-1">BET AMOUNT</label>
-              <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)}
-                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-500"
-                placeholder="10" min={MIN_BET} max={MAX_BET} disabled={betStatus !== 'NONE'} />
+      {/* Betting Controls - Aviator-style layout */}
+      <div className={`grid ${betMode === 'both' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+        {/* Dragon 1 Controls - shown in 'dragon1' and 'both' modes */}
+        {(betMode === 'dragon1' || betMode === 'both') && (
+          <div className={`p-3 md:p-4 rounded-xl border transition-all border-orange-500/30 bg-gradient-to-b from-orange-500/5 to-transparent`}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-bold text-orange-400 flex items-center gap-1.5">🐉 DRAGON 1</h4>
+              {betStatus === 'PLACED' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30">ACTIVE</span>}
             </div>
-            <div>
-              <label className="block text-[10px] text-gray-400 mb-1">AUTO CASHOUT</label>
-              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)}
-                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-500"
-                placeholder="2.00" step="0.1" min="1.01" disabled={betStatus !== 'NONE'} />
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Bet Amount</label>
+                <div className="flex gap-1">
+                  <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)}
+                    className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-orange-500 transition-colors"
+                    placeholder="10" min={MIN_BET} max={MAX_BET} disabled={betStatus !== 'NONE'} />
+                  <button onClick={() => setBetAmount(String(Math.max(MIN_BET, Math.floor(Number(betAmount) / 2))))}
+                    disabled={betStatus !== 'NONE'}
+                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">½</button>
+                  <button onClick={() => setBetAmount(String(Math.min(MAX_BET, Number(betAmount) * 2)))}
+                    disabled={betStatus !== 'NONE'}
+                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">2×</button>
+                </div>
+                {betMode !== 'both' && (
+                  <div className="flex gap-1 mt-1">
+                    {[1, 5, 10, 50, 100].map(v => (
+                      <button key={v} onClick={() => setBetAmount(String(v))}
+                        disabled={betStatus !== 'NONE'}
+                        className={`flex-1 py-1 rounded text-[10px] font-mono transition-colors disabled:opacity-40 ${
+                          betAmount === String(v) ? 'bg-orange-500/30 text-orange-300 border border-orange-500/40' : 'bg-[#2f4553] text-gray-400 hover:bg-[#3d5a6e] border border-transparent'
+                        }`}>{v}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Auto Cashout</label>
+                <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)}
+                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-orange-500 transition-colors"
+                  placeholder="2.00" step="0.1" min="1.01" disabled={betStatus !== 'NONE'} />
+              </div>
+              <div className="text-[9px] text-yellow-400 bg-black/50 p-1 rounded mb-1 font-mono">
+                gs={gameState} bs={betStatus} bs2={betStatus2} conn={isConnected?'Y':'N'} err={error||'none'}
+              </div>
+              <button
+                onClick={() => betStatus === 'PLACED' && gameState === 'RUNNING' ? handleCashOut(1) : handlePlaceBet(1)}
+                disabled={btn1.disabled}
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${btn1.className} disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none`}>
+                {btn1.text}
+                {betStatus === 'PLACED' && gameState === 'RUNNING' && (
+                  <span className="block text-[10px] font-normal opacity-80 mt-0.5">${Number(potentialWin || 0).toFixed(2)} potential</span>
+                )}
+              </button>
             </div>
-            <button
-              onClick={() => betStatus === 'PLACED' && gameState === 'RUNNING' ? handleCashOut(1) : handlePlaceBet(1)}
-              disabled={btn1.disabled}
-              className={`w-full py-2 rounded-lg font-bold text-xs transition-all ${btn1.className} disabled:opacity-50 disabled:cursor-not-allowed`}>
-              {btn1.text}
-            </button>
           </div>
-        </div>
+        )}
         
-        {/* Dragon 2 Controls */}
-        <div className={`p-3 rounded-xl border transition-all ${selectedDragon === 2 ? 'border-blue-500/50 bg-blue-500/5' : 'border-[#1E293B] bg-[#131B2C]/50'}`}>
-          <h4 className="text-xs font-bold text-blue-400 mb-2">🐲 DRAGON 2</h4>
-          <div className="space-y-2">
-            <div>
-              <label className="block text-[10px] text-gray-400 mb-1">BET AMOUNT</label>
-              <input type="number" value={dragon2Bet} onChange={(e) => setDragon2Bet(e.target.value)}
-                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
-                placeholder="10" min={MIN_BET} max={MAX_BET} disabled={dragon2BetStatus !== 'NONE'} />
+        {/* Dragon 2 Controls - shown in 'dragon2' and 'both' modes */}
+        {(betMode === 'dragon2' || betMode === 'both') && (
+          <div className={`p-3 md:p-4 rounded-xl border transition-all border-blue-500/30 bg-gradient-to-b from-blue-500/5 to-transparent`}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-bold text-blue-400 flex items-center gap-1.5">🐲 DRAGON 2</h4>
+              {betStatus2 === 'PLACED' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">ACTIVE</span>}
             </div>
-            <div>
-              <label className="block text-[10px] text-gray-400 mb-1">AUTO CASHOUT</label>
-              <input type="number" value={dragon2AutoCashout} onChange={(e) => setDragon2AutoCashout(e.target.value)}
-                className="w-full bg-[#2f4553] border border-[#2f4553] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
-                placeholder="2.00" step="0.1" min="1.01" disabled={dragon2BetStatus !== 'NONE'} />
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Bet Amount</label>
+                <div className="flex gap-1">
+                  <input type="number" value={dragon2Bet} onChange={(e) => setDragon2Bet(e.target.value)}
+                    className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors"
+                    placeholder="10" min={MIN_BET} max={MAX_BET} disabled={betStatus2 !== 'NONE'} />
+                  <button onClick={() => setDragon2Bet(String(Math.max(MIN_BET, Math.floor(Number(dragon2Bet) / 2))))}
+                    disabled={betStatus2 !== 'NONE'}
+                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">½</button>
+                  <button onClick={() => setDragon2Bet(String(Math.min(MAX_BET, Number(dragon2Bet) * 2)))}
+                    disabled={betStatus2 !== 'NONE'}
+                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">2×</button>
+                </div>
+                {betMode !== 'both' && (
+                  <div className="flex gap-1 mt-1">
+                    {[1, 5, 10, 50, 100].map(v => (
+                      <button key={v} onClick={() => setDragon2Bet(String(v))}
+                        disabled={betStatus2 !== 'NONE'}
+                        className={`flex-1 py-1 rounded text-[10px] font-mono transition-colors disabled:opacity-40 ${
+                          dragon2Bet === String(v) ? 'bg-blue-500/30 text-blue-300 border border-blue-500/40' : 'bg-[#2f4553] text-gray-400 hover:bg-[#3d5a6e] border border-transparent'
+                        }`}>{v}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Auto Cashout</label>
+                <input type="number" value={dragon2AutoCashout} onChange={(e) => setDragon2AutoCashout(e.target.value)}
+                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="2.00" step="0.1" min="1.01" disabled={betStatus2 !== 'NONE'} />
+              </div>
+              <button
+                onClick={() => dragon2BetStatus === 'PLACED' && gameState === 'RUNNING' && !d2CrashedBackend ? handleCashOut(2) : handlePlaceBet(2)}
+                disabled={btn2.disabled}
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${btn2.className} disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none`}>
+                {btn2.text}
+                {betStatus2 === 'PLACED' && gameState === 'RUNNING' && (
+                  <span className="block text-[10px] font-normal opacity-80 mt-0.5">${Number(potentialWin2 || 0).toFixed(2)} potential</span>
+                )}
+              </button>
             </div>
-            <button
-              onClick={() => dragon2BetStatus === 'PLACED' && gameState === 'RUNNING' && !dragon2Crashed ? handleCashOut(2) : handlePlaceBet(2)}
-              disabled={btn2.disabled}
-              className={`w-full py-2 rounded-lg font-bold text-xs transition-all ${btn2.className} disabled:opacity-50 disabled:cursor-not-allowed`}>
-              {btn2.text}
-            </button>
           </div>
-        </div>
+        )}
       </div>
       
-      {/* Current bets info */}
-      {(currentBet || dragon2BetStatus === 'PLACED') && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+      {/* Active bets summary */}
+      {(currentBet || betStatus2 === 'PLACED') && (
+        <div className="mt-3 flex gap-2">
           {currentBet && (
-            <div className="p-2 bg-orange-500/10 rounded-lg flex justify-between items-center border border-orange-500/20">
-              <span className="text-orange-400 text-xs">Dragon 1:</span>
+            <div className="flex-1 p-2 bg-orange-500/10 rounded-lg flex justify-between items-center border border-orange-500/20">
+              <span className="text-orange-400 text-xs">🐉 Dragon 1</span>
               <span className="text-orange-300 font-bold text-xs font-mono">${Number(currentBet?.betAmount || 0).toFixed(2)}</span>
             </div>
           )}
-          {dragon2BetStatus === 'PLACED' && (
-            <div className="p-2 bg-blue-500/10 rounded-lg flex justify-between items-center border border-blue-500/20">
-              <span className="text-blue-400 text-xs">Dragon 2:</span>
-              <span className="text-blue-300 font-bold text-xs font-mono">${Number(dragon2Bet || 0)}</span>
+          {betStatus2 === 'PLACED' && (
+            <div className="flex-1 p-2 bg-blue-500/10 rounded-lg flex justify-between items-center border border-blue-500/20">
+              <span className="text-blue-400 text-xs">🐲 Dragon 2</span>
+              <span className="text-blue-300 font-bold text-xs font-mono">${Number(currentBet2?.betAmount || dragon2Bet || 0).toFixed(2)}</span>
             </div>
           )}
         </div>
       )}
       
       {/* Hotkey hint */}
-      <div className="mt-3 text-center text-xs text-gray-500">
-        Press <kbd className="px-2 py-1 bg-[#2f4553] rounded text-gray-400 border border-[#2f4553] font-mono">SPACE</kbd> to {gameState === 'RUNNING' && (betStatus === 'PLACED' || dragon2BetStatus === 'PLACED') ? 'Cashout' : 'Bet'} Dragon {selectedDragon}
+      <div className="mt-3 text-center text-xs text-gray-500 space-y-0.5">
+        <div>
+          <kbd className="px-1.5 py-0.5 bg-[#2f4553] rounded text-gray-400 border border-[#2f4553] font-mono text-[10px]">SPACE</kbd>
+          {' '}{gameState === 'RUNNING' && (betStatus === 'PLACED' || betStatus2 === 'PLACED') ? 'Cashout (one at a time)' : 'Bet'}
+        </div>
+        {betMode === 'both' && (
+          <div>
+            <kbd className="px-1.5 py-0.5 bg-[#2f4553] rounded text-orange-400 border border-[#2f4553] font-mono text-[10px]">1</kbd>
+            {' '}Dragon 1{' · '}
+            <kbd className="px-1.5 py-0.5 bg-[#2f4553] rounded text-blue-400 border border-[#2f4553] font-mono text-[10px]">2</kbd>
+            {' '}Dragon 2
+          </div>
+        )}
       </div>
     </div>
   );

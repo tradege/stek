@@ -27,6 +27,7 @@ interface Bet {
   currency: string;
   cashoutMultiplier?: number;
   profit?: number;
+  slot?: number;
   status: 'ACTIVE' | 'CASHED_OUT' | 'LOST';
   timestamp: Date;
   isNew?: boolean;
@@ -70,6 +71,7 @@ const LiveBets: React.FC = () => {
         amount: typeof data.amount === 'string' ? parseFloat(data.amount) : (data.amount || 0),
         currency: data.currency || 'USDT',
         status: 'ACTIVE',
+        slot: data.slot || undefined,
         timestamp: new Date(),
         isNew: true,
       };
@@ -96,14 +98,16 @@ const LiveBets: React.FC = () => {
     };
 
     // Cashout event
-    const handleCashout = (data: { betId: string; oddsId?: string; oddsNumber?: number; oddsNumberFormatted?: string; multiplier: number; profit: number; userId?: string }) => {
+    const handleCashout = (data: { betId: string; oddsId?: string; oddsNumber?: number; oddsNumberFormatted?: string; multiplier: number; profit: number; userId?: string; slot?: number }) => {
       
       setBets((prev) =>
         prev.map((bet) => {
-          // Match by betId or oddsId or userId
-          const isMatch = bet.id === data.betId || 
-                          bet.oddsId === data.oddsId || 
-                          (data.userId && bet.userId === data.userId);
+          // Match by betId, oddsId, or userId+slot (slot-aware matching for dual-dragon mode)
+          const matchById = bet.id === data.betId || bet.oddsId === data.oddsId;
+          const matchByUser = data.userId && bet.userId === data.userId;
+          // If both bet and event have slot info, require slot match too
+          const slotMatch = (!data.slot || !bet.slot) ? true : (data.slot === bet.slot);
+          const isMatch = matchById || (matchByUser && slotMatch);
           
           if (isMatch && bet.status === 'ACTIVE') {
             const isBigWin = data.profit >= 100; // Big win threshold
