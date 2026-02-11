@@ -1,0 +1,40 @@
+{
+  "brandName": "DragonBlaze Casino",
+  "domain": "dragonblaze.casino",
+  "logoUrl": "https://cdn.dragonblaze.casino/logo.png",
+  "faviconUrl": "https://cdn.dragonblaze.casino/favicon.ico",
+  "primaryColor": "#FF6B00",
+  "secondaryColor": "#1A0A00",
+  "accentColor": "#FFD700",
+  "dangerColor": "#FF0000",
+  "backgroundColor": "#0D0503",
+  "cardColor": "#1A0A00",
+  "heroImageUrl": "https://cdn.dragonblaze.casino/hero.jpg",
+  "backgroundImageUrl": "https://cdn.dragonblaze.casino/bg-pattern.png",
+  "loginBgUrl": "https://cdn.dragonblaze.casino/login-bg.jpg",
+  "gameAssets": {
+    "crash": {
+      "bg": "https://cdn.dragonblaze.casino/games/crash-bg.jpg",
+      "icon": "https://cdn.dragonblaze.casino/games/crash-icon.png"
+    },
+    "olympus": {
+      "bg": "https://cdn.dragonblaze.casino/games/olympus-bg.jpg",
+      "icon": "https://cdn.dragonblaze.casino/games/olympus-icon.png"
+    },
+    "mines": {
+      "bg": "https://cdn.dragonblaze.casino/games/mines-bg.jpg",
+      "icon": "https://cdn.dragonblaze.casino/games/mines-icon.png"
+    }
+  },
+  "houseEdgeConfig": {
+    "crash": 0.05,
+    "dice": 0.02,
+    "mines": 0.03,
+    "plinko": 0.03,
+    "olympus": 0.04
+  },
+  "locale": "en",
+  "jurisdiction": "curacao",
+  "licenseType": "GCB",
+  "adminUserId": null
+}

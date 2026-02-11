@@ -387,22 +387,50 @@ export class CrashGateway
       return;
     }
     
-    const { amount, autoCashoutAt, autoCashout, slot } = payload as any;
-    const autoCashoutValue = autoCashoutAt || autoCashout;
-    const betSlot = slot;
+    // === STRICT INPUT VALIDATION ===
+    const rawAmount = (payload as any).amount;
+    const rawAutoCashoutAt = (payload as any).autoCashoutAt;
+    const rawAutoCashout = (payload as any).autoCashout;
+    const rawSlot = (payload as any).slot;
+    
+    // Validate slot
+    const betSlot = typeof rawSlot === 'number' ? rawSlot : parseInt(String(rawSlot), 10);
     if (betSlot !== 1 && betSlot !== 2) {
       client.emit('crash:error', { message: 'Invalid slot - must be 1 or 2' });
       return;
     }
     
-    if (!amount || amount <= 0) {
-      client.emit('crash:error', { message: 'Invalid bet amount' });
+    // Validate amount
+    const amount = typeof rawAmount === 'number' ? rawAmount : parseFloat(String(rawAmount));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      client.emit('crash:error', { message: 'Invalid bet amount - must be a positive number' });
       return;
+    }
+    if (amount < 0.10) {
+      client.emit('crash:error', { message: 'Minimum bet is $0.10' });
+      return;
+    }
+    if (amount > 10000) {
+      client.emit('crash:error', { message: 'Maximum bet is $10,000' });
+      return;
+    }
+    const sanitizedAmount = Math.round(amount * 100) / 100;
+    
+    // Validate autoCashout
+    const rawAutoCashoutValue = rawAutoCashoutAt || rawAutoCashout;
+    let autoCashoutValue: number | undefined;
+    if (rawAutoCashoutValue !== undefined && rawAutoCashoutValue !== null) {
+      const parsed = typeof rawAutoCashoutValue === 'number' ? rawAutoCashoutValue : parseFloat(String(rawAutoCashoutValue));
+      if (!Number.isFinite(parsed) || parsed < 1.01 || parsed > 5000) {
+        client.emit('crash:error', { message: 'Auto-cashout must be between 1.01x and 5000x' });
+        return;
+      }
+      autoCashoutValue = parsed;
     }
     
     const result = await this.crashService.placeBet(
       userId,
-      new Decimal(amount),
+      new Decimal(sanitizedAmount),
       autoCashoutValue ? new Decimal(autoCashoutValue) : undefined,
       betSlot
     );
@@ -571,22 +599,30 @@ export class CrashGateway
       return;
     }
     
-    // Broadcast to all (for live bets table)
-    this.logger.warn(`🔴 BROADCAST crash:cashout to ALL: slot=${cashoutSlot} userId=${payload.userId} isManual=${payload.isManual}`); this.server.emit('crash:cashout', {
+    const broadcastPayload = {
       betId: payload.betId || '',
       userId: payload.userId,
       multiplier: parseFloat(payload.multiplier),
       profit: parseFloat(payload.profit),
       slot: cashoutSlot,
-    });
+    };
     
-    // Direct confirmation for auto-cashout only
-    if (!payload.isManual) {
+    if (payload.isManual) {
+      // FIXED: Exclude sender socket to prevent DOUBLE EMIT
+      const senderSocketId = this.userToSocket.get(payload.userId);
+      if (senderSocketId) {
+        this.server.except(senderSocketId).emit('crash:cashout', broadcastPayload);
+      } else {
+        this.server.emit('crash:cashout', broadcastPayload);
+      }
+    } else {
+      // Auto-cashout: broadcast to all + direct confirmation
+      this.server.emit('crash:cashout', broadcastPayload);
       for (const [socketId, userId] of this.socketToUser.entries()) {
         if (userId === payload.userId) {
           const clientSocket = this.server.sockets.sockets.get(socketId);
           if (clientSocket) {
-            this.logger.warn(`🔵 DIRECT emit crash:cashout (auto): slot=${cashoutSlot} userId=${payload.userId}`); clientSocket.emit('crash:cashout', {
+            clientSocket.emit('crash:cashout', {
               success: true,
               userId: payload.userId,
               multiplier: payload.multiplier,
@@ -598,26 +634,4 @@ export class CrashGateway
       }
     }
   }
-
-  /**
-   * Broadcast full crash (both dragons down)
-   */
-  @OnEvent('crash.crashed')
-  handleCrashedEvent(payload: { crashPoint1: string; crashPoint2: string; gameNumber: number }): void {
-    this.server.emit('crash:crashed', payload);
   }
-
-  /**
-   * Balance update (private to user)
-   */
-  @OnEvent('crash.balance_update')
-  handleBalanceUpdateEvent(payload: { userId: string; change: string; reason: string }): void {
-    const socketId = this.userToSocket.get(payload.userId);
-    if (socketId) {
-      this.server.to(socketId).emit('balance:update', {
-        change: payload.change,
-        reason: payload.reason,
-      });
-    }
-  }
-}

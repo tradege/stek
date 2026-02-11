@@ -21,7 +21,7 @@ export class AffiliateService {
   /**
    * Get affiliate stats for a user
    */
-  async getStats(userId: string) {
+  async getStats(userId: string, siteId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -101,7 +101,7 @@ export class AffiliateService {
   /**
    * Get detailed network breakdown
    */
-  async getNetwork(userId: string) {
+  async getNetwork(userId: string, siteId?: string) {
     // Tier 1: Direct referrals
     const tier1Users = await this.prisma.user.findMany({
       where: { parentId: userId },
@@ -193,7 +193,7 @@ export class AffiliateService {
   /**
    * Get commission history
    */
-  async getHistory(userId: string, days: number = 30) {
+  async getHistory(userId: string, siteId?: string, days: number = 30) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -235,7 +235,7 @@ export class AffiliateService {
   /**
    * Claim available commission to main wallet
    */
-  async claimCommission(userId: string) {
+  async claimCommission(userId: string, siteId?: string) {
     // Get all commissions for user
     const commissions = await this.prisma.commission.findMany({
       where: {
@@ -407,22 +407,22 @@ export class AffiliateService {
   /**
    * Alias for getStats - used by controller
    */
-  async getAffiliateStats(userId: string) {
-    return this.getStats(userId);
+  async getAffiliateStats(userId: string, siteId?: string) {
+    return this.getStats(userId, siteId);
   }
 
   /**
    * Alias for getNetwork - used by controller
    */
-  async getNetworkDetails(userId: string) {
-    return this.getNetwork(userId);
+  async getNetworkDetails(userId: string, siteId?: string) {
+    return this.getNetwork(userId, siteId);
   }
 
   /**
    * Alias for getHistory - used by controller
    */
-  async getCommissionHistory(userId: string, days: number = 30) {
-    return this.getHistory(userId, days);
+  async getCommissionHistory(userId: string, siteId?: string, days: number = 30) {
+    return this.getHistory(userId, siteId, days);
   }
 
   /**

@@ -101,7 +101,7 @@ export class OlympusService {
   // ============================================
   // MAIN SPIN ENDPOINT
   // ============================================
-  async spin(userId: string, dto: SpinDto) {
+  async spin(userId: string, dto: SpinDto, siteId: string = "default-site-001") {
     const { betAmount, currency = 'USDT', anteBet = false } = dto;
 
     // Validate bet
@@ -189,6 +189,7 @@ export class OlympusService {
           id: crypto.randomUUID(),
           userId,
           gameType: 'OLYMPUS',
+        siteId: 'default-site-001',
           currency: currency as any,
           betAmount: new Decimal(actualBet),
           multiplier: new Decimal(finalMultiplier),
@@ -342,6 +343,7 @@ export class OlympusService {
             id: crypto.randomUUID(),
             userId: session.userId,
             gameType: 'OLYMPUS',
+        siteId: 'default-site-001',
             currency: session.currency as any,
             betAmount: new Decimal(0), // Free spin - no cost
             multiplier: new Decimal(totalWin > 0 ? totalWin / session.betAmount : 0),
@@ -480,6 +482,7 @@ export class OlympusService {
   async getHistory(userId: string, limit: number = 20) {
     return this.prisma.bet.findMany({
       where: { userId, gameType: 'OLYMPUS' },
+        // siteId removed - not in scope
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 100),
       select: {

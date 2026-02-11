@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { CashierModule } from './modules/wallet/cashier.module';
 import { BotModule } from './modules/bot/bot.module';
@@ -16,55 +18,49 @@ import { OlympusModule } from './modules/olympus/olympus.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { GamesModule } from './modules/games/games.module';
 import { UsersModule } from './modules/users/users.module';
+import { TenantModule } from './modules/tenant/tenant.module';
+import { FraudModule } from './modules/fraud/fraud.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { HealthModule } from './modules/health/health.module';
+import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
 @Module({
   imports: [
-    // Load environment variables
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
-    
-    // Event Emitter for internal events
     EventEmitterModule.forRoot(),
-    
-    // Rate limiting
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minute
-      limit: 500, // 100 requests per minute
+      ttl: 60000,
+      limit: 500,
     }]),
-    
-    // Database
     PrismaModule,
-    
-    // Auth module
+    TenantModule,
     AuthModule,
-    
-    // Admin module (User management, Stats)
     AdminModule,
-    
-    // Cashier module (Deposit/Withdraw)
     CashierModule,
-    
-    // Crash Game module
     CrashModule,
     PlinkoModule,
     DiceModule,
     MinesModule,
     OlympusModule,
-    
-    // Bot module (Ghost Protocol - Traffic Bots)
     BotModule,
     AffiliateModule,
-    
-    // External Game Provider Integration
     IntegrationModule,
-    
-    // Games Catalog API
     GamesModule,
     UsersModule,
+    FraudModule,
+    OnboardingModule,
+    HealthModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
+  ],
 })
 export class AppModule {}

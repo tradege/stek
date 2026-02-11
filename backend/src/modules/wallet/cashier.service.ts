@@ -12,11 +12,14 @@ export class CashierService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Get user's wallet balances
+   * Get user's wallet balances - TENANT SCOPED
    */
-  async getUserBalances(userId: string) {
+  async getUserBalances(userId: string, siteId?: string) {
+    const where: any = { userId };
+    if (siteId) where.siteId = siteId;
+
     const wallets = await this.prisma.wallet.findMany({
-      where: { userId },
+      where,
       select: {
         id: true,
         currency: true,
@@ -35,11 +38,14 @@ export class CashierService {
   }
 
   /**
-   * Get user's transaction history
+   * Get user's transaction history - TENANT SCOPED
    */
-  async getUserTransactions(userId: string, limit = 50) {
+  async getUserTransactions(userId: string, limit = 50, siteId?: string) {
+    const where: any = { userId };
+    if (siteId) where.siteId = siteId;
+
     const transactions = await this.prisma.transaction.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: {
@@ -52,11 +58,7 @@ export class CashierService {
         externalRef: true,
         metadata: true,
         createdAt: true,
-        wallet: {
-          select: {
-            currency: true,
-          },
-        },
+        wallet: { select: { currency: true } },
       },
     });
 
@@ -70,17 +72,18 @@ export class CashierService {
   }
 
   /**
-   * Create deposit request (PENDING status)
+   * Create deposit request - TENANT SCOPED
    */
   async createDepositRequest(
     userId: string,
     amount: number,
     currency: string,
     txHash: string,
+    siteId?: string,
   ) {
-    // Find or create wallet
+    // Find or create wallet - SCOPED to siteId
     let wallet = await this.prisma.wallet.findFirst({
-      where: { userId, currency: currency as any },
+      where: { userId, currency: currency as any, ...(siteId ? { siteId } : {}) },
     });
 
     if (!wallet) {
@@ -90,6 +93,7 @@ export class CashierService {
           currency: currency as any,
           balance: 0,
           lockedBalance: 0,
+          siteId: siteId || null,
         },
       });
     }
@@ -103,7 +107,7 @@ export class CashierService {
       throw new BadRequestException('Transaction hash already submitted');
     }
 
-    // Create pending deposit transaction
+    // Create pending deposit transaction - TENANT SCOPED
     const transaction = await this.prisma.transaction.create({
       data: {
         userId,
@@ -112,8 +116,9 @@ export class CashierService {
         status: 'PENDING',
         amount: amount,
         balanceBefore: wallet.balance,
-        balanceAfter: wallet.balance, // Will be updated on approval
+        balanceAfter: wallet.balance,
         externalRef: txHash,
+        siteId: siteId || null, // *** MULTI-TENANT ***
         metadata: {
           currency,
           submittedAt: new Date().toISOString(),
@@ -130,21 +135,17 @@ export class CashierService {
   }
 
   /**
-   * Create withdrawal request
-   * Uses SELECT ... FOR UPDATE to prevent double-spend
+   * Create withdrawal request - TENANT SCOPED
    */
   async createWithdrawRequest(
     userId: string,
     amount: number,
     currency: string,
     walletAddress: string,
+    siteId?: string,
   ) {
-    // Minimum withdrawal
     const minWithdraw: Record<string, number> = {
-      USDT: 20,
-      BTC: 0.001,
-      ETH: 0.01,
-      SOL: 0.5,
+      USDT: 20, BTC: 0.001, ETH: 0.01, SOL: 0.5,
     };
 
     if (amount < (minWithdraw[currency] || 0)) {
@@ -153,15 +154,13 @@ export class CashierService {
       );
     }
 
-    // Use serializable transaction with row-level locking to prevent double-spend
     const result = await this.prisma.$transaction(async (tx) => {
-      // CRITICAL: Lock the wallet row with SELECT FOR UPDATE to prevent concurrent reads
-      const lockedWallets = await tx.$queryRaw<any[]>`
-        SELECT id, balance, "lockedBalance" 
-        FROM "Wallet" 
-        WHERE "userId" = ${userId} AND currency = ${currency}::"Currency"
-        FOR UPDATE
-      `;
+      // CRITICAL: Lock the wallet row - SCOPED to siteId
+      const siteFilter = siteId ? `AND "siteId" = '${siteId}'` : '';
+      const lockedWallets = await tx.$queryRawUnsafe<any[]>(
+        `SELECT id, balance, "lockedBalance" FROM "Wallet" WHERE "userId" = $1 AND currency = $2::"Currency" ${siteFilter} FOR UPDATE`,
+        userId, currency
+      );
 
       if (!lockedWallets || lockedWallets.length === 0) {
         throw new BadRequestException('Wallet not found');
@@ -170,7 +169,6 @@ export class CashierService {
       const wallet = lockedWallets[0];
       const currentBalance = new Decimal(wallet.balance);
 
-      // Check balance with the LOCKED (up-to-date) value
       if (currentBalance.lessThan(amount)) {
         throw new BadRequestException('Insufficient balance');
       }
@@ -178,16 +176,11 @@ export class CashierService {
       const newBalance = currentBalance.minus(amount);
       const newLocked = new Decimal(wallet.lockedBalance).plus(amount);
 
-      // Deduct from balance, add to lockedBalance
       await tx.wallet.update({
         where: { id: wallet.id },
-        data: {
-          balance: newBalance,
-          lockedBalance: newLocked,
-        },
+        data: { balance: newBalance, lockedBalance: newLocked },
       });
 
-      // Create pending withdrawal transaction with accurate balanceBefore/After
       const transaction = await tx.transaction.create({
         data: {
           userId,
@@ -197,6 +190,7 @@ export class CashierService {
           amount: amount,
           balanceBefore: currentBalance,
           balanceAfter: newBalance,
+          siteId: siteId || null, // *** MULTI-TENANT ***
           metadata: {
             currency,
             walletAddress,
@@ -206,9 +200,7 @@ export class CashierService {
       });
 
       return transaction;
-    }, {
-      isolationLevel: 'Serializable',
-    });
+    }, { isolationLevel: 'Serializable' });
 
     return {
       success: true,
@@ -219,28 +211,21 @@ export class CashierService {
   }
 
   /**
-   * Get all pending transactions (Admin)
+   * Get all pending transactions - TENANT SCOPED for non-admin
    */
-  async getPendingTransactions() {
+  async getPendingTransactions(siteId?: string) {
+    const where: any = {
+      status: 'PENDING',
+      type: { in: ['DEPOSIT', 'WITHDRAWAL'] },
+    };
+    if (siteId) where.siteId = siteId;
+
     const transactions = await this.prisma.transaction.findMany({
-      where: {
-        status: 'PENDING',
-        type: { in: ['DEPOSIT', 'WITHDRAWAL'] },
-      },
+      where,
       orderBy: { createdAt: 'asc' },
       include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-        wallet: {
-          select: {
-            currency: true,
-          },
-        },
+        user: { select: { id: true, username: true, email: true } },
+        wallet: { select: { currency: true } },
       },
     });
 
@@ -258,28 +243,21 @@ export class CashierService {
   }
 
   /**
-   * Get all transactions (Admin)
+   * Get all transactions - TENANT SCOPED
    */
-  async getAllTransactions(limit = 100) {
+  async getAllTransactions(limit = 100, siteId?: string) {
+    const where: any = {
+      type: { in: ['DEPOSIT', 'WITHDRAWAL'] },
+    };
+    if (siteId) where.siteId = siteId;
+
     const transactions = await this.prisma.transaction.findMany({
-      where: {
-        type: { in: ['DEPOSIT', 'WITHDRAWAL'] },
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
       include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-        wallet: {
-          select: {
-            currency: true,
-          },
-        },
+        user: { select: { id: true, username: true, email: true } },
+        wallet: { select: { currency: true } },
       },
     });
 
@@ -298,7 +276,6 @@ export class CashierService {
 
   /**
    * Process transaction (Approve/Reject)
-   * Uses SELECT FOR UPDATE to prevent race conditions
    */
   async processTransaction(
     transactionId: string,
@@ -321,9 +298,7 @@ export class CashierService {
 
     if (action === 'APPROVE') {
       if (transaction.type === 'DEPOSIT') {
-        // Add funds to user wallet with row locking
         await this.prisma.$transaction(async (tx) => {
-          // Lock the wallet row
           const lockedWallets = await tx.$queryRaw<any[]>`
             SELECT id, balance FROM "Wallet" WHERE id = ${transaction.walletId} FOR UPDATE
           `;
@@ -339,10 +314,10 @@ export class CashierService {
             where: { id: transactionId },
             data: {
               status: 'CONFIRMED',
-              balanceBefore: currentBalance,
               balanceAfter: newBalance,
+              confirmedAt: new Date(),
               metadata: {
-                ...(transaction.metadata as object),
+                ...(transaction.metadata as any || {}),
                 approvedBy: adminId,
                 approvedAt: new Date().toISOString(),
                 adminNote,
@@ -351,9 +326,7 @@ export class CashierService {
           });
         });
       } else if (transaction.type === 'WITHDRAWAL') {
-        // Funds already deducted, just mark as confirmed and remove from locked
         await this.prisma.$transaction(async (tx) => {
-          // Lock the wallet row
           const lockedWallets = await tx.$queryRaw<any[]>`
             SELECT id, "lockedBalance" FROM "Wallet" WHERE id = ${transaction.walletId} FOR UPDATE
           `;
@@ -362,15 +335,16 @@ export class CashierService {
 
           await tx.wallet.update({
             where: { id: transaction.walletId },
-            data: { lockedBalance: newLocked.lessThan(0) ? 0 : newLocked },
+            data: { lockedBalance: Decimal.max(newLocked, new Decimal(0)) },
           });
 
           await tx.transaction.update({
             where: { id: transactionId },
             data: {
               status: 'CONFIRMED',
+              confirmedAt: new Date(),
               metadata: {
-                ...(transaction.metadata as object),
+                ...(transaction.metadata as any || {}),
                 approvedBy: adminId,
                 approvedAt: new Date().toISOString(),
                 adminNote,
@@ -379,31 +353,21 @@ export class CashierService {
           });
         });
       }
-
-      return {
-        success: true,
-        message: `${transaction.type} approved successfully`,
-        transactionId,
-      };
     } else {
       // REJECT
       if (transaction.type === 'WITHDRAWAL') {
-        // Return funds to balance with row locking
         await this.prisma.$transaction(async (tx) => {
-          // Lock the wallet row
           const lockedWallets = await tx.$queryRaw<any[]>`
             SELECT id, balance, "lockedBalance" FROM "Wallet" WHERE id = ${transaction.walletId} FOR UPDATE
           `;
           const currentBalance = new Decimal(lockedWallets[0].balance);
           const currentLocked = new Decimal(lockedWallets[0].lockedBalance);
-          const newBalance = currentBalance.plus(transaction.amount);
-          const newLocked = currentLocked.minus(transaction.amount);
 
           await tx.wallet.update({
             where: { id: transaction.walletId },
             data: {
-              balance: newBalance,
-              lockedBalance: newLocked.lessThan(0) ? 0 : newLocked,
+              balance: currentBalance.plus(transaction.amount),
+              lockedBalance: Decimal.max(currentLocked.minus(transaction.amount), new Decimal(0)),
             },
           });
 
@@ -411,9 +375,9 @@ export class CashierService {
             where: { id: transactionId },
             data: {
               status: 'CANCELLED',
-              balanceAfter: newBalance,
+              balanceAfter: currentBalance.plus(transaction.amount),
               metadata: {
-                ...(transaction.metadata as object),
+                ...(transaction.metadata as any || {}),
                 rejectedBy: adminId,
                 rejectedAt: new Date().toISOString(),
                 adminNote,
@@ -422,13 +386,12 @@ export class CashierService {
           });
         });
       } else {
-        // Deposit rejection - just mark as cancelled
         await this.prisma.transaction.update({
           where: { id: transactionId },
           data: {
             status: 'CANCELLED',
             metadata: {
-              ...(transaction.metadata as object),
+              ...(transaction.metadata as any || {}),
               rejectedBy: adminId,
               rejectedAt: new Date().toISOString(),
               adminNote,
@@ -436,113 +399,89 @@ export class CashierService {
           },
         });
       }
-
-      return {
-        success: true,
-        message: `${transaction.type} rejected`,
-        transactionId,
-      };
     }
+
+    return {
+      success: true,
+      message: `Transaction ${action.toLowerCase()}ed successfully`,
+      transactionId,
+    };
   }
 
   /**
-   * Simulate a deposit (Admin only) - Directly credits funds to user wallet
-   * Uses SELECT FOR UPDATE to prevent concurrent deposit race conditions
+   * Admin: Direct deposit to user - TENANT SCOPED
    */
-  async simulateDeposit(
-    userId: string | null,
-    userEmail: string | null,
+  async adminDirectDeposit(
+    targetUserId: string,
     amount: number,
     currency: string,
     adminId: string,
+    note?: string,
   ) {
-    // Find user by ID or email
-    let user;
-    if (userId) {
-      user = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
-    } else if (userEmail) {
-      user = await this.prisma.user.findUnique({
-        where: { email: userEmail },
-      });
+    if (amount <= 0) {
+      throw new BadRequestException('Amount must be positive');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Find or create wallet OUTSIDE transaction (creation doesn't need locking)
-    let wallet = await this.prisma.wallet.findFirst({
-      where: { userId: user.id, currency: currency as any },
-    });
-
-    if (!wallet) {
-      wallet = await this.prisma.wallet.create({
-        data: {
-          userId: user.id,
-          currency: currency as any,
-          balance: 0,
-          lockedBalance: 0,
-        },
-      });
-    }
-
-    // CRITICAL: Use SELECT FOR UPDATE inside transaction to prevent race conditions
     const result = await this.prisma.$transaction(async (tx) => {
-      // Lock the wallet row - this prevents concurrent deposits from reading stale balance
-      const lockedWallets = await tx.$queryRaw<any[]>`
-        SELECT id, balance FROM "Wallet" WHERE id = ${wallet.id} FOR UPDATE
-      `;
+      let wallet = await tx.wallet.findFirst({
+        where: { userId: targetUserId, currency: currency as any },
+      });
 
-      const currentBalance = new Decimal(lockedWallets[0].balance);
+      if (!wallet) {
+        wallet = await tx.wallet.create({
+          data: {
+            userId: targetUserId,
+            currency: currency as any,
+            balance: 0,
+            lockedBalance: 0,
+            siteId: user.siteId,
+          },
+        });
+      }
+
+      const currentBalance = new Decimal(wallet.balance);
       const newBalance = currentBalance.plus(amount);
 
-      // Update wallet balance with the LOCKED current balance
       await tx.wallet.update({
         where: { id: wallet.id },
         data: { balance: newBalance },
       });
 
-      // Create confirmed transaction record with accurate balanceBefore/After
       const transaction = await tx.transaction.create({
         data: {
-          userId: user.id,
+          userId: targetUserId,
           walletId: wallet.id,
           type: 'DEPOSIT',
           status: 'CONFIRMED',
           amount: amount,
           balanceBefore: currentBalance,
           balanceAfter: newBalance,
-          externalRef: `SIM-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          confirmedAt: new Date(),
+          siteId: user.siteId,
           metadata: {
-            simulated: true,
-            simulatedBy: adminId,
-            simulatedAt: new Date().toISOString(),
-            note: 'Admin simulated deposit',
+            adminDeposit: true,
+            adminId,
+            note,
+            currency,
           },
         },
       });
 
-      return { transaction, newBalance };
+      return { wallet, transaction, newBalance };
     });
-
-    console.log(`[ADMIN] Simulated deposit of ${amount} ${currency} to user ${user.email} by admin ${adminId}`);
 
     return {
       success: true,
       message: `Successfully deposited ${amount} ${currency} to ${user.username || user.email}`,
-      transaction: {
-        id: result.transaction.id,
-        amount: amount.toString(),
-        currency,
-        newBalance: result.newBalance.toString(),
-      },
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-      },
+      newBalance: result.newBalance.toString(),
+      transactionId: result.transaction.id,
     };
   }
 }

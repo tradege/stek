@@ -159,17 +159,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     // Room join confirmation
     newSocket.on('room:joined', (data) => {
     });
-
-    // Game state events - DEBUG
-    newSocket.on('crash:state_change', (data) => {
-    });
-
-    newSocket.on('crash:tick', (data) => {
-      // Don't log every tick, just occasionally
-      if (Math.random() < 0.1) {
-      }
-    });
-
+    // Game state events (debug listeners removed for production)
     if (mountedRef.current) {
       setSocket(newSocket);
     }

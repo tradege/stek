@@ -3,249 +3,146 @@ import {
   Get,
   Post,
   Body,
-  Param,
-  Request,
   UseGuards,
+  Request,
+  Query,
+  Param,
+  HttpCode,
+  HttpStatus,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CashierService } from './cashier.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
-// DTOs
-interface DepositDto {
-  amount: number;
-  currency: string;
-  txHash: string;
-}
-
-interface WithdrawDto {
-  amount: number;
-  currency: string;
-  walletAddress: string;
-}
-
-interface ApproveTransactionDto {
-  transactionId: string;
-  action: 'APPROVE' | 'REJECT';
-  adminNote?: string;
-}
-
-interface SimulateDepositDto {
-  userId?: string;
-  userEmail?: string;
-  amount: number;
-  currency: string;
-}
-
-@Controller('wallet')
+@Controller('cashier')
 export class CashierController {
   constructor(private readonly cashierService: CashierService) {}
 
   /**
-   * Get user's wallet balances
+   * GET /cashier/balances - TENANT SCOPED
    */
-  @Get('balance')
+  @Get('balances')
   @UseGuards(JwtAuthGuard)
-  async getBalance(@Request() req) {
-    return this.cashierService.getUserBalances(req.user.id);
+  async getBalances(@Request() req) {
+    const siteId = req.tenant?.siteId || req.user?.siteId || null;
+    return this.cashierService.getUserBalances(req.user.id, siteId);
   }
 
   /**
-   * Get user's transaction history
+   * GET /cashier/transactions - TENANT SCOPED
    */
   @Get('transactions')
   @UseGuards(JwtAuthGuard)
-  async getTransactions(@Request() req) {
-    return this.cashierService.getUserTransactions(req.user.id);
+  async getTransactions(@Request() req, @Query('limit') limit?: string) {
+    const siteId = req.tenant?.siteId || req.user?.siteId || null;
+    return this.cashierService.getUserTransactions(
+      req.user.id,
+      limit ? parseInt(limit) : 50,
+      siteId,
+    );
   }
 
   /**
-   * Submit deposit request
+   * POST /cashier/deposit - TENANT SCOPED
    */
   @Post('deposit')
   @UseGuards(JwtAuthGuard)
-  async deposit(@Request() req, @Body() dto: DepositDto) {
-    const { amount, currency, txHash } = dto;
-
-    if (!amount || amount <= 0) {
-      throw new BadRequestException('Invalid amount');
-    }
-    if (!txHash || txHash.length < 10) {
-      throw new BadRequestException('Invalid transaction hash');
-    }
-    if (!['USDT', 'BTC', 'ETH', 'SOL'].includes(currency?.toUpperCase())) {
-      throw new BadRequestException('Unsupported currency');
-    }
-
+  @HttpCode(HttpStatus.CREATED)
+  async deposit(@Request() req, @Body() body: { amount: number; currency: string; txHash: string }) {
+    const siteId = req.tenant?.siteId || req.user?.siteId || null;
     return this.cashierService.createDepositRequest(
       req.user.id,
-      amount,
-      currency.toUpperCase(),
-      txHash,
+      body.amount,
+      body.currency || 'USDT',
+      body.txHash,
+      siteId,
     );
   }
 
   /**
-   * Submit withdrawal request
+   * POST /cashier/withdraw - TENANT SCOPED
    */
   @Post('withdraw')
   @UseGuards(JwtAuthGuard)
-  async withdraw(@Request() req, @Body() dto: WithdrawDto) {
-    const { amount, currency, walletAddress } = dto;
-
-    if (!amount || amount <= 0) {
-      throw new BadRequestException('Invalid amount');
-    }
-    if (!walletAddress || walletAddress.length < 10) {
-      throw new BadRequestException('Invalid wallet address');
-    }
-    if (!['USDT', 'BTC', 'ETH', 'SOL'].includes(currency?.toUpperCase())) {
-      throw new BadRequestException('Unsupported currency');
-    }
-
+  @HttpCode(HttpStatus.CREATED)
+  async withdraw(@Request() req, @Body() body: { amount: number; currency: string; walletAddress: string }) {
+    const siteId = req.tenant?.siteId || req.user?.siteId || null;
     return this.cashierService.createWithdrawRequest(
       req.user.id,
-      amount,
-      currency.toUpperCase(),
-      walletAddress,
+      body.amount,
+      body.currency || 'USDT',
+      body.walletAddress,
+      siteId,
     );
   }
 
   /**
-   * Get deposit wallet address
+   * GET /cashier/admin/pending - TENANT SCOPED
    */
-  @Get('deposit-address/:currency')
-  @UseGuards(JwtAuthGuard)
-  async getDepositAddress(@Param('currency') currency: string) {
-    // Hardcoded admin wallet addresses for V1
-    const addresses: Record<string, { address: string; network: string }> = {
-      USDT: {
-        address: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7',
-        network: 'TRC20',
-      },
-      BTC: {
-        address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        network: 'Bitcoin',
-      },
-      ETH: {
-        address: '0x742d35Cc6634C0532925a3b844Bc9e7595f8fE2a',
-        network: 'ERC20',
-      },
-      SOL: {
-        address: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-        network: 'Solana',
-      },
-    };
-
-    const upperCurrency = currency?.toUpperCase();
-    if (!addresses[upperCurrency]) {
-      throw new BadRequestException('Unsupported currency');
-    }
-
-    const minDeposits: Record<string, number> = {
-      USDT: 10,
-      BTC: 0.0001,
-      ETH: 0.005,
-      SOL: 0.1,
-    };
-
-    return {
-      currency: upperCurrency,
-      address: addresses[upperCurrency].address,
-      network: addresses[upperCurrency].network,
-      minDeposit: minDeposits[upperCurrency],
-    };
-  }
-}
-
-/**
- * Admin Controller for transaction management
- */
-@Controller('admin')
-export class AdminCashierController {
-  constructor(private readonly cashierService: CashierService) {}
-
-  /**
-   * Get all pending transactions (Admin only)
-   */
-  @Get('transactions/pending')
-  @UseGuards(JwtAuthGuard)
-  async getPendingTransactions(@Request() req) {
-    if (req.user.role !== 'ADMIN') {
-      throw new ForbiddenException('Admin access required');
-    }
-    return this.cashierService.getPendingTransactions();
+  @Get('admin/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_MASTER')
+  async getPending(@Request() req) {
+    // ADMIN sees all, SUPER_MASTER sees only their site
+    const siteId = req.user.role === 'ADMIN' ? null : (req.tenant?.siteId || null);
+    return this.cashierService.getPendingTransactions(siteId);
   }
 
   /**
-   * Get all transactions (Admin only)
+   * GET /cashier/admin/transactions - TENANT SCOPED
    */
-  @Get('transactions')
-  @UseGuards(JwtAuthGuard)
-  async getAllTransactions(@Request() req) {
-    if (req.user.role !== 'ADMIN') {
-      throw new ForbiddenException('Admin access required');
-    }
-    return this.cashierService.getAllTransactions();
+  @Get('admin/transactions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_MASTER')
+  async getAllTransactions(@Request() req, @Query('limit') limit?: string) {
+    const siteId = req.user.role === 'ADMIN' ? null : (req.tenant?.siteId || null);
+    return this.cashierService.getAllTransactions(
+      limit ? parseInt(limit) : 100,
+      siteId,
+    );
   }
 
   /**
-   * Approve or reject a transaction (Admin only)
+   * POST /cashier/admin/process - Process deposit/withdrawal
    */
-  @Post('transactions/approve')
-  @UseGuards(JwtAuthGuard)
-  async approveTransaction(@Request() req, @Body() dto: ApproveTransactionDto) {
-    if (req.user.role !== 'ADMIN') {
-      throw new ForbiddenException('Admin access required');
+  @Post('admin/process')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_MASTER')
+  @HttpCode(HttpStatus.OK)
+  async processTransaction(
+    @Request() req,
+    @Body() body: { transactionId: string; action: 'APPROVE' | 'REJECT'; note?: string },
+  ) {
+    if (!body.transactionId || !body.action) {
+      throw new BadRequestException('transactionId and action are required');
     }
-
-    const { transactionId, action, adminNote } = dto;
-
-    if (!transactionId) {
-      throw new BadRequestException('Transaction ID required');
-    }
-    if (!['APPROVE', 'REJECT'].includes(action)) {
-      throw new BadRequestException('Invalid action');
-    }
-
     return this.cashierService.processTransaction(
-      transactionId,
-      action,
+      body.transactionId,
+      body.action,
       req.user.id,
-      adminNote,
+      body.note,
     );
   }
 
   /**
-   * Simulate a deposit (Admin only) - For testing purposes
-   * This directly credits funds to a user's wallet without blockchain verification
+   * POST /cashier/admin/direct-deposit - Admin direct deposit
    */
-  @Post('deposit/simulate')
-  @UseGuards(JwtAuthGuard)
-  async simulateDeposit(@Request() req, @Body() dto: SimulateDepositDto) {
-    if (req.user.role !== 'ADMIN') {
-      throw new ForbiddenException('Admin access required');
-    }
-
-    const { userId, userEmail, amount, currency } = dto;
-
-    if (!amount || amount <= 0) {
-      throw new BadRequestException('Invalid amount');
-    }
-    if (!['USDT', 'BTC', 'ETH', 'SOL'].includes(currency?.toUpperCase())) {
-      throw new BadRequestException('Unsupported currency');
-    }
-    if (!userId && !userEmail) {
-      throw new BadRequestException('User ID or Email required');
-    }
-
-    return this.cashierService.simulateDeposit(
-      userId || null,
-      userEmail || null,
-      amount,
-      currency.toUpperCase(),
+  @Post('admin/direct-deposit')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async directDeposit(
+    @Request() req,
+    @Body() body: { userId: string; amount: number; currency: string; note?: string },
+  ) {
+    return this.cashierService.adminDirectDeposit(
+      body.userId,
+      body.amount,
+      body.currency || 'USDT',
       req.user.id,
+      body.note,
     );
   }
 }

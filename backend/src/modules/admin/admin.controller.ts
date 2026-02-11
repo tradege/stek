@@ -1,156 +1,113 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+/**
+ * ============================================
+ * ADMIN CONTROLLER - Brand Master API
+ * ============================================
+ */
+import { Controller, Get, Post, Put, Body, Req, Query, Param, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { AdminFinanceService } from './admin-finance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import { GameConfigService } from '../crash/game-config.service';
 
 @Controller('admin')
+@ApiTags('Admin Dashboard')
+@ApiBearerAuth('JWT')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN')
 export class AdminController {
-  constructor(
-    private readonly adminService: AdminService,
-    private readonly adminFinanceService: AdminFinanceService,
-    private readonly gameConfigService: GameConfigService,
-  ) {}
+  constructor(private readonly adminService: AdminService) {}
 
-  // ==========================================
-  // EXISTING ENDPOINTS
-  // ==========================================
-  @Get('finance/stats')
-  async getFinanceStats() {
-    return this.adminFinanceService.getFinanceStats();
+  // ============ BRAND DASHBOARD ============
+
+  @Get('dashboard')
+  async getDashboard(@Req() req: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId || 'ALL';
+    return this.adminService.getBrandDashboard(siteId);
   }
 
-  @Get('dashboard/stats')
-  async getDashboardStats() {
-    return this.adminFinanceService.getDashboardStats();
+  @Get('dashboard/all-brands')
+  async getAllBrandsDashboard() {
+    return this.adminService.getAllBrandsDashboard();
   }
 
-  // ==========================================
-  // REAL ANALYTICS
-  // ==========================================
+  // ============ HOUSE EDGE MANAGEMENT ============
+
+  @Get('house-edge/:siteId')
+  async getHouseEdge(@Param('siteId') siteId: string) {
+    return this.adminService.getHouseEdge(siteId);
+  }
+
+  @Put('house-edge/:siteId')
+  async updateHouseEdge(@Param('siteId') siteId: string, @Body() body: { houseEdgeConfig: Record<string, number> }) {
+    return this.adminService.updateHouseEdge(siteId, body.houseEdgeConfig);
+  }
+
+  // ============ RISK MANAGEMENT ============
+
+  @Get('risk-limits/:siteId')
+  async getRiskLimits(@Param('siteId') siteId: string) {
+    return this.adminService.getRiskLimits(siteId);
+  }
+
+  @Put('risk-limits/:siteId')
+  async setRiskLimits(@Param('siteId') siteId: string, @Body() body: any) {
+    return this.adminService.setRiskLimits(siteId, body);
+  }
+
+  // ============ EXISTING ENDPOINTS (now tenant-aware) ============
+
   @Get('stats')
-  async getStats() {
-    return this.adminService.getStats();
+  async getStats(@Req() req: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getStats(siteId);
   }
 
-  @Get('stats/real')
-  async getRealStats() {
-    return this.adminService.getRealStats();
+  @Get('real-stats')
+  async getRealStats(@Req() req: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getRealStats(siteId);
   }
 
-  @Get('stats/bots')
-  async getBotStats() {
-    return this.adminService.getBotStats();
-  }
-
-  // ==========================================
-  // GAME CONTROL CENTER
-  // ==========================================
-  @Get('game/config')
-  async getGameConfig() {
-    const config = this.gameConfigService.getConfig();
-    return {
-      success: true,
-      data: {
-        houseEdge: config.houseEdge * 100,
-        instantBust: config.instantBust * 100,
-        botsEnabled: config.botsEnabled,
-        maxBotBet: config.maxBotBet,
-        minBotBet: config.minBotBet,
-        maxBotsPerRound: config.maxBotsPerRound,
-      },
-    };
-  }
-
-  @Post('game/config')
-  async updateGameConfig(
-    @Body() body: {
-      houseEdge?: number;
-      instantBust?: number;
-      botsEnabled?: boolean;
-      maxBotBet?: number;
-      minBotBet?: number;
-      maxBotsPerRound?: number;
-    },
-  ) {
-    const updates: any = {};
-    if (body.houseEdge !== undefined) {
-      updates.houseEdge = body.houseEdge / 100;
-    }
-    if (body.instantBust !== undefined) {
-      updates.instantBust = body.instantBust / 100;
-    }
-    if (body.botsEnabled !== undefined) {
-      updates.botsEnabled = body.botsEnabled;
-    }
-    if (body.maxBotBet !== undefined) {
-      updates.maxBotBet = body.maxBotBet;
-    }
-    if (body.minBotBet !== undefined) {
-      updates.minBotBet = body.minBotBet;
-    }
-    if (body.maxBotsPerRound !== undefined) {
-      updates.maxBotsPerRound = body.maxBotsPerRound;
-    }
-
-    const config = this.gameConfigService.updateConfig(updates);
-    return {
-      success: true,
-      message: 'Game configuration updated - changes take effect on next round',
-      data: {
-        houseEdge: config.houseEdge * 100,
-        instantBust: config.instantBust * 100,
-        botsEnabled: config.botsEnabled,
-        maxBotBet: config.maxBotBet,
-        minBotBet: config.minBotBet,
-        maxBotsPerRound: config.maxBotsPerRound,
-      },
-    };
-  }
-
-  // ==========================================
-  // USER MANAGEMENT
-  // ==========================================
   @Get('users')
-  async getAllUsers() {
-    return this.adminService.getAllUsers();
+  async getUsers(@Req() req: any, @Query('siteId') querySiteId?: string, @Query('limit') limit?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getAllUsers(siteId, limit ? parseInt(limit) : 100);
   }
 
   @Get('users/pending')
-  async getPendingUsers() {
-    return this.adminService.getPendingUsers();
+  async getPendingUsers(@Req() req: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getPendingUsers(siteId);
   }
 
   @Post('users/:id/approve')
-  async approveUser(@Param('id') userId: string, @Req() req: any) {
-    const adminId = req.user?.id || req.user?.sub || 'admin';
-    return this.adminService.approveUser(userId, adminId);
+  async approveUser(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.approveUser(id, req.user.id);
   }
 
   @Post('users/:id/ban')
-  async banUser(@Param('id') userId: string, @Req() req: any) {
-    const adminId = req.user?.id || req.user?.sub || 'admin';
-    return this.adminService.banUser(userId, adminId);
+  async banUser(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.banUser(id, req.user.id);
   }
 
   @Post('users/:id/unban')
-  async unbanUser(@Param('id') userId: string, @Req() req: any) {
-    const adminId = req.user?.id || req.user?.sub || 'admin';
-    return this.adminService.unbanUser(userId, adminId);
+  async unbanUser(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.unbanUser(id, req.user.id);
   }
 
-  @Post('users/:id/send-verification')
-  async sendVerification(@Param('id') userId: string, @Req() req: any) {
-    const adminId = req.user?.id || req.user?.sub || 'admin';
-    return this.adminService.sendVerificationEmail(userId, adminId);
+  @Post('users/:id/verify')
+  async sendVerification(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.sendVerificationEmail(id, req.user.id);
   }
 
   @Get('transactions')
-  async getTransactions() {
-    return this.adminService.getTransactions();
+  async getTransactions(@Req() req: any, @Query('siteId') querySiteId?: string, @Query('limit') limit?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getTransactions(siteId, limit ? parseInt(limit) : 100);
+  }
+
+  @Get('bot-stats')
+  async getBotStats(@Req() req: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getBotStats(siteId);
   }
 }

@@ -1,0 +1,784 @@
+// StakePro - Crypto Casino Database Schema
+// Prisma Schema for PostgreSQL
+// Multi-Tenant White-Label Architecture
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MULTI-TENANT SITE CONFIGURATION
+// Each record represents a unique brand/site
+// ============================================
+
+model SiteConfiguration {
+  id              String  @id @default(uuid()) // This IS the siteId
+  brandName       String  @unique
+  domain          String  @unique              // e.g., "brand-a.com"
+  logoUrl         String?
+  faviconUrl      String?
+  primaryColor    String  @default("#00F0FF")  // Main brand color
+  secondaryColor  String  @default("#131B2C")  // Secondary brand color
+  accentColor     String  @default("#00D46E")  // Accent/success color
+  dangerColor     String  @default("#FF385C")  // Danger/crash color
+  backgroundColor String  @default("#0A0E17")  // Main background
+  cardColor       String  @default("#131B2C")  // Card/panel background
+
+  // Branding assets
+  heroImageUrl       String?
+  backgroundImageUrl String?
+  loginBgUrl         String?
+
+  // Game asset overrides (per brand)
+  gameAssets Json? // { "crash": { "bg": "url", "icon": "url" }, "olympus": { ... } }
+
+  // House edge configuration per brand
+  houseEdgeConfig Json? // { "crash": 0.04, "dice": 0.02, "mines": 0.03 }
+
+  // Locale & regulation
+  locale       String  @default("en")     // Default language
+  jurisdiction String? // e.g., "curacao", "malta"
+  licenseType  String? // e.g., "GCB", "MGA"
+
+  // Admin delegation
+  adminUserId String? // Links to the User who administrates this brand
+
+  // Status
+  active Boolean @default(true)
+  riskLimits  RiskLimit[]
+  fraudAlerts FraudAlert[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users        User[]
+  wallets      Wallet[]
+  bets         Bet[]
+  transactions Transaction[]
+  chatMessages ChatMessage[]
+  bots         BotConfig[]
+
+  @@index([domain])
+  @@index([active])
+}
+
+// ============================================
+// USER HIERARCHY (MLM/Agent System)
+// 5-Level Structure: Admin → Super Master → Master → Agent → User
+// ============================================
+
+enum UserRole {
+  ADMIN // Full system control
+  SUPER_MASTER // Country/Region manager with credit lines
+  MASTER // Group manager
+  AGENT // Direct player manager
+  USER // The player
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+  PENDING_APPROVAL
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  username     String     @unique
+  passwordHash String
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+
+  // *** MULTI-TENANT: Site association ***
+  siteId String?
+  site   SiteConfiguration? @relation(fields: [siteId], references: [id])
+
+  // Hierarchy - Recursive relationship
+  parentId String?
+  parent   User?   @relation("UserHierarchy", fields: [parentId], references: [id])
+  children User[]  @relation("UserHierarchy")
+
+  // Hierarchy level (0 = Admin, 1 = Super Master, etc.)
+  hierarchyLevel Int    @default(4)
+  hierarchyPath  String @default("") // e.g., "/admin-id/super-id/master-id/agent-id/"
+
+  // Commission settings
+  revenueSharePercent   Decimal @default(0) @db.Decimal(5, 2) // % of house edge
+  turnoverRebatePercent Decimal @default(0) @db.Decimal(5, 2) // % of total bets
+
+  // Credit line (for Super Masters and Masters)
+  creditLimit Decimal @default(0) @db.Decimal(18, 8)
+  creditUsed  Decimal @default(0) @db.Decimal(18, 8)
+
+  // Profile
+  displayName String?
+  avatarUrl   String?
+  country     String?
+  language    String  @default("en")
+  timezone    String  @default("UTC")
+
+  // Security
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+
+  // Bot flag - for separating real users from simulated bots
+  isBot       Boolean   @default(false)
+  lastLoginAt DateTime?
+  lastLoginIp String?
+
+  // VIP System
+  vipLevel     Int     @default(0) // 0-10 VIP levels
+  totalWagered Decimal @default(0) @db.Decimal(18, 8) // Total amount wagered for VIP
+  xp           Int     @default(0) // Experience points for gamification
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  wallets              Wallet[]
+  bets                 Bet[]
+  fraudAlerts FraudAlert[]
+  transactions         Transaction[]
+  commissionsEarned    Commission[]   @relation("CommissionRecipient")
+  commissionsGenerated Commission[]   @relation("CommissionSource")
+  sentTips             Tip[]          @relation("TipSender")
+  receivedTips         Tip[]          @relation("TipReceiver")
+  vaultDeposits        VaultDeposit[]
+  sessions             UserSession[]
+  gameSessions         GameSession[]  @relation("GameSessions")
+  chatMessages         ChatMessage[]  @relation("UserChatMessages")
+  statistics           Statistic[]    @relation("UserStatistics")
+
+  @@index([parentId])
+  @@index([role])
+  @@index([status])
+  @@index([hierarchyPath])
+  @@index([email])
+  @@index([username])
+  @@index([siteId])
+  @@index([siteId, role])
+  @@index([siteId, status])
+}
+
+model UserSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  ipAddress String
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ============================================
+// FINANCIAL ENGINE (Multi-Currency Wallets)
+// ============================================
+
+enum Currency {
+  BTC
+  ETH
+  USDT
+  SOL
+  // Add more as needed
+}
+
+model Wallet {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency Currency
+
+  // *** MULTI-TENANT: Site association ***
+  siteId String?
+  site   SiteConfiguration? @relation(fields: [siteId], references: [id])
+
+  // Balances (using Redis for real-time, this is for persistence)
+  balance       Decimal @default(0) @db.Decimal(18, 8)
+  lockedBalance Decimal @default(0) @db.Decimal(18, 8) // For pending bets
+
+  // Deposit address
+  depositAddress String? @unique
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+
+  @@unique([userId, currency, siteId])
+  @@index([userId])
+  @@index([currency])
+  @@index([siteId])
+  @@index([userId, siteId])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BET
+  WIN
+  COMMISSION
+  TIP_SENT
+  TIP_RECEIVED
+  VAULT_DEPOSIT
+  VAULT_WITHDRAWAL
+  RAIN_RECEIVED
+  CREDIT_GIVEN
+  CREDIT_REPAID
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+model Transaction {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+
+  // *** MULTI-TENANT: Site association ***
+  siteId String?
+  site   SiteConfiguration? @relation(fields: [siteId], references: [id])
+
+  type   TransactionType
+  status TransactionStatus @default(PENDING)
+
+  amount        Decimal @db.Decimal(18, 8)
+  balanceBefore Decimal @db.Decimal(18, 8)
+  balanceAfter  Decimal @db.Decimal(18, 8)
+
+  // External reference (blockchain tx, bet id, etc.)
+  externalRef String?
+
+  // Metadata
+  metadata Json?
+
+  // Bot flag - transactions from bot users
+  isBot Boolean @default(false)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+
+  @@index([userId])
+  @@index([walletId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@index([siteId])
+  @@index([userId, siteId])
+}
+
+// ============================================
+// VAULT (Savings Feature)
+// ============================================
+
+model VaultDeposit {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  currency Currency
+
+  amount       Decimal @db.Decimal(18, 8)
+  interestRate Decimal @default(0) @db.Decimal(5, 4) // APY
+
+  depositedAt DateTime  @default(now())
+  withdrawnAt DateTime?
+
+  @@index([userId])
+  @@index([currency])
+}
+
+// ============================================
+// TIPPING (P2P Transfers)
+// ============================================
+
+model Tip {
+  id         String @id @default(uuid())
+  senderId   String
+  sender     User   @relation("TipSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User   @relation("TipReceiver", fields: [receiverId], references: [id])
+
+  currency Currency
+  amount   Decimal  @db.Decimal(18, 8)
+  message  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+// ============================================
+// RAIN (Chat Bonuses)
+// ============================================
+
+model Rain {
+  id              String   @id @default(uuid())
+  creatorId       String
+  currency        Currency
+  totalAmount     Decimal  @db.Decimal(18, 8)
+  amountPerUser   Decimal  @db.Decimal(18, 8)
+  maxParticipants Int
+
+  participants RainParticipant[]
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([creatorId])
+}
+
+model RainParticipant {
+  id     String @id @default(uuid())
+  rainId String
+  rain   Rain   @relation(fields: [rainId], references: [id])
+  userId String
+
+  claimedAt DateTime @default(now())
+
+  @@unique([rainId, userId])
+  @@index([rainId])
+  @@index([userId])
+}
+
+// ============================================
+// COMMISSION SYSTEM (Dynamic Distribution)
+// ============================================
+
+model Commission {
+  id String @id @default(uuid())
+
+  // Who earned the commission
+  recipientId String
+  recipient   User   @relation("CommissionRecipient", fields: [recipientId], references: [id])
+
+  // Who generated the commission (the player who bet)
+  sourceUserId String
+  sourceUser   User   @relation("CommissionSource", fields: [sourceUserId], references: [id])
+
+  // Related bet
+  betId String
+  bet   Bet    @relation(fields: [betId], references: [id])
+
+  // Commission details
+  currency Currency
+  amount   Decimal  @db.Decimal(18, 8)
+
+  // Type of commission
+  commissionType CommissionType
+
+  // Hierarchy level of recipient (1 = direct parent, 2 = grandparent, etc.)
+  levelFromSource Int
+
+  createdAt DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([sourceUserId])
+  @@index([betId])
+  @@index([createdAt])
+}
+
+enum CommissionType {
+  REVENUE_SHARE // % of house edge
+  TURNOVER_REBATE // % of total bet amount
+}
+
+// ============================================
+// GAME INTEGRITY (Provably Fair)
+// ============================================
+
+model Bet {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // *** MULTI-TENANT: Site association ***
+  siteId String?
+  site   SiteConfiguration? @relation(fields: [siteId], references: [id])
+
+  gameType GameType
+  currency Currency
+
+  // Bet details
+  betAmount  Decimal @db.Decimal(18, 8)
+  multiplier Decimal @db.Decimal(10, 4)
+  payout     Decimal @db.Decimal(18, 8)
+  profit     Decimal @db.Decimal(18, 8) // Can be negative (loss)
+
+  // Provably Fair
+  serverSeed     String
+  serverSeedHash String // SHA256 of serverSeed (shown before bet)
+  clientSeed     String
+  nonce          Int
+
+  // Game-specific data
+  gameData Json? // Stores game-specific info (crash point, mines positions, etc.)
+
+  // Status
+  isWin Boolean
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  settledAt DateTime?
+
+  // Relations
+  commissions Commission[]
+
+  @@index([userId])
+  @@index([gameType])
+  @@index([createdAt])
+  @@index([isWin])
+  @@index([siteId])
+  @@index([userId, siteId])
+  @@index([siteId, gameType])
+}
+
+enum GameType {
+  CRASH
+  PLINKO
+  MINES
+  DICE
+  LIMBO
+  KENO
+  WHEEL
+  BLACKJACK
+  ROULETTE
+  BACCARAT
+  OLYMPUS
+  EXTERNAL // For external provider games
+}
+
+// ============================================
+// SERVER SEEDS (For Provably Fair rotation)
+// ============================================
+
+model ServerSeed {
+  id     String @id @default(uuid())
+  userId String
+
+  seed     String
+  seedHash String // SHA256(seed)
+
+  isActive Boolean @default(true)
+  nonce    Int     @default(0)
+
+  revealedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+// ============================================
+// SYSTEM CONFIGURATION
+// ============================================
+
+model SystemConfig {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       Json
+  description String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id         String  @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+
+  oldData Json?
+  newData Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+// ============================================
+// EXTERNAL GAME AGGREGATOR SYSTEM
+// ============================================
+
+// --- ENUMS ---
+enum GameCategory {
+  SLOTS
+  LIVE_CASINO
+  CRASH
+  SPORTS
+  TABLE_GAMES
+  ORIGINALS
+  VIRTUAL_SPORTS
+}
+
+enum Volatility {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  ERROR
+}
+
+// --- MODELS ---
+
+// Game Provider (e.g., Pragmatic Play, Evolution, etc.)
+model GameProvider {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  slug           String   @unique // e.g., "pragmatic"
+  aggregatorId   String? // ID on aggregator platform (if using aggregator)
+  aggregatorName String? // Name of aggregator (e.g., "SoftSwiss", "SoftGamings")
+  apiUrl         String?
+  apiKey         String?
+  apiSecret      String?
+  isActive       Boolean  @default(true)
+  isLive         Boolean  @default(false) // Live casino provider
+  feePercentage  Float    @default(0) // Provider fee percentage (e.g., 8 = 8% of GGR)
+  ipWhitelist    String[] // Array of allowed IPs for callbacks
+  config         Json? // Provider specific settings
+
+  games Game[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+// Game Catalog
+model Game {
+  id         String       @id @default(uuid())
+  providerId String
+  provider   GameProvider @relation(fields: [providerId], references: [id])
+
+  externalId  String // ID on provider side
+  name        String
+  slug        String       @unique
+  category    GameCategory
+  subcategory String? // e.g., "Video Slots", "Classic Slots", "Megaways"
+  tags        String[]     @default([]) // For search and filtering
+
+  // Metadata
+  thumbnail   String?
+  banner      String?
+  description String?
+  rtp         Decimal?    @db.Decimal(5, 2) // Return to Player %
+  volatility  Volatility?
+  minBet      Decimal?    @db.Decimal(18, 8)
+  maxBet      Decimal?    @db.Decimal(18, 8)
+
+  // Statistics
+  playCount Int @default(0) // Number of times played
+
+  // Flags
+  isActive   Boolean @default(true)
+  isNew      Boolean @default(false)
+  isHot      Boolean @default(false)
+  isFeatured Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  sessions GameSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([providerId, externalId])
+  @@index([category])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([slug])
+}
+
+// Game Session (for tracking external game rounds)
+model GameSession {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("GameSessions", fields: [userId], references: [id])
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+
+  externalSessionId String?       @unique
+  currency          String        @default("USDT")
+  status            SessionStatus @default(ACTIVE)
+
+  totalBet Decimal @default(0) @db.Decimal(18, 8)
+  totalWin Decimal @default(0) @db.Decimal(18, 8)
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([gameId])
+  @@index([status])
+}
+
+// ============================================
+// CHAT SYSTEM (Multi-Tenant)
+// ============================================
+
+model ChatMessage {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserChatMessages", fields: [userId], references: [id], onDelete: Cascade)
+
+  // *** MULTI-TENANT: Site association ***
+  siteId String?
+  site   SiteConfiguration? @relation(fields: [siteId], references: [id])
+
+  message  String
+  isSystem Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([siteId])
+  @@index([siteId, createdAt])
+}
+
+// ============================================
+// STATISTICS SYSTEM
+// ============================================
+
+enum StatisticType {
+  TOTAL_WAGERED
+  TOTAL_WON
+  TOTAL_LOST
+  GAMES_PLAYED
+  WIN_RATE
+  BIGGEST_WIN
+  BIGGEST_LOSS
+  PROFIT_LOSS
+}
+
+model Statistic {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserStatistics", fields: [userId], references: [id], onDelete: Cascade)
+
+  type     StatisticType
+  value    Decimal       @db.Decimal(18, 8)
+  gameType String? // e.g., "crash", "plinko", "slots"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, type, gameType])
+  @@index([userId])
+  @@index([type])
+}
+
+// ============================================
+// BOT CONFIGURATION (Multi-Tenant)
+// ============================================
+
+model BotConfig {
+  id     String @id @default(uuid())
+  siteId String
+  site   SiteConfiguration @relation(fields: [siteId], references: [id])
+
+  // Bot settings per brand
+  enabled       Boolean @default(true)
+  botCount      Int     @default(50)
+  minBetAmount  Decimal @default(5) @db.Decimal(18, 8)
+  maxBetAmount  Decimal @default(1000) @db.Decimal(18, 8)
+  chatEnabled   Boolean @default(true)
+  chatIntervalMin Int   @default(5)  // seconds
+  chatIntervalMax Int   @default(15) // seconds
+
+  // Bot name prefix (to differentiate per brand)
+  botNamePrefix String @default("") // e.g., "DragonBlaze_"
+
+  // Custom chat messages (JSON array)
+  customChatMessages Json? // ["LFG!", "Nice win!", ...]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId])
+  @@index([siteId])
+}
+
+// ============================================
+// RISK MANAGEMENT - Per Brand Limits
+// ============================================
+model RiskLimit {
+  id              String   @id @default(uuid())
+  siteId          String
+  site            SiteConfiguration @relation(fields: [siteId], references: [id])
+  maxPayoutPerDay Decimal  @default(50000) @db.Decimal(18,2)
+  maxPayoutPerBet Decimal  @default(10000) @db.Decimal(18,2)
+  maxBetAmount    Decimal  @default(5000)  @db.Decimal(18,2)
+  dailyPayoutUsed Decimal  @default(0)     @db.Decimal(18,2)
+  lastResetDate   DateTime @default(now())
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([siteId])
+  @@index([siteId])
+}
+
+// ============================================
+// FRAUD DETECTION - Suspicious Activity Alerts
+// ============================================
+model FraudAlert {
+  id          String   @id @default(uuid())
+  siteId      String
+  site        SiteConfiguration @relation(fields: [siteId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  alertType   String   // HIGH_WIN_RATE, RAPID_BETTING, LARGE_WITHDRAWAL, etc.
+  severity    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  details     Json?
+  status      String   @default("OPEN") // OPEN, REVIEWED, DISMISSED, CONFIRMED
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([siteId])
+  @@index([userId])
+  @@index([status])
+  @@index([siteId, status])
+}

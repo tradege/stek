@@ -133,12 +133,20 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(`Insufficient balance for user ${userId}: ${currentBalance} < ${amount}`);
           return false;
         }
+        // ATOMIC SQL: Single UPDATE with balance check
+        const amountNum = amount.toNumber();
+        const deducted = await tx.$executeRaw`
+          UPDATE "Wallet" 
+          SET balance = balance - ${amountNum}::decimal,
+              "updatedAt" = NOW()
+          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND balance >= ${amountNum}::decimal
+        `;
+        if (deducted === 0) {
+          this.logger.warn(`Insufficient balance (atomic) for user ${userId}`);
+          return false;
+        }
         const newBalance = currentBalance.minus(amount);
-        await tx.wallet.update({
-          where: { id: wallet.id },
-          data: { balance: newBalance.toNumber() },
-        });
-        this.logger.debug(`💸 Deducted $${amount.toFixed(2)} from user ${userId}. New balance: $${newBalance.toFixed(2)}`);
+        this.logger.debug(`Deducted $${amount.toFixed(2)} from user ${userId}. New balance: $${newBalance.toFixed(2)}`);
         return true;
       });
     } catch (error) {
@@ -163,12 +171,16 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           return false;
         }
         const wallet = wallets[0];
+        // ATOMIC SQL: Single UPDATE to add winnings
+        const amountNum = amount.toNumber();
+        await tx.$executeRaw`
+          UPDATE "Wallet" 
+          SET balance = balance + ${amountNum}::decimal,
+              "updatedAt" = NOW()
+          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency"
+        `;
         const newBalance = new Decimal(wallet.balance).plus(amount);
-        await tx.wallet.update({
-          where: { id: wallet.id },
-          data: { balance: newBalance.toNumber() },
-        });
-        this.logger.debug(`💰 Added $${amount.toFixed(2)} to user ${userId}. New balance: $${newBalance.toFixed(2)}`);
+        this.logger.debug(`Added $${amount.toFixed(2)} to user ${userId}. New balance: $${newBalance.toFixed(2)}`);
         return true;
       });
     } catch (error) {

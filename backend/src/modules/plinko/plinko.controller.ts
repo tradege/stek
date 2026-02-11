@@ -1,63 +1,23 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Query,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
-import { IsNumber, IsEnum, Min, Max, IsNotEmpty } from 'class-validator';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Req, UseGuards, Query } from '@nestjs/common';
 import { PlinkoService } from './plinko.service';
-import { RiskLevel } from './plinko.constants';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-// DTO with proper validation decorators
-class PlayPlinkoDto {
-  @IsNumber()
-  @IsNotEmpty()
-  @Min(0.01)
-  betAmount: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  @Min(8)
-  @Max(16)
-  rows: number;
-
-  @IsEnum(['LOW', 'MEDIUM', 'HIGH'])
-  @IsNotEmpty()
-  risk: RiskLevel;
-}
-
-// Export PlinkoResult interface for TypeScript
-export interface PlinkoResult {
-  path: number[];
-  bucketIndex: number;
-  multiplier: number;
-  payout: number;
-  profit: number;
-}
-
 @Controller('games/plinko')
+@ApiTags('Games')
+@ApiBearerAuth('JWT')
+@UseGuards(JwtAuthGuard)
 export class PlinkoController {
   constructor(private readonly plinkoService: PlinkoService) {}
 
   @Post('play')
-  @UseGuards(JwtAuthGuard)
-  async play(@Request() req, @Body() dto: PlayPlinkoDto): Promise<PlinkoResult> {
-    // Pass DTO object to service (service expects dto object, not separate params)
-    const result = await this.plinkoService.play(req.user.id, dto);
-    return result;
+  async play(@Req() req: any, @Body() dto: any) {
+    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    return this.plinkoService.play(req.user.id, dto, siteId);
   }
 
   @Get('multipliers')
-  getMultipliers(
-    @Query('rows') rows: string,
-    @Query('risk') risk: RiskLevel,
-  ) {
-    return {
-      multipliers: this.plinkoService.getMultipliers(parseInt(rows), risk),
-    };
+  getMultipliers(@Query('rows') rows: string, @Query('risk') risk: string) {
+    return this.plinkoService.getMultipliers(parseInt(rows) || 12, (risk || 'MEDIUM') as any);
   }
 }

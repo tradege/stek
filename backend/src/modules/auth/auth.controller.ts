@@ -1,3 +1,4 @@
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import {
   Controller,
   Post,
@@ -12,33 +13,35 @@ import { AuthService, RegisterDto, LoginDto, AuthResponse, UserWithBalance } fro
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
+@ApiTags('Auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   /**
    * POST /auth/register
-   * Create a new user account
+   * Create a new user account - TENANT AWARE
    */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto): Promise<AuthResponse> {
-    return this.authService.register(dto);
+  async register(@Body() dto: RegisterDto, @Request() req): Promise<AuthResponse> {
+    const siteId = req.tenant?.siteId || null;
+    return this.authService.register(dto, siteId);
   }
 
   /**
    * POST /auth/login
-   * Authenticate user and return JWT token
+   * Authenticate user - TENANT AWARE
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto): Promise<AuthResponse> {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Request() req): Promise<AuthResponse> {
+    const siteId = req.tenant?.siteId || null;
+    return this.authService.login(dto, siteId);
   }
 
   /**
    * GET /auth/me
    * Get current authenticated user with balance
-   * Protected route - requires valid JWT
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -48,28 +51,11 @@ export class AuthController {
 
   /**
    * POST /auth/logout
-   * Logout user (client should delete token)
+   * Logout is handled client-side (remove JWT)
    */
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(): Promise<{ message: string }> {
-    // In a more complete implementation, we would invalidate the token
-    // For now, the client just needs to delete the token
+  async logout() {
     return { message: 'Logged out successfully' };
-  }
-
-  /**
-   * GET /auth/verify
-   * Verify if token is valid
-   */
-  @Get('verify')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  async verify(@Request() req): Promise<{ valid: boolean; user: any }> {
-    return {
-      valid: true,
-      user: req.user,
-    };
   }
 }

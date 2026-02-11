@@ -1,14 +1,16 @@
 /**
  * ============================================
- * BOT SERVICE - Ghost Protocol
+ * BOT SERVICE - Ghost Protocol (Multi-Tenant)
  * ============================================
- * Traffic Bot System for simulating a lively casino
+ * Traffic Bot System for simulating a lively casino.
+ * Now tenant-aware: each site/brand has its own bot pool,
+ * chat messages, and bet behavior.
  * 
  * Features:
- * - Auto-creates 50 bot users on startup
- * - Simulates betting behavior during WAITING state
- * - Simulates cashout behavior during RUNNING state
- * - Sends chat messages periodically
+ * - Auto-creates bots per siteId based on BotConfig
+ * - Simulates betting behavior during WAITING state (per site)
+ * - Simulates cashout behavior during RUNNING state (per site)
+ * - Sends chat messages periodically (isolated per site)
  */
 
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
@@ -23,8 +25,27 @@ interface BotUser {
   id: string;
   username: string;
   personality: BotPersonality;
+  siteId: string;
   currentBet: number | null;
   targetCashout: number | null;
+}
+
+interface SiteBotPool {
+  siteId: string;
+  bots: BotUser[];
+  activeBets: Map<string, { amount: number; targetCashout: number }>;
+  chatInterval: NodeJS.Timeout | null;
+  isEnabled: boolean;
+  config: {
+    botCount: number;
+    minBetAmount: number;
+    maxBetAmount: number;
+    chatEnabled: boolean;
+    chatIntervalMin: number;
+    chatIntervalMax: number;
+    botNamePrefix: string;
+    customChatMessages: string[] | null;
+  };
 }
 
 // Random bot names
@@ -41,54 +62,29 @@ const BOT_NAMES = [
   'GammaScalper', 'ThetaGang', 'VegaHunter', 'IVCrusher', 'OptionsWhale'
 ];
 
-// Chat messages dictionary
-const CHAT_MESSAGES = [
-  'LFG! 🚀',
-  'Rigged...',
-  'Nice win!',
-  'Rekt 💀',
-  'To the moon 🌙',
-  'Admin??',
-  'gg',
-  'Ez money',
-  'I knew it!',
-  'One more...',
-  'This is the one',
-  'Paper hands smh',
-  'Diamond hands only 💎',
-  'Whale alert 🐋',
-  'Lets goooo',
-  'RIP',
-  'Cashout now!',
-  'Hold hold hold',
-  'Too early...',
-  'Perfect timing',
-  'Lucky!',
-  'Unlucky...',
-  'Im done',
-  'One more round',
-  'All in next',
-  'Playing safe now',
-  'Degen mode activated',
-  'This game is fire 🔥',
-  'Who else got rekt?',
-  'Easy 2x',
-  'Going for 10x',
-  'Scared money dont make money',
-  'Trust the process',
-  'Variance is real',
-  'House always wins... or not',
+// Default chat messages
+const DEFAULT_CHAT_MESSAGES = [
+  'LFG! 🚀', 'Rigged...', 'Nice win!', 'Rekt 💀', 'To the moon 🌙',
+  'Admin??', 'gg', 'Ez money', 'I knew it!', 'One more...',
+  'This is the one', 'Paper hands smh', 'Diamond hands only 💎',
+  'Whale alert 🐋', 'Lets goooo', 'RIP', 'Cashout now!',
+  'Hold hold hold', 'Too early...', 'Perfect timing', 'Lucky!',
+  'Unlucky...', 'Im done', 'One more round', 'All in next',
+  'Playing safe now', 'Degen mode activated', 'This game is fire 🔥',
+  'Who else got rekt?', 'Easy 2x', 'Going for 10x',
+  'Scared money dont make money', 'Trust the process',
+  'Variance is real', 'House always wins... or not',
 ];
 
 @Injectable()
 export class BotService implements OnModuleInit {
   private readonly logger = new Logger(BotService.name);
-  private bots: BotUser[] = [];
-  private isEnabled = true;
+
+  // Map of siteId -> SiteBotPool (each brand has its own bot pool)
+  private sitePools: Map<string, SiteBotPool> = new Map();
+
   private currentGameState: 'WAITING' | 'STARTING' | 'RUNNING' | 'CRASHED' = 'WAITING';
   private currentMultiplier = 1.0;
-  private chatInterval: NodeJS.Timeout | null = null;
-  private activeBets: Map<string, { amount: number; targetCashout: number }> = new Map();
 
   constructor(
     private prisma: PrismaService,
@@ -96,24 +92,49 @@ export class BotService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('🤖 Initializing Bot Service (Ghost Protocol)...');
-    await this.initializeBots();
-    this.startChatLoop();
-    this.logger.log(`🤖 Bot Service ready with ${this.bots.length} ghost players`);
+    this.logger.log('🤖 Initializing Multi-Tenant Bot Service (Ghost Protocol)...');
+    await this.initializeAllSiteBots();
+    this.logger.log(`🤖 Bot Service ready for ${this.sitePools.size} site(s)`);
   }
 
   /**
-   * Initialize bot users - create if they don't exist
+   * Initialize bot pools for all active sites
    */
-  private async initializeBots() {
-    const BOT_COUNT = 50;
-    
-    // Check existing bot users
+  private async initializeAllSiteBots() {
+    // Get all active sites with their bot configs
+    const sites = await this.prisma.siteConfiguration.findMany({
+      where: { active: true },
+      include: { bots: true },
+    });
+
+    for (const site of sites) {
+      const botConfig = site.bots[0]; // One BotConfig per site (@@unique([siteId]))
+      if (botConfig && botConfig.enabled) {
+        await this.initializeSiteBots(site.id, {
+          botCount: botConfig.botCount,
+          minBetAmount: Number(botConfig.minBetAmount),
+          maxBetAmount: Number(botConfig.maxBetAmount),
+          chatEnabled: botConfig.chatEnabled,
+          chatIntervalMin: botConfig.chatIntervalMin,
+          chatIntervalMax: botConfig.chatIntervalMax,
+          botNamePrefix: botConfig.botNamePrefix,
+          customChatMessages: botConfig.customChatMessages as string[] | null,
+        });
+      }
+    }
+  }
+
+  /**
+   * Initialize bots for a specific site
+   */
+  private async initializeSiteBots(siteId: string, config: SiteBotPool['config']) {
+    const { botCount, botNamePrefix } = config;
+
+    // Check existing bot users for this site
     const existingBots = await this.prisma.user.findMany({
       where: {
-        email: {
-          endsWith: '@system.local',
-        },
+        siteId,
+        isBot: true,
       },
       select: {
         id: true,
@@ -121,34 +142,38 @@ export class BotService implements OnModuleInit {
       },
     });
 
-    this.logger.log(`Found ${existingBots.length} existing bot users`);
+    this.logger.log(`[${siteId}] Found ${existingBots.length} existing bots`);
 
     // Create missing bots
     const existingCount = existingBots.length;
-    if (existingCount < BOT_COUNT) {
-      const toCreate = BOT_COUNT - existingCount;
-      this.logger.log(`Creating ${toCreate} new bot users...`);
+    if (existingCount < botCount) {
+      const toCreate = botCount - existingCount;
+      this.logger.log(`[${siteId}] Creating ${toCreate} new bot users...`);
 
       const hashedPassword = await argon2.hash('BotPassword123!');
 
-      for (let i = existingCount; i < BOT_COUNT; i++) {
-        const botName = BOT_NAMES[i] || `Bot_${i}`;
-        const email = `bot_${i}@system.local`;
+      for (let i = existingCount; i < botCount; i++) {
+        const baseName = BOT_NAMES[i % BOT_NAMES.length] || `Bot_${i}`;
+        const botName = botNamePrefix ? `${botNamePrefix}${baseName}` : baseName;
+        // Ensure unique email per site
+        const email = `bot_${siteId.substring(0, 8)}_${i}@system.local`;
 
         try {
           const user = await this.prisma.user.create({
             data: {
               email,
-              username: botName,
+              username: `${botName}_${siteId.substring(0, 4)}`,
               passwordHash: hashedPassword,
               role: 'USER',
               status: 'ACTIVE',
-              // Bot user identified by email pattern @system.local
+              isBot: true,
+              siteId,
               wallets: {
                 create: {
                   currency: 'USDT',
-                  balance: 1000000, // Unlimited balance (1M)
+                  balance: 1000000,
                   lockedBalance: 0,
+                  siteId,
                 },
               },
             },
@@ -156,20 +181,36 @@ export class BotService implements OnModuleInit {
 
           existingBots.push({ id: user.id, username: user.username });
         } catch (error) {
-          // Bot might already exist
-          this.logger.warn(`Could not create bot ${botName}: ${error.message}`);
+          this.logger.warn(`[${siteId}] Could not create bot ${botName}: ${error.message}`);
         }
       }
     }
 
-    // Initialize bot objects with personalities
-    this.bots = existingBots.map((bot) => ({
-      id: bot.id,
-      username: bot.username,
-      personality: this.assignPersonality(),
-      currentBet: null,
-      targetCashout: null,
-    }));
+    // Create the site pool
+    const pool: SiteBotPool = {
+      siteId,
+      bots: existingBots.map((bot) => ({
+        id: bot.id,
+        username: bot.username,
+        personality: this.assignPersonality(),
+        siteId,
+        currentBet: null,
+        targetCashout: null,
+      })),
+      activeBets: new Map(),
+      chatInterval: null,
+      isEnabled: true,
+      config,
+    };
+
+    this.sitePools.set(siteId, pool);
+
+    // Start chat loop for this site
+    if (config.chatEnabled) {
+      this.startSiteChatLoop(siteId);
+    }
+
+    this.logger.log(`🤖 [${siteId}] Bot pool initialized with ${pool.bots.length} bots`);
   }
 
   /**
@@ -188,95 +229,106 @@ export class BotService implements OnModuleInit {
   private getTargetCashout(personality: BotPersonality): number {
     switch (personality) {
       case 'CAUTIOUS':
-        return 1.01 + Math.random() * 0.29; // 1.01x - 1.30x
+        return 1.01 + Math.random() * 0.29;
       case 'NORMAL':
-        return 1.50 + Math.random() * 1.50; // 1.50x - 3.00x
+        return 1.50 + Math.random() * 1.50;
       case 'DEGEN':
-        return 5.00 + Math.random() * 15.00; // 5.00x - 20.00x
+        return 5.00 + Math.random() * 15.00;
       default:
         return 2.00;
     }
   }
 
   /**
-   * Get random bet amount based on personality
+   * Get random bet amount based on personality and site config
    */
-  private getBetAmount(personality: BotPersonality): number {
+  private getBetAmount(personality: BotPersonality, config: SiteBotPool['config']): number {
+    const min = Number(config.minBetAmount);
+    const max = Number(config.maxBetAmount);
+    const range = max - min;
+
     switch (personality) {
       case 'CAUTIOUS':
-        return Math.floor(5 + Math.random() * 45); // $5 - $50
+        return Math.floor(min + Math.random() * (range * 0.2));
       case 'NORMAL':
-        return Math.floor(20 + Math.random() * 180); // $20 - $200
+        return Math.floor(min + range * 0.1 + Math.random() * (range * 0.4));
       case 'DEGEN':
-        return Math.floor(100 + Math.random() * 900); // $100 - $1000
+        return Math.floor(min + range * 0.5 + Math.random() * (range * 0.5));
       default:
-        return 50;
+        return Math.floor(min + range * 0.25);
     }
   }
 
   /**
-   * Handle game state changes
+   * Handle game state changes - dispatch to all site pools
    */
   @OnEvent('crash.state_change')
   handleGameStateChange(data: { state: string; multiplier?: number }) {
-    if (!this.isEnabled) return;
-
     this.currentGameState = data.state as any;
-    
+
     switch (data.state) {
       case 'WAITING':
       case 'STARTING':
-        this.placeBotBets();
-        break;
-      case 'RUNNING':
-        // Bots will cashout based on tick events
+        // Place bets for each active site pool
+        for (const [siteId, pool] of this.sitePools.entries()) {
+          if (pool.isEnabled) {
+            this.placeSiteBotBets(siteId);
+          }
+        }
         break;
       case 'CRASHED':
-        this.handleCrash();
+        for (const [siteId, pool] of this.sitePools.entries()) {
+          if (pool.isEnabled) {
+            this.handleSiteCrash(siteId);
+          }
+        }
         break;
     }
   }
 
   /**
-   * Handle tick events for cashout decisions
+   * Handle tick events for cashout decisions - dispatch to all site pools
    */
   @OnEvent('crash.tick')
   handleTick(data: { multiplier: string | number }) {
-    if (!this.isEnabled) return;
-    
-    this.currentMultiplier = typeof data.multiplier === "string" ? parseFloat(data.multiplier) : data.multiplier;
-    this.checkBotCashouts(this.currentMultiplier);
+    this.currentMultiplier = typeof data.multiplier === 'string'
+      ? parseFloat(data.multiplier)
+      : data.multiplier;
+
+    for (const [siteId, pool] of this.sitePools.entries()) {
+      if (pool.isEnabled) {
+        this.checkSiteBotCashouts(siteId, this.currentMultiplier);
+      }
+    }
   }
 
   /**
-   * Place bets for random selection of bots
+   * Place bets for a specific site's bot pool
    */
-  private async placeBotBets() {
-    if (!this.isEnabled || this.bots.length === 0) return;
+  private async placeSiteBotBets(siteId: string) {
+    const pool = this.sitePools.get(siteId);
+    if (!pool || !pool.isEnabled || pool.bots.length === 0) return;
 
-    // Select 10-25 random bots
-    const numBots = Math.floor(10 + Math.random() * 15);
-    const shuffled = [...this.bots].sort(() => Math.random() - 0.5);
-    const selectedBots = shuffled.slice(0, numBots);
+    const numBots = Math.floor(Math.max(5, pool.bots.length * 0.2) + Math.random() * (pool.bots.length * 0.3));
+    const shuffled = [...pool.bots].sort(() => Math.random() - 0.5);
+    const selectedBots = shuffled.slice(0, Math.min(numBots, pool.bots.length));
 
-    this.logger.debug(`🎲 ${selectedBots.length} bots placing bets...`);
+    this.logger.debug(`🎲 [${siteId}] ${selectedBots.length} bots placing bets...`);
 
-    // Stagger bet placement for realism
     for (const bot of selectedBots) {
-      const delay = Math.random() * 3000; // 0-3 seconds
-      
+      const delay = Math.random() * 3000;
+
       setTimeout(async () => {
         if (this.currentGameState !== 'WAITING' && this.currentGameState !== 'STARTING') {
-          return; // Game already started
+          return;
         }
 
-        const amount = this.getBetAmount(bot.personality);
+        const amount = this.getBetAmount(bot.personality, pool.config);
         const targetCashout = this.getTargetCashout(bot.personality);
 
-        // Store active bet
-        this.activeBets.set(bot.id, { amount, targetCashout });
+        pool.activeBets.set(bot.id, { amount, targetCashout });
 
-        // Emit bet event (will be picked up by WebSocket gateway)
+        // Emit bet event with siteId for isolation
         this.eventEmitter.emit('bot:bet_placed', {
           betId: `bot_${bot.id}_${Date.now()}`,
           oddsId: bot.id,
@@ -287,29 +339,31 @@ export class BotService implements OnModuleInit {
           currency: 'USDT',
           isBot: true,
           targetCashout,
+          siteId, // *** TENANT ISOLATION ***
         });
 
-        this.logger.debug(`🤖 ${bot.username} bet $${amount} (target: ${targetCashout.toFixed(2)}x)`);
+        this.logger.debug(`🤖 [${siteId}] ${bot.username} bet $${amount} (target: ${targetCashout.toFixed(2)}x)`);
       }, delay);
     }
   }
 
   /**
-   * Check if any bots should cashout at current multiplier
+   * Check if any bots should cashout at current multiplier (per site)
    */
-  private checkBotCashouts(multiplier: number) {
-    for (const [botId, bet] of this.activeBets.entries()) {
-      // Add some randomness to cashout timing
-      const variance = 0.95 + Math.random() * 0.1; // 95% - 105% of target
+  private checkSiteBotCashouts(siteId: string, multiplier: number) {
+    const pool = this.sitePools.get(siteId);
+    if (!pool) return;
+
+    for (const [botId, bet] of pool.activeBets.entries()) {
+      const variance = 0.95 + Math.random() * 0.1;
       const adjustedTarget = bet.targetCashout * variance;
 
       if (multiplier >= adjustedTarget) {
-        const bot = this.bots.find(b => b.id === botId);
+        const bot = pool.bots.find(b => b.id === botId);
         if (!bot) continue;
 
         const profit = bet.amount * (multiplier - 1);
 
-        // Emit cashout event
         this.eventEmitter.emit('bot:cashout', {
           betId: `bot_${botId}_${Date.now()}`,
           oddsId: botId,
@@ -320,49 +374,58 @@ export class BotService implements OnModuleInit {
           profit,
           amount: bet.amount,
           isBot: true,
+          siteId, // *** TENANT ISOLATION ***
         });
 
-        this.logger.debug(`💰 ${bot.username} cashed out at ${multiplier.toFixed(2)}x (+$${profit.toFixed(2)})`);
-        
-        // Remove from active bets
-        this.activeBets.delete(botId);
+        this.logger.debug(`💰 [${siteId}] ${bot.username} cashed out at ${multiplier.toFixed(2)}x (+$${profit.toFixed(2)})`);
+        pool.activeBets.delete(botId);
       }
     }
   }
 
   /**
-   * Handle crash - clear remaining bets
+   * Handle crash - clear remaining bets for a specific site
    */
-  private handleCrash() {
-    const lostBots = this.activeBets.size;
-    
-    for (const [botId, bet] of this.activeBets.entries()) {
-      const bot = this.bots.find(b => b.id === botId);
+  private handleSiteCrash(siteId: string) {
+    const pool = this.sitePools.get(siteId);
+    if (!pool) return;
+
+    const lostBots = pool.activeBets.size;
+
+    for (const [botId, bet] of pool.activeBets.entries()) {
+      const bot = pool.bots.find(b => b.id === botId);
       if (bot) {
-        this.logger.debug(`💀 ${bot.username} lost $${bet.amount}`);
+        this.logger.debug(`💀 [${siteId}] ${bot.username} lost $${bet.amount}`);
       }
     }
 
     if (lostBots > 0) {
-      this.logger.debug(`💥 ${lostBots} bots got rekt`);
+      this.logger.debug(`💥 [${siteId}] ${lostBots} bots got rekt`);
     }
 
-    this.activeBets.clear();
+    pool.activeBets.clear();
   }
 
   /**
-   * Start chat message loop
+   * Start chat message loop for a specific site
    */
-  private startChatLoop() {
-    if (this.chatInterval) {
-      clearInterval(this.chatInterval);
+  private startSiteChatLoop(siteId: string) {
+    const pool = this.sitePools.get(siteId);
+    if (!pool) return;
+
+    if (pool.chatInterval) {
+      clearTimeout(pool.chatInterval);
     }
 
-    const sendChatMessage = () => {
-      if (!this.isEnabled || this.bots.length === 0) return;
+    const chatMessages = pool.config.customChatMessages && pool.config.customChatMessages.length > 0
+      ? pool.config.customChatMessages
+      : DEFAULT_CHAT_MESSAGES;
 
-      const bot = this.bots[Math.floor(Math.random() * this.bots.length)];
-      const message = CHAT_MESSAGES[Math.floor(Math.random() * CHAT_MESSAGES.length)];
+    const sendChatMessage = () => {
+      if (!pool.isEnabled || pool.bots.length === 0) return;
+
+      const bot = pool.bots[Math.floor(Math.random() * pool.bots.length)];
+      const message = chatMessages[Math.floor(Math.random() * chatMessages.length)];
 
       this.eventEmitter.emit('bot:chat_message', {
         oddsId: bot.id,
@@ -372,15 +435,18 @@ export class BotService implements OnModuleInit {
         message,
         timestamp: new Date().toISOString(),
         isBot: true,
+        siteId, // *** TENANT ISOLATION ***
       });
 
-      this.logger.debug(`💬 ${bot.username}: ${message}`);
+      this.logger.debug(`💬 [${siteId}] ${bot.username}: ${message}`);
     };
 
-    // Send message every 5-15 seconds
     const scheduleNext = () => {
-      const delay = 5000 + Math.random() * 10000;
-      this.chatInterval = setTimeout(() => {
+      const minMs = pool.config.chatIntervalMin * 1000;
+      const maxMs = pool.config.chatIntervalMax * 1000;
+      const delay = minMs + Math.random() * (maxMs - minMs);
+
+      pool.chatInterval = setTimeout(() => {
         sendChatMessage();
         scheduleNext();
       }, delay);
@@ -390,71 +456,179 @@ export class BotService implements OnModuleInit {
   }
 
   /**
-   * Toggle bot system on/off
+   * Toggle bot system on/off for a specific site
    */
-  toggle(enable: boolean): { enabled: boolean; botCount: number } {
-    this.isEnabled = enable;
-    
+  toggleSite(siteId: string, enable: boolean): { enabled: boolean; botCount: number } {
+    const pool = this.sitePools.get(siteId);
+    if (!pool) {
+      return { enabled: false, botCount: 0 };
+    }
+
+    pool.isEnabled = enable;
+
     if (enable) {
-      this.startChatLoop();
-      this.logger.log('🤖 Bot system ENABLED');
-    } else {
-      if (this.chatInterval) {
-        clearTimeout(this.chatInterval);
-        this.chatInterval = null;
+      if (pool.config.chatEnabled) {
+        this.startSiteChatLoop(siteId);
       }
-      this.activeBets.clear();
-      this.logger.log('🤖 Bot system DISABLED');
+      this.logger.log(`🤖 [${siteId}] Bot system ENABLED`);
+    } else {
+      if (pool.chatInterval) {
+        clearTimeout(pool.chatInterval);
+        pool.chatInterval = null;
+      }
+      pool.activeBets.clear();
+      this.logger.log(`🤖 [${siteId}] Bot system DISABLED`);
     }
 
     return {
-      enabled: this.isEnabled,
-      botCount: this.bots.length,
+      enabled: pool.isEnabled,
+      botCount: pool.bots.length,
     };
   }
 
   /**
-   * Get bot system status
+   * Legacy toggle (for backward compatibility) - toggles all sites
    */
-  getStatus() {
+  toggle(enable: boolean): { enabled: boolean; botCount: number } {
+    let totalBots = 0;
+    for (const [siteId, pool] of this.sitePools.entries()) {
+      const result = this.toggleSite(siteId, enable);
+      totalBots += result.botCount;
+    }
+    return { enabled: enable, botCount: totalBots };
+  }
+
+  /**
+   * Get bot system status for a specific site
+   */
+  getSiteStatus(siteId: string) {
+    const pool = this.sitePools.get(siteId);
+    if (!pool) {
+      return {
+        siteId,
+        enabled: false,
+        botCount: 0,
+        activeBets: 0,
+        currentGameState: this.currentGameState,
+        personalities: { cautious: 0, normal: 0, degen: 0 },
+      };
+    }
+
     return {
-      enabled: this.isEnabled,
-      botCount: this.bots.length,
-      activeBets: this.activeBets.size,
+      siteId,
+      enabled: pool.isEnabled,
+      botCount: pool.bots.length,
+      activeBets: pool.activeBets.size,
       currentGameState: this.currentGameState,
       personalities: {
-        cautious: this.bots.filter(b => b.personality === 'CAUTIOUS').length,
-        normal: this.bots.filter(b => b.personality === 'NORMAL').length,
-        degen: this.bots.filter(b => b.personality === 'DEGEN').length,
+        cautious: pool.bots.filter(b => b.personality === 'CAUTIOUS').length,
+        normal: pool.bots.filter(b => b.personality === 'NORMAL').length,
+        degen: pool.bots.filter(b => b.personality === 'DEGEN').length,
       },
     };
   }
 
   /**
-   * Manually trigger bot bets (for testing)
+   * Legacy getStatus (backward compatibility) - returns aggregate
    */
-  async triggerBets() {
-    await this.placeBotBets();
-    return { message: 'Bot bets triggered' };
+  getStatus() {
+    let totalBots = 0;
+    let totalActiveBets = 0;
+    let allEnabled = true;
+
+    for (const pool of this.sitePools.values()) {
+      totalBots += pool.bots.length;
+      totalActiveBets += pool.activeBets.size;
+      if (!pool.isEnabled) allEnabled = false;
+    }
+
+    return {
+      enabled: allEnabled,
+      botCount: totalBots,
+      activeBets: totalActiveBets,
+      currentGameState: this.currentGameState,
+      siteCount: this.sitePools.size,
+    };
   }
 
   /**
-   * Manually trigger chat message (for testing)
+   * Reload bot config for a specific site (after admin changes)
    */
-  triggerChat() {
-    if (this.bots.length === 0) return { message: 'No bots available' };
+  async reloadSiteConfig(siteId: string) {
+    // Stop existing pool
+    const existingPool = this.sitePools.get(siteId);
+    if (existingPool) {
+      if (existingPool.chatInterval) {
+        clearTimeout(existingPool.chatInterval);
+      }
+      existingPool.activeBets.clear();
+      this.sitePools.delete(siteId);
+    }
 
-    const bot = this.bots[Math.floor(Math.random() * this.bots.length)];
-    const message = CHAT_MESSAGES[Math.floor(Math.random() * CHAT_MESSAGES.length)];
-
-    this.eventEmitter.emit('bot:chat_message', {
-      userId: bot.id,
-      username: bot.username,
-      message,
-      timestamp: new Date().toISOString(),
-      isBot: true,
+    // Reload from DB
+    const botConfig = await this.prisma.botConfig.findUnique({
+      where: { siteId },
     });
 
-    return { username: bot.username, message };
+    if (botConfig && botConfig.enabled) {
+      await this.initializeSiteBots(siteId, {
+        botCount: botConfig.botCount,
+        minBetAmount: Number(botConfig.minBetAmount),
+        maxBetAmount: Number(botConfig.maxBetAmount),
+        chatEnabled: botConfig.chatEnabled,
+        chatIntervalMin: botConfig.chatIntervalMin,
+        chatIntervalMax: botConfig.chatIntervalMax,
+        botNamePrefix: botConfig.botNamePrefix,
+        customChatMessages: botConfig.customChatMessages as string[] | null,
+      });
+    }
+
+    return { siteId, reloaded: true };
+  }
+
+  /**
+   * Manually trigger bot bets for a specific site (for testing)
+   */
+  async triggerBets(siteId?: string) {
+    if (siteId) {
+      await this.placeSiteBotBets(siteId);
+      return { message: `Bot bets triggered for site ${siteId}` };
+    }
+    // Trigger for all sites
+    for (const sid of this.sitePools.keys()) {
+      await this.placeSiteBotBets(sid);
+    }
+    return { message: 'Bot bets triggered for all sites' };
+  }
+
+  /**
+   * Manually trigger chat message for a specific site (for testing)
+   */
+  triggerChat(siteId?: string) {
+    const targetSites = siteId
+      ? [siteId]
+      : Array.from(this.sitePools.keys());
+
+    for (const sid of targetSites) {
+      const pool = this.sitePools.get(sid);
+      if (!pool || pool.bots.length === 0) continue;
+
+      const bot = pool.bots[Math.floor(Math.random() * pool.bots.length)];
+      const chatMessages = pool.config.customChatMessages && pool.config.customChatMessages.length > 0
+        ? pool.config.customChatMessages
+        : DEFAULT_CHAT_MESSAGES;
+      const message = chatMessages[Math.floor(Math.random() * chatMessages.length)];
+
+      this.eventEmitter.emit('bot:chat_message', {
+        userId: bot.id,
+        username: bot.username,
+        message,
+        timestamp: new Date().toISOString(),
+        isBot: true,
+        siteId: sid,
+      });
+    }
+
+    return { message: `Chat triggered for ${targetSites.length} site(s)` };
   }
 }

@@ -1,3 +1,4 @@
+import { getGameConfig, checkRiskLimits, recordPayout } from "../../common/helpers/game-tenant.helper";
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PLINKO_MULTIPLIERS, getMultiplier, calculateBucketFromPath, RiskLevel } from './plinko.constants';
@@ -11,7 +12,7 @@ interface PlayPlinkoDto {
   currency?: string;
 }
 
-interface PlinkoResult {
+export interface PlinkoResult {
   path: number[];
   bucketIndex: number;
   multiplier: number;
@@ -31,7 +32,7 @@ const RATE_LIMIT_MS = 500; // Minimum 500ms between bets
 export class PlinkoService {
   constructor(private prisma: PrismaService) {}
 
-  async play(userId: string, dto: PlayPlinkoDto): Promise<PlinkoResult> {
+  async play(userId: string, dto: PlayPlinkoDto, siteId: string = "default-site-001"): Promise<PlinkoResult> {
     const { betAmount, rows, risk, currency = 'USDT' } = dto;
 
     // ===== RATE LIMITING =====
@@ -109,6 +110,7 @@ export class PlinkoService {
           id: crypto.randomUUID(),
           userId,
           gameType: 'PLINKO',
+          siteId,
           currency: currency as any,
           betAmount: new Decimal(betAmount),
           multiplier: new Decimal(multiplier),
@@ -135,6 +137,7 @@ export class PlinkoService {
           balanceAfter: newBalance,
           externalRef: `PLINKO-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`,
           metadata: {
+          siteId,
             game: 'PLINKO',
             multiplier,
             payout,

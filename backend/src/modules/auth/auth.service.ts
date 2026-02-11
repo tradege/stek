@@ -10,12 +10,14 @@ export interface RegisterDto {
   username: string;
   email: string;
   password: string;
-  referralCode?: string; // Optional parent referral
+  referralCode?: string;
+  siteId?: string; // Multi-tenant: which brand the user registers on
 }
 
 export interface LoginDto {
   email: string;
   password: string;
+  siteId?: string; // Multi-tenant: which brand the user logs into
 }
 
 export interface AuthResponse {
@@ -32,10 +34,10 @@ export interface SafeUser {
   displayName: string | null;
   avatarUrl: string | null;
   createdAt: Date;
-  // VIP System
   vipLevel: number;
   totalWagered: string;
   xp: number;
+  siteId: string | null;
 }
 
 export interface UserWithBalance extends SafeUser {
@@ -56,11 +58,12 @@ export class AuthService {
   ) {}
 
   /**
-   * Register a new user
-   * Creates user account + initial wallet with $0.00
+   * Register a new user - TENANT AWARE
+   * User is bound to the siteId from the request
    */
-  async register(dto: RegisterDto): Promise<AuthResponse> {
+  async register(dto: RegisterDto, siteId?: string): Promise<AuthResponse> {
     const { username, email, password, referralCode } = dto;
+    const effectiveSiteId = dto.siteId || siteId || null;
 
     // Validate input
     if (!username || username.length < 3 || username.length > 20) {
@@ -73,12 +76,12 @@ export class AuthService {
       throw new BadRequestException('Password must be at least 8 characters');
     }
 
-    // Check if user already exists
+    // Check if user already exists (SCOPED to siteId for username, global for email)
     const existingUser = await this.prisma.user.findFirst({
       where: {
         OR: [
           { email: email.toLowerCase() },
-          { username: username.toLowerCase() },
+          { username: username.toLowerCase(), siteId: effectiveSiteId },
         ],
       },
     });
@@ -93,7 +96,7 @@ export class AuthService {
     // Find parent user if referral code provided
     let parentId: string | null = null;
     let hierarchyPath = '/';
-    let hierarchyLevel = 4; // Default USER level
+    let hierarchyLevel = 4;
 
     if (referralCode) {
       const parentUser = await this.prisma.user.findUnique({
@@ -109,37 +112,37 @@ export class AuthService {
     // Hash password with bcrypt
     const passwordHash = await bcrypt.hash(password, this.SALT_ROUNDS);
 
-    // Create user with transaction (user + wallet)
+    // Create user with transaction (user + wallet) - TENANT SCOPED
     const user = await this.prisma.$transaction(async (tx) => {
-      // Create user
       const newUser = await tx.user.create({
         data: {
           username: username.toLowerCase(),
           email: email.toLowerCase(),
           passwordHash,
           role: UserRole.USER,
-          status: UserStatus.PENDING_APPROVAL, // Requires admin approval
+          status: UserStatus.PENDING_APPROVAL,
           parentId,
           hierarchyPath,
           hierarchyLevel,
           displayName: username,
+          siteId: effectiveSiteId, // *** MULTI-TENANT BINDING ***
         },
       });
 
-      // Create initial wallet with $0.00 (USDT as default)
+      // Create initial wallet - ALSO bound to siteId
       await tx.wallet.create({
         data: {
           userId: newUser.id,
           currency: Currency.USDT,
           balance: 0,
           lockedBalance: 0,
+          siteId: effectiveSiteId, // *** MULTI-TENANT BINDING ***
         },
       });
 
       return newUser;
     });
 
-    // Generate JWT token
     const token = this.generateToken(user);
 
     return {
@@ -149,22 +152,29 @@ export class AuthService {
   }
 
   /**
-   * Login user with email and password
+   * Login user - TENANT AWARE
+   * Validates that user belongs to the requesting site
    */
-  async login(dto: LoginDto): Promise<AuthResponse> {
+  async login(dto: LoginDto, siteId?: string): Promise<AuthResponse> {
     const { email, password } = dto;
+    const effectiveSiteId = dto.siteId || siteId || null;
 
     if (!email || !password) {
       throw new BadRequestException('Email and password are required');
     }
 
-    // Find user by email
+    // Find user by email - ADMIN can login from any site
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // MULTI-TENANT CHECK: Non-admin users must belong to the requesting site
+    if (user.role !== UserRole.ADMIN && effectiveSiteId && user.siteId && user.siteId !== effectiveSiteId) {
+      throw new UnauthorizedException('Invalid credentials'); // Don't reveal cross-site info
     }
 
     // Check if user is active
@@ -177,12 +187,9 @@ export class AuthService {
 
     // Verify password (support both argon2 and bcrypt)
     let isPasswordValid = false;
-    
     if (user.passwordHash.startsWith('$argon2')) {
-      // Argon2 hash
       isPasswordValid = await argon2.verify(user.passwordHash, password);
     } else {
-      // Bcrypt hash
       isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     }
     
@@ -193,12 +200,9 @@ export class AuthService {
     // Update last login
     await this.prisma.user.update({
       where: { id: user.id },
-      data: {
-        lastLoginAt: new Date(),
-      },
+      data: { lastLoginAt: new Date() },
     });
 
-    // Generate JWT token
     const token = this.generateToken(user);
 
     return {
@@ -208,13 +212,15 @@ export class AuthService {
   }
 
   /**
-   * Get current user with balance
+   * Get current user with balance - TENANT SCOPED wallets
    */
   async getMe(userId: string): Promise<UserWithBalance> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
-        wallets: true,
+        wallets: {
+          where: { siteId: undefined }, // Get wallets matching user's site
+        },
       },
     });
 
@@ -222,9 +228,14 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    // Filter wallets to only show those matching user's siteId
+    const filteredWallets = user.wallets.filter(
+      w => !user.siteId || !w.siteId || w.siteId === user.siteId
+    );
+
     return {
       ...this.sanitizeUser(user),
-      balance: user.wallets.map((wallet) => ({
+      balance: filteredWallets.map((wallet) => ({
         currency: wallet.currency,
         available: wallet.balance.toString(),
         locked: wallet.lockedBalance.toString(),
@@ -253,7 +264,7 @@ export class AuthService {
   }
 
   /**
-   * Generate JWT token for user
+   * Generate JWT token - includes siteId
    */
   private generateToken(user: User): string {
     const payload = {
@@ -261,6 +272,7 @@ export class AuthService {
       username: user.username,
       email: user.email,
       role: user.role,
+      siteId: user.siteId, // *** MULTI-TENANT: Include in JWT ***
     };
 
     return this.jwtService.sign(payload);
@@ -279,16 +291,13 @@ export class AuthService {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
-      // VIP System
       vipLevel: user.vipLevel,
       totalWagered: user.totalWagered.toString(),
       xp: user.xp,
+      siteId: user.siteId,
     };
   }
 
-  /**
-   * Validate email format
-   */
   private isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);

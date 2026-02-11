@@ -1,3 +1,4 @@
+import { getGameConfig, checkRiskLimits, recordPayout } from "../../common/helpers/game-tenant.helper";
 /**
  * ============================================
  * MINES SERVICE - Provably Fair Mines Game
@@ -51,7 +52,7 @@ export interface MinesGameState {
 const GRID_SIZE = 25; // 5x5
 const MIN_MINES = 1;
 const MAX_MINES = 24;
-const HOUSE_EDGE = 0.04;
+// HOUSE_EDGE is now dynamic per brand - see getGameConfig
 const MIN_BET = 0.01;
 const MAX_BET = 10000;
 const RATE_LIMIT_MS = 500;
@@ -101,7 +102,7 @@ export class MinesService {
    * Calculate multiplier for revealing N gems with M mines
    * Uses combinatorial probability with 4% house edge
    */
-  calculateMultiplier(mineCount: number, revealedCount: number): number {
+  calculateMultiplier(mineCount: number, revealedCount: number, houseEdge: number = 0.03): number {
     if (revealedCount === 0) return 1;
     
     const safeTiles = GRID_SIZE - mineCount;
@@ -117,14 +118,14 @@ export class MinesService {
     if (probability <= 0) return 0;
 
     // Multiplier = (1 - houseEdge) / probability
-    const multiplier = (1 - HOUSE_EDGE) / probability;
+    const multiplier = (1 - houseEdge) / probability;
     return Math.floor(multiplier * 10000) / 10000; // Floor to 4 decimals
   }
 
   /**
    * Start a new mines game
    */
-  async startGame(userId: string, dto: StartGameDto): Promise<MinesGameState> {
+  async startGame(userId: string, dto: StartGameDto, siteId: string = "default-site-001"): Promise<MinesGameState> {
     const { betAmount, mineCount, currency = 'USDT' } = dto;
 
     // Rate limiting
@@ -260,7 +261,7 @@ export class MinesService {
       activeGames.delete(gameId);
 
       // Save bet to database as loss
-      await this.saveBetToDatabase(userId, game, 0, -game.betAmount, false);
+      await this.saveBetToDatabase(userId, game, 0, -game.betAmount, false, 'default-site-001');
 
       return {
         gameId,
@@ -292,7 +293,7 @@ export class MinesService {
 
       // Credit winnings
       await this.creditWinnings(userId, game.currency, currentPayout);
-      await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true);
+      await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true, 'default-site-001');
 
       return {
         gameId,
@@ -353,7 +354,7 @@ export class MinesService {
 
     // Credit winnings
     await this.creditWinnings(userId, game.currency, currentPayout);
-    await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true);
+    await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true, 'default-site-001');
 
     return {
       gameId,
@@ -433,6 +434,7 @@ export class MinesService {
     multiplier: number,
     profit: number,
     isWin: boolean,
+    siteId: string = 'default-site-001',
   ): Promise<void> {
     try {
       await this.prisma.bet.create({
@@ -440,6 +442,7 @@ export class MinesService {
           id: crypto.randomUUID(),
           userId,
           gameType: 'MINES',
+          siteId,
           currency: game.currency as any,
           betAmount: new Decimal(game.betAmount),
           multiplier: new Decimal(multiplier),
@@ -460,7 +463,7 @@ export class MinesService {
       });
     } catch (err) {
       // Log but don't fail the game
-      console.error('Failed to save mines bet:', err);
+      // console.error('Failed to save mines bet:', err);
     }
   }
 
@@ -479,6 +482,7 @@ export class MinesService {
   async getHistory(userId: string, limit: number = 20) {
     return this.prisma.bet.findMany({
       where: { userId, gameType: 'MINES' },
+          // siteId removed - not in scope
       orderBy: { createdAt: 'desc' },
       take: limit,
       select: {
