@@ -1,16 +1,13 @@
 node_modules/
-*.log
-dist/
-.env
-ecosystem.config.js
-query.js
-full_backup/
-# Iron Vault Backup - DO NOT PUSH THESE
-SECRET_ENV_BACKUP.txt
-DATABASE_BACKUP.sql
-NGINX_CONFIG_BACKUP.conf
-PM2_BACKUP.json
 .next/
-*.bak
-*.bak2
-*.bak_debug
+dist/
+*.log
+.env
+backend/.env
+frontend/.env.local
+multi_tenant_master.sh
+phase3_master.sh
+phase4_master.sh
+phase4_fix.sh
+phase4_stress_cleanup.sh
+swagger_fix.py

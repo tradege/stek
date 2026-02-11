@@ -51,7 +51,7 @@ export default function AdminFinance() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${API_URL}/admin/finance/stats`, {
+      const response = await fetch(`${API_URL}/api/admin/finance/stats`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',

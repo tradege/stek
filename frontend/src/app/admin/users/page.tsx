@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/admin/users`, {
+      const response = await fetch(`${API_URL}/api/admin/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -60,7 +60,7 @@ export default function AdminUsersPage() {
     
     setProcessingId(userId);
     try {
-      const response = await fetch(`${API_URL}/admin/users/${userId}/${action.toLowerCase()}`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/${action.toLowerCase()}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -88,7 +88,7 @@ export default function AdminUsersPage() {
     
     setProcessingId(userId);
     try {
-      const response = await fetch(`${API_URL}/admin/users/${userId}/approve`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/approve`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -116,7 +116,7 @@ export default function AdminUsersPage() {
     
     setProcessingId(userId);
     try {
-      const response = await fetch(`${API_URL}/admin/users/${userId}/send-verification`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/send-verification`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

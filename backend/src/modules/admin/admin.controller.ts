@@ -1,9 +1,4 @@
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-/**
- * ============================================
- * ADMIN CONTROLLER - Brand Master API
- * ============================================
- */
 import { Controller, Get, Post, Put, Body, Req, Query, Param, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,17 +11,65 @@ import { RolesGuard } from '../auth/roles.guard';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // ============ BRAND DASHBOARD ============
+  // ============ DASHBOARD STATS (Frontend: /admin/dashboard/stats) ============
+
+  @Get('dashboard/stats')
+  @ApiOperation({ summary: 'Dashboard stats for frontend admin panel' })
+  async getDashboardStats(@Req() req: any) {
+    const siteId = req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getStats(siteId);
+  }
 
   @Get('dashboard')
+  @ApiOperation({ summary: 'Brand dashboard with GGR/NGR per brand' })
   async getDashboard(@Req() req: any, @Query('siteId') querySiteId?: string) {
     const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId || 'ALL';
     return this.adminService.getBrandDashboard(siteId);
   }
 
   @Get('dashboard/all-brands')
+  @ApiOperation({ summary: 'All brands overview dashboard' })
   async getAllBrandsDashboard() {
     return this.adminService.getAllBrandsDashboard();
+  }
+
+  // ============ FINANCE STATS (Frontend: /admin/finance/stats) ============
+
+  @Get('finance/stats')
+  @ApiOperation({ summary: 'Finance stats for frontend admin panel' })
+  async getFinanceStats(@Req() req: any) {
+    const siteId = req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getFinanceStats(siteId);
+  }
+
+  // ============ GAME CONFIG (Frontend: /admin/game/config) ============
+
+  @Get('game/config')
+  @ApiOperation({ summary: 'Get game configuration (house edge, bots)' })
+  async getGameConfig(@Req() req: any) {
+    const siteId = req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getGameConfig(siteId);
+  }
+
+  @Post('game/config')
+  @ApiOperation({ summary: 'Update game configuration' })
+  async updateGameConfig(@Req() req: any, @Body() body: any) {
+    const siteId = req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.updateGameConfig(siteId, body);
+  }
+
+  // ============ TRANSACTIONS (Frontend: /admin/transactions/approve, /admin/deposit/simulate) ============
+
+  @Post('transactions/approve')
+  @ApiOperation({ summary: 'Approve a pending transaction' })
+  async approveTransaction(@Req() req: any, @Body() body: { transactionId: string }) {
+    return this.adminService.approveTransaction(body.transactionId, req.user.id);
+  }
+
+  @Post('deposit/simulate')
+  @ApiOperation({ summary: 'Simulate a deposit for testing' })
+  async simulateDeposit(@Req() req: any, @Body() body: { userId: string; amount: number; currency: string }) {
+    return this.adminService.simulateDeposit(body.userId, body.amount, body.currency || 'USDT');
   }
 
   // ============ HOUSE EDGE MANAGEMENT ============
@@ -37,8 +80,8 @@ export class AdminController {
   }
 
   @Put('house-edge/:siteId')
-  async updateHouseEdge(@Param('siteId') siteId: string, @Body() body: { houseEdgeConfig: Record<string, number> }) {
-    return this.adminService.updateHouseEdge(siteId, body.houseEdgeConfig);
+  async updateHouseEdge(@Param('siteId') siteId: string, @Body() body: any) {
+    return this.adminService.updateHouseEdge(siteId, body);
   }
 
   // ============ RISK MANAGEMENT ============
@@ -53,7 +96,7 @@ export class AdminController {
     return this.adminService.setRiskLimits(siteId, body);
   }
 
-  // ============ EXISTING ENDPOINTS (now tenant-aware) ============
+  // ============ EXISTING ENDPOINTS ============
 
   @Get('stats')
   async getStats(@Req() req: any, @Query('siteId') querySiteId?: string) {

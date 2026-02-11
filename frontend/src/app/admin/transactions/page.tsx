@@ -52,7 +52,7 @@ export default function AdminTransactionsPage() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/admin/transactions`, {
+      const response = await fetch(`${API_URL}/api/admin/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -82,7 +82,7 @@ export default function AdminTransactionsPage() {
   const handleApprove = async (transactionId: string, action: 'APPROVE' | 'REJECT') => {
     setProcessing(transactionId);
     try {
-      const response = await fetch(`${API_URL}/admin/transactions/approve`, {
+      const response = await fetch(`${API_URL}/api/admin/transactions/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -57,7 +57,7 @@ export default function AdminDashboard() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${API_URL}/admin/dashboard/stats`, {
+      const response = await fetch(`${API_URL}/api/admin/dashboard/stats`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
