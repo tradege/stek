@@ -81,11 +81,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     
     
     // Prepare auth payload - STANDARDIZED FORMAT with Bearer prefix
-    const authPayload = authToken ? { token: `Bearer ${authToken}` } : undefined;
+    // Get siteId from branding context or default
+    const siteId = (typeof window !== 'undefined' && (window as any).__SITE_ID) || 'default-site-001';
+    const authPayload = authToken ? { token: `Bearer ${authToken}`, siteId } : { siteId };
     
     const newSocket = io(SOCKET_URL + SOCKET_NAMESPACE, {
       transports: ['polling', 'websocket'], // Start with polling for reliability
       auth: authPayload,
+      query: { siteId: 'default-site-001' },
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,

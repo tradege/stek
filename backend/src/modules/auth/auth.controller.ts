@@ -8,6 +8,8 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Put,
+  Req,
 } from '@nestjs/common';
 import { AuthService, RegisterDto, LoginDto, AuthResponse, UserWithBalance } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -57,5 +59,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout() {
     return { message: 'Logged out successfully' };
+  }
+
+  @Put('change-password')
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @Req() req,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    return this.authService.changePassword(req.user.id, body.currentPassword, body.newPassword);
   }
 }

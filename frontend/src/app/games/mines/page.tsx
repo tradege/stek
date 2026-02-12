@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSoundContext } from "@/contexts/SoundContext";
-import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import config from '@/config/api';
 
 const API_URL = config.apiUrl;
@@ -23,11 +23,21 @@ interface MinesGameState {
   nonce: number;
 }
 
+const CHIP_VALUES = [0.5, 1, 5, 10, 25, 50, 100];
+const CHIP_COLORS: Record<number, string> = {
+  0.5: "from-gray-500 to-gray-600",
+  1: "from-blue-500 to-blue-600",
+  5: "from-red-500 to-red-600",
+  10: "from-orange-500 to-orange-600",
+  25: "from-green-500 to-green-600",
+  50: "from-purple-500 to-purple-600",
+  100: "from-yellow-500 to-yellow-600",
+};
+
 export default function MinesPage() {
   const { user, refreshUser } = useAuth();
   const { isSoundActive } = useSoundContext();
 
-  // Game state
   const [betAmount, setBetAmount] = useState<string>("1.00");
   const [mineCount, setMineCount] = useState<number>(5);
   const [gameState, setGameState] = useState<MinesGameState | null>(null);
@@ -35,8 +45,8 @@ export default function MinesPage() {
   const [error, setError] = useState<string | null>(null);
   const [revealedAnimation, setRevealedAnimation] = useState<Set<number>>(new Set());
   const [lastClickedTile, setLastClickedTile] = useState<number | null>(null);
+  const [screenShake, setScreenShake] = useState(false);
 
-  // Audio refs
   const gemSoundRef = useRef<HTMLAudioElement | null>(null);
   const bombSoundRef = useRef<HTMLAudioElement | null>(null);
   const cashoutSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -54,7 +64,6 @@ export default function MinesPage() {
     }
   };
 
-  // Check for active game on mount
   useEffect(() => {
     if (user) checkActiveGame();
   }, [user]);
@@ -76,33 +85,22 @@ export default function MinesPage() {
     } catch {}
   };
 
-  // Start new game
   const startGame = async () => {
     if (!user || isLoading) return;
     const amount = parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Invalid bet amount");
-      return;
-    }
-
+    if (isNaN(amount) || amount <= 0) { setError("Invalid bet amount"); return; }
     setIsLoading(true);
     setError(null);
     setRevealedAnimation(new Set());
     setLastClickedTile(null);
-
     try {
       const res = await fetch(`${API_URL}/mines/start`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ betAmount: amount, mineCount }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to start game");
-
       setGameState(data);
       refreshUser();
     } catch (err: any) {
@@ -112,36 +110,28 @@ export default function MinesPage() {
     }
   };
 
-  // Reveal tile
   const revealTile = async (tileIndex: number) => {
     if (!gameState || gameState.status !== "ACTIVE" || isLoading) return;
     if (gameState.revealedTiles.includes(tileIndex)) return;
-
     setIsLoading(true);
     setLastClickedTile(tileIndex);
-
     try {
       const res = await fetch(`${API_URL}/mines/reveal`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ gameId: gameState.gameId, tileIndex }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to reveal tile");
-
       if (data.status === "LOST") {
         playSound(bombSoundRef.current);
-        // Animate mine reveal
+        setScreenShake(true);
+        setTimeout(() => setScreenShake(false), 500);
         setRevealedAnimation(new Set([...gameState.revealedTiles, tileIndex]));
       } else {
         playSound(gemSoundRef.current);
         setRevealedAnimation(new Set(data.revealedTiles));
       }
-
       setGameState(data);
       if (data.status !== "ACTIVE") refreshUser();
     } catch (err: any) {
@@ -151,26 +141,18 @@ export default function MinesPage() {
     }
   };
 
-  // Cash out
   const cashout = async () => {
     if (!gameState || gameState.status !== "ACTIVE" || isLoading) return;
     if (gameState.revealedTiles.length === 0) return;
-
     setIsLoading(true);
-
     try {
       const res = await fetch(`${API_URL}/mines/cashout`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ gameId: gameState.gameId }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to cash out");
-
       playSound(cashoutSoundRef.current);
       setGameState(data);
       refreshUser();
@@ -181,25 +163,24 @@ export default function MinesPage() {
     }
   };
 
-  // Get tile display
   const getTileContent = (index: number) => {
     const isRevealed = gameState?.revealedTiles.includes(index);
     const isMine = gameState?.minePositions?.includes(index);
     const isGameOver = gameState?.status === "LOST" || gameState?.status === "WON";
 
     if (isRevealed && !isMine) {
-      return { icon: "💎", bg: "bg-green-500/20 border-green-500/50", text: "text-green-400" };
+      return { icon: "💎", bg: "bg-gradient-to-br from-emerald-600/40 to-green-700/40 border-emerald-400/60 shadow-[0_0_15px_rgba(52,211,153,0.3)]", text: "text-green-300", revealed: true };
     }
     if (isMine && isGameOver) {
       if (index === lastClickedTile) {
-        return { icon: "💥", bg: "bg-red-600/40 border-red-500 animate-pulse", text: "text-red-400" };
+        return { icon: "💥", bg: "bg-gradient-to-br from-red-600/60 to-red-800/60 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.5)]", text: "text-red-300", revealed: true };
       }
-      return { icon: "💣", bg: "bg-red-500/20 border-red-500/50", text: "text-red-400" };
+      return { icon: "💣", bg: "bg-gradient-to-br from-red-900/30 to-red-800/20 border-red-500/40", text: "text-red-400", revealed: true };
     }
     if (isGameOver && !isRevealed && !isMine) {
-      return { icon: "💎", bg: "bg-gray-700/30 border-gray-600/30", text: "text-gray-500" };
+      return { icon: "💎", bg: "bg-gray-800/30 border-gray-600/20", text: "text-gray-600", revealed: false };
     }
-    return { icon: "", bg: "bg-[#2f4553] border-[#3d5a6e] hover:bg-[#3d5a6e] hover:border-[#4d6a7e] cursor-pointer", text: "" };
+    return { icon: "", bg: "bg-gradient-to-br from-[#2a4a5e] to-[#1e3a4e] border-[#3d6a7e]/50 hover:from-[#3a5a6e] hover:to-[#2e4a5e] hover:border-cyan-500/40 hover:shadow-[0_0_10px_rgba(0,240,255,0.15)] cursor-pointer", text: "", revealed: false };
   };
 
   const isGameActive = gameState?.status === "ACTIVE";
@@ -207,230 +188,301 @@ export default function MinesPage() {
   const canStart = !gameState || isGameOver;
 
   return (
-    <div className="min-h-screen bg-[#0f1923] text-white">
-      {/* Header */}
-      <div className="bg-[#1a2c38] border-b border-[#2f4553] px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </Link>
-            <span className="text-2xl">💣</span>
-            <h1 className="text-xl font-bold">Mines</h1>
-            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">4% Edge</span>
-          </div>
-          {user && (
-            <div className="text-sm text-gray-400">
-              Balance: <span className="text-white font-mono">${parseFloat(user?.balance?.find((b: any) => b.currency === 'USDT')?.available || '0').toFixed(2)}</span>
-            </div>
-          )}
-        </div>
+    <motion.div
+      className="min-h-screen text-white relative overflow-hidden"
+      animate={screenShake ? { x: [0, -8, 8, -5, 5, 0], y: [0, 5, -5, 3, -3, 0] } : {}}
+      transition={{ duration: 0.4 }}
+    >
+      {/* Premium Background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-[#070d14] via-[#0c1620] to-[#0a1018] -z-10" />
+      <div className="fixed inset-0 -z-10 opacity-20">
+        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[150px]" />
+        <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px]" />
       </div>
 
-      <div className="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Floating Particles */}
+      <div className="fixed inset-0 -z-5 pointer-events-none overflow-hidden">
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1.5 h-1.5 bg-emerald-400/15 rounded-full"
+            style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
+            animate={{ y: [0, -40, 0], opacity: [0.1, 0.4, 0.1], scale: [1, 1.5, 1] }}
+            transition={{ duration: 4 + Math.random() * 5, repeat: Infinity, delay: Math.random() * 4 }}
+          />
+        ))}
+      </div>
+
+      <div className="max-w-6xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 relative z-10">
         {/* Left Panel - Controls */}
         <div className="lg:col-span-1 space-y-4">
-          {/* Bet Amount */}
-          <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4">
-            <label className="text-sm text-gray-400 mb-2 block">Bet Amount</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={betAmount}
-                onChange={(e) => setBetAmount(e.target.value)}
-                className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#00F0FF] focus:outline-none"
-                min="0.01"
-                step="0.01"
-                disabled={isGameActive}
-              />
-              <button
-                onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))}
-                className="px-3 py-2 bg-[#2f4553] rounded-lg text-sm hover:bg-[#3d5a6e] transition-colors"
-                disabled={isGameActive}
-              >
-                ½
-              </button>
-              <button
-                onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))}
-                className="px-3 py-2 bg-[#2f4553] rounded-lg text-sm hover:bg-[#3d5a6e] transition-colors"
-                disabled={isGameActive}
-              >
-                2×
-              </button>
+          {/* Game Title */}
+          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20">
+                💣
+              </div>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">Mines</h1>
+                <p className="text-xs text-gray-400">Provably Fair | 4% House Edge</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Betting Chips */}
+          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+            <label className="text-sm text-gray-400 mb-3 block font-medium">Bet Amount</label>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input
+                  type="number"
+                  value={betAmount}
+                  onChange={(e) => setBetAmount(e.target.value)}
+                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition-all"
+                  min="0.01"
+                  step="0.01"
+                  disabled={isGameActive}
+                />
+              </div>
+              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))} className="px-3 py-2.5 bg-[#2f4553]/80 rounded-lg text-sm hover:bg-[#3d5a6e] transition-all border border-[#2f4553]" disabled={isGameActive}>½</button>
+              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))} className="px-3 py-2.5 bg-[#2f4553]/80 rounded-lg text-sm hover:bg-[#3d5a6e] transition-all border border-[#2f4553]" disabled={isGameActive}>2×</button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {CHIP_VALUES.map((val) => (
+                <motion.button
+                  key={val}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => !isGameActive && setBetAmount(val.toFixed(2))}
+                  disabled={isGameActive}
+                  className={`w-11 h-11 rounded-full bg-gradient-to-b ${CHIP_COLORS[val]} text-white text-xs font-bold shadow-lg border-2 border-white/20 flex items-center justify-center hover:shadow-xl transition-shadow ${isGameActive ? 'opacity-50' : ''}`}
+                >
+                  {val}
+                </motion.button>
+              ))}
             </div>
           </div>
 
           {/* Mine Count */}
-          <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4">
-            <label className="text-sm text-gray-400 mb-2 block">Mines ({mineCount})</label>
+          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+            <label className="text-sm text-gray-400 mb-2 block font-medium">Mines: <span className="text-emerald-400 font-bold">{mineCount}</span></label>
             <div className="grid grid-cols-6 gap-1.5">
               {[1, 3, 5, 7, 10, 12, 15, 18, 20, 22, 23, 24].map((count) => (
-                <button
+                <motion.button
                   key={count}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setMineCount(count)}
                   disabled={isGameActive}
-                  className={`py-1.5 rounded text-xs font-bold transition-all ${
+                  className={`py-2 rounded-lg text-xs font-bold transition-all ${
                     mineCount === count
-                      ? "bg-[#00F0FF] text-black"
-                      : "bg-[#0f1923] text-gray-400 hover:text-white hover:bg-[#2f4553]"
+                      ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/20"
+                      : "bg-[#0f1923] text-gray-400 hover:text-white hover:bg-[#2f4553] border border-[#2f4553]/50"
                   }`}
                 >
                   {count}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
 
           {/* Game Info */}
-          {isGameActive && gameState && (
-            <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#0f1923] rounded-lg p-3 text-center">
-                  <div className="text-xs text-gray-400 mb-1">Gems Found</div>
-                  <div className="text-green-400 font-mono font-bold text-lg">
-                    {gameState.revealedTiles.length}
+          <AnimatePresence>
+            {isGameActive && gameState && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 space-y-3"
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+                    <div className="text-xs text-gray-500 mb-1">Gems Found</div>
+                    <div className="text-emerald-400 font-mono font-bold text-xl">{gameState.revealedTiles.length}</div>
+                  </div>
+                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+                    <div className="text-xs text-gray-500 mb-1">Multiplier</div>
+                    <div className="text-cyan-400 font-mono font-bold text-xl">{Number(gameState.currentMultiplier).toFixed(2)}×</div>
                   </div>
                 </div>
-                <div className="bg-[#0f1923] rounded-lg p-3 text-center">
-                  <div className="text-xs text-gray-400 mb-1">Current Multi</div>
-                  <div className="text-[#00F0FF] font-mono font-bold text-lg">
-                    {Number(gameState.currentMultiplier).toFixed(2)}×
+                <div className="bg-[#0f1923]/80 rounded-lg p-4 text-center border border-yellow-500/20">
+                  <div className="text-xs text-gray-500 mb-1">Current Payout</div>
+                  <div className="text-yellow-400 font-mono font-bold text-2xl">${Number(gameState.currentPayout).toFixed(2)}</div>
+                </div>
+                {gameState.nextMultiplier > 0 && (
+                  <div className="text-center text-xs text-gray-400">
+                    Next reveal: <span className="text-cyan-400 font-mono font-bold">{gameState.nextMultiplier.toFixed(4)}×</span>
                   </div>
-                </div>
-              </div>
-              <div className="bg-[#0f1923] rounded-lg p-3 text-center">
-                <div className="text-xs text-gray-400 mb-1">Current Payout</div>
-                <div className="text-yellow-400 font-mono font-bold text-xl">
-                  ${Number(gameState.currentPayout).toFixed(2)}
-                </div>
-              </div>
-              {gameState.nextMultiplier > 0 && (
-                <div className="text-center text-xs text-gray-400">
-                  Next reveal: <span className="text-[#00F0FF] font-mono">{gameState.nextMultiplier.toFixed(4)}×</span>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Action Buttons */}
           {canStart ? (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={startGame}
               disabled={isLoading || !user}
               className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
                 isLoading
                   ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 shadow-lg shadow-green-500/20"
+                  : "bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 shadow-lg shadow-emerald-500/30"
               }`}
             >
-              {isLoading ? "Starting..." : user ? "Start Game" : "Login to Play"}
-            </button>
+              {isLoading ? "Starting..." : user ? "💣 Start Game" : "Login to Play"}
+            </motion.button>
           ) : (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={cashout}
               disabled={isLoading || gameState!.revealedTiles.length === 0}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all relative overflow-hidden ${
                 isLoading || gameState!.revealedTiles.length === 0
                   ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-yellow-500/20"
+                  : "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 shadow-lg shadow-yellow-500/30"
               }`}
             >
-              {isLoading ? "Cashing out..." : `Cash Out $${(gameState?.currentPayout || 0).toFixed(2)}`}
-            </button>
+              <span className="relative z-10">
+                {isLoading ? "Cashing out..." : `💰 Cash Out $${(gameState?.currentPayout || 0).toFixed(2)}`}
+              </span>
+            </motion.button>
           )}
 
           {/* Result Banner */}
-          {isGameOver && gameState && (
-            <div
-              className={`rounded-xl p-4 text-center font-bold ${
-                gameState.status === "WON"
-                  ? "bg-green-500/20 border border-green-500/50 text-green-400"
-                  : "bg-red-500/20 border border-red-500/50 text-red-400"
-              }`}
-            >
-              {gameState.status === "WON" ? (
-                <>
-                  <div className="text-2xl mb-1">You Won!</div>
-                  <div className="text-lg">${Number(gameState.currentPayout).toFixed(2)} ({Number(gameState.currentMultiplier).toFixed(2)}×)</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-2xl mb-1">Boom!</div>
-                  <div className="text-lg">You hit a mine</div>
-                </>
-              )}
-            </div>
-          )}
+          <AnimatePresence>
+            {isGameOver && gameState && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className={`rounded-xl p-5 text-center font-bold relative overflow-hidden ${
+                  gameState.status === "WON"
+                    ? "bg-gradient-to-br from-green-500/20 to-emerald-600/20 border border-green-400/50"
+                    : "bg-gradient-to-br from-red-500/20 to-red-700/20 border border-red-400/50"
+                }`}
+              >
+                {gameState.status === "WON" ? (
+                  <>
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: [0, 1.3, 1] }}
+                      transition={{ duration: 0.5 }}
+                      className="text-3xl mb-2 text-green-400"
+                    >
+                      🎉 You Won!
+                    </motion.div>
+                    <div className="text-xl text-green-300 font-mono">${Number(gameState.currentPayout).toFixed(2)} ({Number(gameState.currentMultiplier).toFixed(2)}×)</div>
+                  </>
+                ) : (
+                  <>
+                    <motion.div
+                      initial={{ scale: 0, rotate: -10 }}
+                      animate={{ scale: [0, 1.4, 1], rotate: [0, 5, 0] }}
+                      transition={{ duration: 0.4 }}
+                      className="text-3xl mb-2 text-red-400"
+                    >
+                      💥 BOOM!
+                    </motion.div>
+                    <div className="text-lg text-red-300">You hit a mine</div>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Error */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
         </div>
 
         {/* Right Panel - Mine Grid */}
         <div className="lg:col-span-2">
-          <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4 md:p-6">
+          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4 md:p-6">
             <div className="grid grid-cols-5 gap-2 md:gap-3 max-w-lg mx-auto">
               {Array.from({ length: 25 }, (_, i) => {
                 const tile = getTileContent(i);
                 const isClickable = isGameActive && !gameState?.revealedTiles.includes(i);
 
                 return (
-                  <button
+                  <motion.button
                     key={i}
+                    whileHover={isClickable ? { scale: 1.05, y: -2 } : {}}
+                    whileTap={isClickable ? { scale: 0.95 } : {}}
                     onClick={() => isClickable && revealTile(i)}
                     disabled={!isClickable}
-                    className={`aspect-square rounded-xl border-2 flex items-center justify-center text-2xl md:text-3xl transition-all duration-300 ${tile.bg} ${
-                      isClickable ? "active:scale-95" : ""
-                    }`}
-                    style={{
-                      animationDelay: revealedAnimation.has(i) ? `${(i % 5) * 50}ms` : "0ms",
-                    }}
+                    className={`aspect-square rounded-xl border-2 flex items-center justify-center text-2xl md:text-3xl transition-all duration-300 ${tile.bg}`}
                   >
-                    {tile.icon && (
-                      <span className={`${tile.text} transition-all duration-300`}>
-                        {tile.icon}
-                      </span>
-                    )}
-                    {!tile.icon && isClickable && (
-                      <span className="text-gray-600 text-lg">?</span>
-                    )}
-                  </button>
+                    <AnimatePresence mode="wait">
+                      {tile.icon ? (
+                        <motion.span
+                          key={`icon-${i}`}
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                          className={tile.text}
+                        >
+                          {tile.icon}
+                        </motion.span>
+                      ) : isClickable ? (
+                        <motion.span
+                          key={`q-${i}`}
+                          className="text-gray-600/50 text-lg font-bold"
+                          animate={{ opacity: [0.3, 0.6, 0.3] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          ?
+                        </motion.span>
+                      ) : null}
+                    </AnimatePresence>
+                  </motion.button>
                 );
               })}
             </div>
           </div>
 
           {/* Provably Fair */}
-          {gameState && gameState.serverSeedHash && (
-            <div className="bg-[#1a2c38] rounded-xl border border-[#2f4553] p-4 mt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-green-400">✓</span>
-                <span className="text-sm font-bold text-white">Provably Fair</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                <div>
-                  <span className="text-gray-400">Server Seed Hash:</span>
-                  <div className="font-mono text-gray-300 truncate">{gameState.serverSeedHash}</div>
+          <AnimatePresence>
+            {gameState && gameState.serverSeedHash && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4 mt-4"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-sm font-bold text-white">Provably Fair</span>
                 </div>
-                <div>
-                  <span className="text-gray-400">Client Seed:</span>
-                  <div className="font-mono text-gray-300 truncate">{gameState.clientSeed}</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                    <span className="text-gray-500">Server Seed Hash</span>
+                    <div className="font-mono text-gray-300 truncate mt-1">{gameState.serverSeedHash}</div>
+                  </div>
+                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                    <span className="text-gray-500">Client Seed</span>
+                    <div className="font-mono text-gray-300 truncate mt-1">{gameState.clientSeed}</div>
+                  </div>
+                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                    <span className="text-gray-500">Nonce</span>
+                    <div className="font-mono text-gray-300 mt-1">{gameState.nonce}</div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-gray-400">Nonce:</span>
-                  <div className="font-mono text-gray-300">{gameState.nonce}</div>
-                </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

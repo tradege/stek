@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as crypto from 'crypto';
 import Decimal from 'decimal.js';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GameType } from '@prisma/client';
 import { GameConfigService } from './game-config.service';
 
 
@@ -26,6 +27,18 @@ export interface CrashBet {
   cashedOutAt: Decimal | null;    // null = not cashed out yet
   profit: Decimal | null;
   status: 'ACTIVE' | 'CASHED_OUT' | 'LOST';
+  skin?: string;  // 'classic' | 'dragon' | 'space'
+}
+
+/**
+ * Map skin identifier to GameType enum value
+ */
+function skinToGameType(skin?: string): GameType {
+  switch (skin) {
+    case 'dragon': return GameType.DRAGON_BLAZE;
+    case 'space': return GameType.NOVA_RUSH;
+    default: return GameType.CRASH;
+  }
 }
 
 /**
@@ -95,6 +108,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   
   // Rate limiting
   private lastBetTime: Map<string, number> = new Map();
+  private userSiteIds: Map<string, string> = new Map();
   private readonly BET_COOLDOWN = 500;
   
   // Timers
@@ -115,12 +129,12 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   /**
    * Deduct balance from user's wallet
    */
-  private async deductBalance(userId: string, amount: Decimal): Promise<boolean> {
+  private async deductBalance(userId: string, amount: Decimal, siteId: string = 'default-site-001'): Promise<boolean> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const wallets = await tx.$queryRaw<any[]>`
           SELECT id, balance FROM "Wallet"
-          WHERE "userId" = ${userId} AND currency = 'USDT'
+          WHERE "userId" = ${userId} AND currency = 'USDT' AND "siteId" = ${siteId}
           FOR UPDATE
         `;
         if (!wallets || wallets.length === 0) {
@@ -139,7 +153,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           UPDATE "Wallet" 
           SET balance = balance - ${amountNum}::decimal,
               "updatedAt" = NOW()
-          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND balance >= ${amountNum}::decimal
+          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND "siteId" = ${siteId} AND balance >= ${amountNum}::decimal
         `;
         if (deducted === 0) {
           this.logger.warn(`Insufficient balance (atomic) for user ${userId}`);
@@ -158,12 +172,12 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   /**
    * Add winnings to user's wallet
    */
-  private async addWinnings(userId: string, amount: Decimal): Promise<boolean> {
+  private async addWinnings(userId: string, amount: Decimal, siteId: string = 'default-site-001'): Promise<boolean> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const wallets = await tx.$queryRaw<any[]>`
           SELECT id, balance FROM "Wallet"
-          WHERE "userId" = ${userId} AND currency = 'USDT'
+          WHERE "userId" = ${userId} AND currency = 'USDT' AND "siteId" = ${siteId}
           FOR UPDATE
         `;
         if (!wallets || wallets.length === 0) {
@@ -177,7 +191,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           UPDATE "Wallet" 
           SET balance = balance + ${amountNum}::decimal,
               "updatedAt" = NOW()
-          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency"
+          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND "siteId" = ${siteId}
         `;
         const newBalance = new Decimal(wallet.balance).plus(amount);
         this.logger.debug(`Added $${amount.toFixed(2)} to user ${userId}. New balance: $${newBalance.toFixed(2)}`);
@@ -426,7 +440,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
         if (betSlot === 1 && bet.status === 'ACTIVE') {
           bet.status = 'LOST';
           bet.profit = bet.amount.negated();
-          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint1, false);
+          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint1, false, this.userSiteIds.get(parts[0]) || 'default-site-001');
         }
       }
       
@@ -448,7 +462,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
         if (betSlot === 2 && bet.status === 'ACTIVE') {
           bet.status = 'LOST';
           bet.profit = bet.amount.negated();
-          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint2, false);
+          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint2, false, this.userSiteIds.get(parts[0]) || 'default-site-001');
         }
       }
       
@@ -541,7 +555,9 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     userId: string,
     amount: Decimal | number | string,
     autoCashoutAt?: Decimal | number | string,
-    slot?: number
+    slot?: number,
+    siteId: string = 'default-site-001',
+    skin: string = 'classic'
   ): Promise<{ success: boolean; error?: string; bet?: CrashBet }> {
     if (!this.currentRound) {
       return { success: false, error: 'No active round' };
@@ -556,6 +572,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     }
     const betSlot = slot;
     const betKey = `${userId}:${betSlot}`;
+    this.userSiteIds.set(userId, siteId);
     
     if (this.currentRound.bets.has(betKey)) {
       return { success: false, error: 'Already placed a bet on this dragon' };
@@ -576,7 +593,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     }
     this.lastBetTime.set(betKey, now);
 
-    const balanceDeducted = await this.deductBalance(userId, betAmount);
+    const balanceDeducted = await this.deductBalance(userId, betAmount, siteId);
     if (!balanceDeducted) {
       return { success: false, error: 'Insufficient balance' };
     }
@@ -589,6 +606,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
       cashedOutAt: null,
       profit: null,
       status: 'ACTIVE',
+      skin: skin,
     };
     
     this.currentRound.bets.set(betKey, bet);
@@ -670,7 +688,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     const payout = bet.amount.mul(cashoutMultiplier);
     const profit = payout.minus(bet.amount);
     
-    const winningsAdded = await this.addWinnings(userId, payout);
+    const winningsAdded = await this.addWinnings(userId, payout, this.userSiteIds.get(userId) || 'default-site-001');
     if (!winningsAdded) {
       this.logger.error(`Failed to add winnings for user ${userId}`);
     }
@@ -679,7 +697,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     bet.cashedOutAt = cashoutMultiplier;
     bet.profit = profit;
 
-    this.saveBetToDatabase(userId, bet, dragonCrashPoint, true);
+    this.saveBetToDatabase(userId, bet, dragonCrashPoint, true, this.userSiteIds.get(userId) || 'default-site-001');
     
     this.logger.log(`💸 User ${userId} cashed out Dragon ${cashoutSlot} at ${cashoutMultiplier.toFixed(2)}x - Payout: $${payout.toFixed(2)}`);
     
@@ -774,19 +792,103 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+
+  /**
+   * Save a bot bet to the database for stats tracking
+   */
+  async saveBotBet(
+    userId: string,
+    betId: string,
+    amount: number,
+    targetCashout: number,
+    siteId: string = 'default-site-001',
+    skin: string = 'classic'
+  ): Promise<void> {
+    try {
+      await this.prisma.bet.create({
+        data: {
+          id: betId,
+          userId: userId,
+          gameType: skinToGameType(skin),
+          currency: 'USDT',
+          siteId: siteId,
+          betAmount: new Decimal(amount),
+          multiplier: new Decimal(0),
+          payout: new Decimal(0),
+          profit: new Decimal(amount).negated(),
+          serverSeed: this.currentRound?.serverSeed || '',
+          serverSeedHash: this.currentRound?.serverSeedHash || '',
+          clientSeed: this.defaultClientSeed,
+          nonce: this.gameNumber,
+          gameData: {
+            gameId: this.currentRound?.id,
+            gameNumber: this.gameNumber,
+            isBot: true,
+            targetCashout: targetCashout.toFixed(2),
+          },
+          isWin: false,
+          settledAt: null,
+        },
+      });
+    } catch (error) {
+      this.logger.debug(`Failed to save bot bet: ${error.message}`);
+    }
+  }
+
+  /**
+   * Settle a bot bet (cashout) - update the bet record with win data
+   */
+  async settleBotBet(
+    userId: string,
+    multiplier: number,
+    profit: number,
+    amount: number,
+    siteId: string = 'default-site-001'
+  ): Promise<void> {
+    try {
+      // Find the most recent unsettled bot bet for this user
+      const bet = await this.prisma.bet.findFirst({
+        where: {
+          userId: userId,
+          gameType: { in: ['CRASH', 'DRAGON_BLAZE', 'NOVA_RUSH'] },
+          settledAt: null,
+          id: { startsWith: 'bot_' },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      if (bet) {
+        await this.prisma.bet.update({
+          where: { id: bet.id },
+          data: {
+            isWin: true,
+            multiplier: new Decimal(multiplier),
+            payout: new Decimal(amount).mul(new Decimal(multiplier)),
+            profit: new Decimal(profit),
+            settledAt: new Date(),
+          },
+        });
+      }
+    } catch (error) {
+      this.logger.log(`Failed to settle bot bet: ${error.message}`);
+    }
+  }
+
   private async saveBetToDatabase(
     userId: string,
     bet: CrashBet,
     crashPoint: Decimal,
-    isWin: boolean
+    isWin: boolean,
+    siteId: string = 'default-site-001'
   ): Promise<void> {
     try {
       await this.prisma.bet.create({
         data: {
           id: bet.id,
           userId: userId,
-          gameType: 'CRASH',
+          gameType: skinToGameType(bet.skin),
           currency: 'USDT',
+          siteId: siteId,
           betAmount: bet.amount,
           multiplier: bet.cashedOutAt || new Decimal(0),
           payout: isWin ? bet.amount.mul(bet.cashedOutAt || 0) : new Decimal(0),
@@ -811,4 +913,28 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Failed to save bet to database: ${error.message}`);
     }
   }
+
+  async settleUnsettledBotBets(): Promise<void> {
+    try {
+      const result = await this.prisma.bet.updateMany({
+        where: {
+          id: { startsWith: "bot_" },
+          settledAt: null,
+        },
+        data: {
+          settledAt: new Date(),
+          isWin: false,
+          multiplier: 0,
+          payout: 0,
+          profit: 0,
+        },
+      });
+      if (result.count > 0) {
+        this.logger.log("Settled " + result.count + " unsettled bot bets as losses");
+      }
+    } catch (error) {
+      this.logger.error("Failed to settle bot bets: " + error.message);
+    }
+  }
+
 }

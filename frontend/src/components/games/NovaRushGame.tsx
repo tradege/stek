@@ -247,7 +247,7 @@ const NovaRushGame: React.FC = () => {
       const autoCashoutValue = parseFloat(autoCashout);
       if (isNaN(amount) || amount <= 0) return;
       playSound('bet');
-      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined, 'space');
       setAutoBetRemaining(prev => prev - 1);
     }, 500);
     return () => clearTimeout(timer);
@@ -1132,9 +1132,9 @@ const NovaRushGame: React.FC = () => {
     if (isNaN(amount) || amount < MIN_BET || amount > MAX_BET) return;
     playSound('bet');
     if (slot === 1) {
-      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined, 'space');
     } else {
-      placeBet2(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+      placeBet2(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined, 'space');
     }
   };
 

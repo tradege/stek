@@ -439,3 +439,19 @@
 .shadow-glow-cyan-sm {
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
+
+/* Modal slide-up animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}

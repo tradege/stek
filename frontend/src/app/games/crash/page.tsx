@@ -115,7 +115,10 @@ export default function CrashGamePage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${API_URL}/admin/stats`);
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const response = await fetch(`${API_URL}/admin/stats`, { headers });
         if (response.ok) {
           const data = await response.json();
           setGameStats(prev => ({

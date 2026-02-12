@@ -12,6 +12,7 @@ async function bootstrap() {
   validateEnvironment();
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
     logger: ['error', 'warn', 'log'],
   });
   
@@ -166,6 +167,9 @@ House Edge                 = 100% - RTP
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-KEY', 'X-Site-Id'],
   });
 
+  // Body parser with size limit (100KB max)
+  app.use(require("express").json({ limit: "100kb" }));
+  app.use(require("express").urlencoded({ extended: true, limit: "100kb" }));
   // Global Validation Pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

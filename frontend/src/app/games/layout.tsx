@@ -1,13 +1,16 @@
 'use client';
-
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
+import { useRouter } from 'next/navigation';
+import FullPageLoader from '@/components/ui/FullPageLoader';
 
 /**
- * Games Layout - Protected Route
- * Requires authentication to access any game
+ * Games Layout - Uses the same auth pattern as Profile/Affiliates
+ * When a guest tries to access any game, they are redirected to home
+ * and the global Login Modal opens automatically.
+ * No custom overlays - uses the exact same Login Modal everywhere.
  */
 export default function GamesLayout({
   children,
@@ -15,57 +18,30 @@ export default function GamesLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { openLogin } = useModal();
   const router = useRouter();
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login?redirect=/games');
+      router.replace('/');
+      openLogin();
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isLoading, isAuthenticated, router, openLogin]);
 
-  // Show loading state while checking authentication
+  // Show loader while checking authentication
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading...</p>
-          </div>
-        </div>
+        <FullPageLoader />
       </MainLayout>
     );
   }
 
-  // Don't render games if not authenticated
+  // While redirecting, show loader (prevents flash)
   if (!isAuthenticated) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center bg-gray-900/80 border border-gray-700 rounded-xl p-8 max-w-md">
-            <div className="text-6xl mb-4">🔒</div>
-            <h2 className="text-2xl font-bold text-white mb-2">Login Required</h2>
-            <p className="text-gray-400 mb-6">
-              You need to be logged in to access the games.
-            </p>
-            <button
-              onClick={() => router.push('/login?redirect=/games')}
-              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-semibold hover:from-cyan-400 hover:to-blue-400 transition-all"
-            >
-              Login to Play
-            </button>
-            <p className="text-gray-500 text-sm mt-4">
-              Don't have an account?{' '}
-              <button
-                onClick={() => router.push('/register')}
-                className="text-cyan-400 hover:text-cyan-300"
-              >
-                Register here
-              </button>
-            </p>
-          </div>
-        </div>
+        <FullPageLoader />
       </MainLayout>
     );
   }

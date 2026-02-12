@@ -22,6 +22,10 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { FraudModule } from './modules/fraud/fraud.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { HealthModule } from './modules/health/health.module';
+import { CardRushModule } from './modules/card-rush/card-rush.module';
+import { LimboModule } from './modules/limbo/limbo.module';
+import { PenaltyModule } from './modules/penalty/penalty.module';
+import { StuckSessionsCleanupService } from './modules/shared/stuck-sessions-cleanup.service';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
 @Module({
@@ -53,6 +57,9 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
     UsersModule,
     FraudModule,
     OnboardingModule,
+    CardRushModule,
+    LimboModule,
+    PenaltyModule,
     HealthModule,
   ],
   controllers: [],
@@ -61,6 +68,7 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
       provide: APP_INTERCEPTOR,
       useClass: TenantInterceptor,
     },
+    StuckSessionsCleanupService,
   ],
 })
 export class AppModule {}

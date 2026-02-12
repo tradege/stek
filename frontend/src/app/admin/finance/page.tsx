@@ -64,7 +64,16 @@ export default function AdminFinance() {
       }
       
       const data = await response.json();
-      setFinanceData(data);
+      // Map API response fields to frontend interface
+      setFinanceData({
+        totalGGR: data.ggr ?? data.totalGGR ?? 0,
+        providerFees: data.providerFee ?? data.providerFees ?? 0,
+        netProfit: data.netProfit ?? 0,
+        totalBets: data.totalBets ?? 0,
+        totalWins: data.totalWins ?? 0,
+        houseEdge: parseFloat(data.houseEdge) || 0,
+        rtp: parseFloat(data.rtp) || 0,
+      });
       setLoading(false);
       setError(null);
     } catch (error: any) {

@@ -44,9 +44,9 @@ interface CrashGameState {
   recentCrashes: number[];
   
   // Actions
-  placeBet: (amount: number, autoCashout?: number) => void;
+  placeBet: (amount: number, autoCashout?: number, skin?: string) => void;
   cashOut: () => void;
-  placeBet2: (amount: number, autoCashout?: number) => void;
+  placeBet2: (amount: number, autoCashout?: number, skin?: string) => void;
   cashOut2: () => void;
   
   // Connection status
@@ -432,25 +432,25 @@ export const useCrashGame = (): CrashGameState => {
   }, [socket]);
 
   // Place bet (Dragon 1)
-  const placeBet = useCallback((amount: number, autoCashout?: number) => {
+  const placeBet = useCallback((amount: number, autoCashout?: number, skin?: string) => {
     console.log('[DEBUG placeBet] socket:', !!socket, 'isConnected:', isConnected, 'gameState:', gameStateRef.current, 'betStatus:', betStatusRef.current);
     if (!socket || !isConnected) { console.log('[DEBUG placeBet] BLOCKED: not connected'); setError('Not connected to server'); return; }
     if (gameStateRef.current !== 'WAITING' && gameStateRef.current !== 'STARTING') { console.log('[DEBUG placeBet] BLOCKED: wrong state', gameStateRef.current); setError('Can only bet before game starts'); return; }
     if (betStatusRef.current === 'PLACED') { console.log('[DEBUG placeBet] BLOCKED: already placed'); setError('Bet already placed'); return; }
     
     console.log('[DEBUG placeBet] EMITTING crash:place_bet slot=1 amount=', amount);
-    socket.emit('crash:place_bet', { amount, autoCashout: autoCashout || null, slot: 1 });
+    socket.emit('crash:place_bet', { amount, autoCashout: autoCashout || null, slot: 1, skin: skin || 'classic' });
     setBetStatus('PLACED');
     setCurrentBet({ oddsId: 'pending', oddsName: 'Crash', betAmount: amount });
   }, [socket, isConnected]);
 
   // Place bet (Dragon 2)
-  const placeBet2 = useCallback((amount: number, autoCashout?: number) => {
+  const placeBet2 = useCallback((amount: number, autoCashout?: number, skin?: string) => {
     if (!socket || !isConnected) { setError('Not connected to server'); return; }
     if (gameStateRef.current !== 'WAITING' && gameStateRef.current !== 'STARTING') { setError('Can only bet before game starts'); return; }
     if (betStatus2Ref.current === 'PLACED') { setError('Dragon 2 bet already placed'); return; }
     
-    socket.emit('crash:place_bet', { amount, autoCashout: autoCashout || null, slot: 2 });
+    socket.emit('crash:place_bet', { amount, autoCashout: autoCashout || null, slot: 2, skin: skin || 'classic' });
     setBetStatus2('PLACED');
     setCurrentBet2({ oddsId: 'pending-slot2', oddsName: 'Crash Dragon 2', betAmount: amount });
   }, [socket, isConnected]);

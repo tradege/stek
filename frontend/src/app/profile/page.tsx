@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import config from '@/config/api';
+import AuthGuard from '@/components/ui/AuthGuard';
 
 const API_URL = config.apiUrl;
 
@@ -35,11 +36,7 @@ export default function ProfilePage() {
   const [betHistory, setBetHistory] = useState<BetHistory[]>([]);
   const [betsLoading, setBetsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login?redirect=/profile');
-    }
-  }, [isAuthenticated, isLoading, router]);
+  // Auth handled by AuthGuard wrapper
 
   useEffect(() => {
     if (user) {
@@ -80,7 +77,15 @@ export default function ProfilePage() {
           });
           if (res.ok) {
             const data = await res.json();
-            setBetHistory(data.bets || data || []);
+            setBetHistory((data.bets || data || []).map((b: any) => ({
+              id: b.id,
+              game: b.gameType || b.game || "Unknown",
+              amount: Number(b.betAmount || b.amount || 0),
+              multiplier: Number(b.multiplier || 0),
+              payout: Number(b.payout || 0),
+              result: b.isWin ? "win" : "loss",
+              createdAt: b.createdAt,
+            })));
           }
         } catch (e) {
           // Fallback mock data
@@ -109,6 +114,7 @@ export default function ProfilePage() {
   const currentVipLevel = user?.vipLevel || 0;
   const vipName = vipLevels[Math.min(currentVipLevel, vipLevels.length - 1)] || 'Bronze';
   const vipColor = vipColors[Math.min(currentVipLevel, vipColors.length - 1)];
+  const isSystemOwner = user?.role === 'ADMIN' || user?.role === 'SUPER_MASTER';
 
   // Calculate P&L
   const totalWon = parseFloat(stats?.totalWon || '0');
@@ -119,6 +125,7 @@ export default function ProfilePage() {
   const balances = Array.isArray(user?.balance) ? user.balance : [];
 
   return (
+    <AuthGuard>
     <MainLayout>
       <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-6" data-testid="profile-page">
         {/* Profile Header */}
@@ -131,8 +138,8 @@ export default function ProfilePage() {
                   {user?.username?.charAt(0)?.toUpperCase() || 'U'}
                 </span>
               </div>
-              <div className={`absolute -bottom-2 -right-2 bg-gradient-to-r ${vipGradients[Math.min(currentVipLevel, vipGradients.length - 1)]} text-white text-xs font-bold px-2 py-1 rounded-lg`}>
-                {vipName}
+              <div className={`absolute -bottom-2 -right-2 ${isSystemOwner ? 'bg-gradient-to-r from-yellow-500 to-amber-600' : `bg-gradient-to-r ${vipGradients[Math.min(currentVipLevel, vipGradients.length - 1)]}`} text-white text-xs font-bold px-2 py-1 rounded-lg`}>
+                {isSystemOwner ? '🛡️ ROOT' : vipName}
               </div>
             </div>
 
@@ -141,9 +148,15 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-bold text-white">{user?.username || 'Player'}</h1>
               <p className="text-text-secondary mt-1">{user?.email || ''}</p>
               <div className="flex flex-wrap gap-3 mt-3">
-                <span className={`px-3 py-1 bg-accent-primary/10 ${vipColor} rounded-lg text-sm font-medium border border-accent-primary/20`}>
-                  VIP Level {currentVipLevel}
-                </span>
+                {isSystemOwner ? (
+                  <span className="px-3 py-1 bg-yellow-500/10 text-yellow-400 rounded-lg text-sm font-bold border border-yellow-500/30">
+                    🛡️ SYSTEM OWNER
+                  </span>
+                ) : (
+                  <span className={`px-3 py-1 bg-accent-primary/10 ${vipColor} rounded-lg text-sm font-medium border border-accent-primary/20`}>
+                    VIP Level {currentVipLevel}
+                  </span>
+                )}
                 <span className="px-3 py-1 bg-green-500/10 text-green-400 rounded-lg text-sm font-medium border border-green-500/20">
                   Active
                 </span>
@@ -155,12 +168,21 @@ export default function ProfilePage() {
 
             {/* Quick Actions */}
             <div className="flex gap-3">
-              <button
-                onClick={() => router.push('/vip')}
-                className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-semibold hover:from-yellow-400 hover:to-orange-400 transition-all text-sm"
-              >
-                VIP Program
-              </button>
+              {isSystemOwner ? (
+                <button
+                  onClick={() => router.push('/admin/dashboard')}
+                  className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl font-semibold hover:from-yellow-400 hover:to-amber-500 transition-all text-sm"
+                >
+                  🛡️ Admin Panel
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push('/vip')}
+                  className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-semibold hover:from-yellow-400 hover:to-orange-400 transition-all text-sm"
+                >
+                  VIP Program
+                </button>
+              )}
               <button
                 onClick={() => router.push('/responsible-gaming')}
                 className="px-4 py-2 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/20 transition-all text-sm border border-white/20"
@@ -251,26 +273,52 @@ export default function ProfilePage() {
               <p className="text-2xl font-bold text-white">{stats?.favoriteGame || 'N/A'}</p>
             </div>
 
-            {/* VIP Progress */}
-            <div className="col-span-full bg-bg-card border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">VIP Progress</h3>
-                <span className={`${vipColor} font-semibold`}>Level {currentVipLevel} - {vipName}</span>
+            {/* VIP Progress / System Owner Card */}
+            {isSystemOwner ? (
+              <div className="col-span-full bg-gradient-to-br from-yellow-500/5 to-amber-500/5 border border-yellow-500/20 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">🛡️ System Owner</h3>
+                  <span className="text-yellow-400 font-bold bg-yellow-500/10 px-3 py-1 rounded-lg border border-yellow-500/30">👑 ROOT ADMIN</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                    <p className="text-yellow-400 text-2xl mb-1">🛡️</p>
+                    <p className="text-white font-semibold">Full Access</p>
+                    <p className="text-text-secondary text-xs mt-1">All platform controls</p>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                    <p className="text-yellow-400 text-2xl mb-1">📊</p>
+                    <p className="text-white font-semibold">Analytics</p>
+                    <p className="text-text-secondary text-xs mt-1">Real-time monitoring</p>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                    <p className="text-yellow-400 text-2xl mb-1">⚙️</p>
+                    <p className="text-white font-semibold">Management</p>
+                    <p className="text-text-secondary text-xs mt-1">Users & system config</p>
+                  </div>
+                </div>
               </div>
-              <div className="w-full bg-white/5 rounded-full h-3">
-                <div
-                  className={`bg-gradient-to-r ${vipGradients[Math.min(currentVipLevel, vipGradients.length - 1)]} h-3 rounded-full transition-all`}
-                  style={{ width: `${Math.min(((currentVipLevel + 1) / 6) * 100, 100)}%` }}
-                />
+            ) : (
+              <div className="col-span-full bg-bg-card border border-white/10 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">VIP Progress</h3>
+                  <span className={`${vipColor} font-semibold`}>Level {currentVipLevel} - {vipName}</span>
+                </div>
+                <div className="w-full bg-white/5 rounded-full h-3">
+                  <div
+                    className={`bg-gradient-to-r ${vipGradients[Math.min(currentVipLevel, vipGradients.length - 1)]} h-3 rounded-full transition-all`}
+                    style={{ width: `${Math.min(((currentVipLevel + 1) / 6) * 100, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-text-secondary">
+                  {vipLevels.map((level, i) => (
+                    <span key={level} className={i <= currentVipLevel ? vipColors[i] : 'text-text-secondary'}>
+                      {level}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="flex justify-between mt-2 text-xs text-text-secondary">
-                {vipLevels.map((level, i) => (
-                  <span key={level} className={i <= currentVipLevel ? vipColors[i] : 'text-text-secondary'}>
-                    {level}
-                  </span>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -402,5 +450,6 @@ export default function ProfilePage() {
         )}
       </div>
     </MainLayout>
+    </AuthGuard>
   );
 }

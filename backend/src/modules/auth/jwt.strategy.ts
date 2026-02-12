@@ -10,6 +10,7 @@ export interface JwtPayload {
   username: string;
   email: string;
   role: string;
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
 }
@@ -38,6 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         status: true,
         displayName: true,
         avatarUrl: true,
+        tokenVersion: true,
       },
     });
 
@@ -47,6 +49,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException("Account is " + user.status.toLowerCase());
+    }
+
+    // Zombie Token Protection: reject tokens from before password change
+    if (payload.tokenVersion !== undefined && user.tokenVersion !== undefined) {
+      if (payload.tokenVersion !== user.tokenVersion) {
+        throw new UnauthorizedException("Token has been revoked. Please login again.");
+      }
     }
 
     return user;

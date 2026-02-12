@@ -84,6 +84,7 @@ export class CrashGateway
   private guestSockets: Set<string> = new Set();
   private chatHistory: ChatMessage[] = [];
   private readonly MAX_CHAT_HISTORY = 100;
+  private userSiteId: Map<string, string> = new Map();
   private userInfoCache: Map<string, { username: string; role: string }> = new Map();
 
   constructor(
@@ -118,11 +119,17 @@ export class CrashGateway
           this.userToSocket.set(userId, client.id);
           this.userInfoCache.set(userId, { username, role });
           
-          this.logger.log(`🔐 User ${userId} (${username}) authenticated on connect`);
+          const siteId = client.handshake.auth?.siteId || client.handshake.query?.siteId || 'default-site-001';
+          this.userSiteId.set(userId, siteId as string);
+          this.logger.log(`🔐 User ${userId} (${username}) authenticated on connect [Site: ${siteId}]`);
           
           client.emit('auth:success', { 
             userId,
             message: 'Authenticated successfully' 
+          });
+          
+          // DEBUG: Log ALL incoming events from this client
+          client.onAny((eventName: string, ...args: any[]) => {
           });
         }
       } catch (error) {
@@ -277,13 +284,14 @@ export class CrashGateway
   }
 
   @OnEvent('bot:bet_placed')
-  handleBotBetPlaced(payload: { 
+  async handleBotBetPlaced(payload: { 
     userId: string; 
     username: string; 
     amount: number; 
     targetCashout: number;
     isBot: boolean;
-  }): void {
+    siteId?: string;
+  }): Promise<void> {
     const betId = `bot_${payload.userId}_${Date.now()}`;
     this.server.emit('crash:bet_placed', {
       id: betId,
@@ -296,18 +304,34 @@ export class CrashGateway
       currency: 'USDT',
       isBot: true,
     });
+    
+    // Save bot bet to database for stats tracking
+    try {
+      const siteId = payload.siteId || 'default-site-001';
+      await this.crashService.saveBotBet(
+        payload.userId,
+        betId,
+        payload.amount,
+        payload.targetCashout,
+        siteId
+      );
+    } catch (error) {
+      this.logger.debug(`Failed to save bot bet: ${error.message}`);
+    }
+    
     this.logger.debug(`🤖 Bot bet broadcasted: ${payload.username} - $${payload.amount}`);
   }
 
   @OnEvent('bot:cashout')
-  handleBotCashout(payload: { 
+  async handleBotCashout(payload: { 
     userId: string; 
     username: string; 
     multiplier: number; 
     profit: number;
     amount: number;
     isBot: boolean;
-  }): void {
+    siteId?: string;
+  }): Promise<void> {
     this.server.emit('crash:cashout', {
       oddsId: payload.userId,
       oddsNumber: 0,
@@ -317,7 +341,22 @@ export class CrashGateway
       profit: payload.profit.toFixed(2),
       isBot: true,
     });
-    this.logger.debug(`🤖 Bot cashout broadcasted: ${payload.username} at ${payload.multiplier}x`);
+    
+    // Update bot bet in database with cashout result
+    try {
+      const siteId = payload.siteId || 'default-site-001';
+      await this.crashService.settleBotBet(
+        payload.userId,
+        payload.multiplier,
+        payload.profit,
+        payload.amount,
+        siteId
+      );
+    } catch (error) {
+      this.logger.log(`Failed to settle bot bet: ${error.message}`);
+    }
+    
+    this.logger.log(`🤖 Bot cashout broadcasted: ${payload.username} at ${payload.multiplier}x`);
   }
 
   // ============================================
@@ -392,6 +431,10 @@ export class CrashGateway
     const rawAutoCashoutAt = (payload as any).autoCashoutAt;
     const rawAutoCashout = (payload as any).autoCashout;
     const rawSlot = (payload as any).slot;
+    const rawSkin = (payload as any).skin;
+    
+    // Validate skin (default to 'classic')
+    const skin = typeof rawSkin === 'string' && ['classic', 'dragon', 'space'].includes(rawSkin) ? rawSkin : 'classic';
     
     // Validate slot
     const betSlot = typeof rawSlot === 'number' ? rawSlot : parseInt(String(rawSlot), 10);
@@ -428,11 +471,16 @@ export class CrashGateway
       autoCashoutValue = parsed;
     }
     
+    const userSiteId = this.userSiteId.get(userId) || 'default-site-001';
+    this.logger.log(`🏢 Bet placed for Site: ${userSiteId}`);
+    
     const result = await this.crashService.placeBet(
       userId,
       new Decimal(sanitizedAmount),
       autoCashoutValue ? new Decimal(autoCashoutValue) : undefined,
-      betSlot
+      betSlot,
+      userSiteId,
+      skin
     );
     
     if (result.success) {
@@ -550,6 +598,13 @@ export class CrashGateway
     }
     
     this.server.emit('crash:state_change', statePayload);
+
+    // Settle unsettled bot bets as losses when round ends
+    if (state === 'CRASHED') {
+      this.crashService.settleUnsettledBotBets().catch(err => 
+        this.logger.error('Failed to settle bot bets: ' + err.message)
+      );
+    }
   }
 
   /**
@@ -620,7 +675,7 @@ export class CrashGateway
       this.server.emit('crash:cashout', broadcastPayload);
       for (const [socketId, userId] of this.socketToUser.entries()) {
         if (userId === payload.userId) {
-          const clientSocket = this.server.sockets.sockets.get(socketId);
+          const clientSocket = (this.server.sockets as any)?.sockets?.get(socketId) || (this.server as any).sockets?.get(socketId);
           if (clientSocket) {
             clientSocket.emit('crash:cashout', {
               success: true,

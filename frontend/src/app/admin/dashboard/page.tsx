@@ -70,7 +70,18 @@ export default function AdminDashboard() {
       }
       
       const data = await response.json();
-      setStats(data);
+      // Map API response with safe defaults to prevent toLocaleString errors
+      setStats({
+        totalRevenue: data.totalRevenue ?? data.totalGGR ?? 0,
+        totalUsers: data.totalUsers ?? 0,
+        activeUsers: data.activeUsers ?? 0,
+        totalGGR: data.totalGGR ?? data.ggr ?? 0,
+        providerFees: data.providerFees ?? data.providerFee ?? 0,
+        netProfit: data.netProfit ?? 0,
+        totalDeposits: data.totalDeposits ?? 0,
+        totalWithdrawals: data.totalWithdrawals ?? 0,
+        activeSessions: data.activeSessions ?? 0,
+      });
       setLoading(false);
       setError(null);
     } catch (error: any) {

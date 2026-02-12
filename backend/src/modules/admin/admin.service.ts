@@ -18,8 +18,8 @@ export class AdminService {
     const sf = this.siteFilter(siteId);
 
     const [totalUsers, activeUsers, pendingApprovalUsers, pendingTransactions] = await Promise.all([
-      this.prisma.user.count({ where: { ...sf } }),
-      this.prisma.user.count({ where: { status: 'ACTIVE', ...sf } }),
+      this.prisma.user.count({ where: { ...sf, isBot: false } }),
+      this.prisma.user.count({ where: { status: 'ACTIVE', ...sf, isBot: false } }),
       this.prisma.user.count({ where: { status: 'PENDING_APPROVAL', ...sf } }),
       this.prisma.transaction.count({ where: { status: 'PENDING', ...sf } }),
     ]);
@@ -27,7 +27,7 @@ export class AdminService {
     const transactions = await this.prisma.transaction.groupBy({
       by: ['type'],
       _sum: { amount: true },
-      where: { status: 'CONFIRMED', ...sf },
+      where: { status: 'CONFIRMED', ...sf, isBot: false },
     });
 
     const totalDeposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
@@ -36,7 +36,7 @@ export class AdminService {
     const bets = await this.prisma.bet.aggregate({
       _sum: { betAmount: true, payout: true, profit: true },
       _count: true,
-      where: { ...sf },
+      where: { ...sf, user: { isBot: false } },
     });
 
     const totalWagered = Number(bets._sum.betAmount || 0);
@@ -50,7 +50,7 @@ export class AdminService {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const activeUsersLast24h = await this.prisma.bet.groupBy({
       by: ['userId'],
-      where: { createdAt: { gte: oneDayAgo }, ...sf },
+      where: { createdAt: { gte: oneDayAgo }, ...sf, user: { isBot: false } },
     });
 
     // activeSessions = active users in last 24h
@@ -83,7 +83,7 @@ export class AdminService {
     const bets = await this.prisma.bet.aggregate({
       _sum: { betAmount: true, payout: true, profit: true },
       _count: true,
-      where: { ...sf },
+      where: { ...sf, user: { isBot: false } },
     });
 
     const totalBets = Number(bets._sum.betAmount || 0);
@@ -100,7 +100,7 @@ export class AdminService {
       by: ['gameType'],
       _sum: { betAmount: true, payout: true },
       _count: true,
-      where: { ...sf },
+      where: { ...sf, user: { isBot: false } },
     });
 
     const games = gameBreakdown.map(g => ({
@@ -119,7 +119,7 @@ export class AdminService {
       by: ['type'],
       _sum: { amount: true },
       _count: true,
-      where: { status: 'CONFIRMED', ...sf },
+      where: { status: 'CONFIRMED', ...sf, isBot: false },
     });
 
     const deposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
@@ -281,7 +281,7 @@ export class AdminService {
       by: ['gameType'],
       _sum: { betAmount: true, payout: true },
       _count: true,
-      where: { ...sf },
+      where: { ...sf, user: { isBot: false } },
     });
 
     return {

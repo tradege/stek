@@ -55,6 +55,8 @@ describe('🔐 AuthService - Unit Tests', () => {
     twoFactorSecret: null,
     lastLoginIp: null,
     isBot: false,
+    siteId: "default-site-001",
+    tokenVersion: 0,
     // VIP System
     vipLevel: 0,
     totalWagered: new Decimal(0),

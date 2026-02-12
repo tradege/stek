@@ -132,6 +132,7 @@ model User {
 
   // Bot flag - for separating real users from simulated bots
   isBot       Boolean   @default(false)
+  tokenVersion Int       @default(0) // Incremented on password change to invalidate all tokens
   lastLoginAt DateTime?
   lastLoginIp String?
 
@@ -461,12 +462,16 @@ enum GameType {
   MINES
   DICE
   LIMBO
+  CARD_RUSH
   KENO
+  PENALTY_SHOOTOUT
   WHEEL
   BLACKJACK
   ROULETTE
   BACCARAT
   OLYMPUS
+  DRAGON_BLAZE
+  NOVA_RUSH
   EXTERNAL // For external provider games
 }
 

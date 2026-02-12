@@ -14,6 +14,7 @@ import { getGameConfig, checkRiskLimits, recordPayout } from "../../common/helpe
 
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { registerGameSessionProvider } from '../shared/stuck-sessions-cleanup.service';
 import * as crypto from 'crypto';
 import Decimal from 'decimal.js';
 
@@ -77,7 +78,23 @@ const userLastBetTime = new Map<string, number>();
 
 @Injectable()
 export class MinesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {
+    // Register with stuck sessions cleanup service
+    registerGameSessionProvider('MINES', () => {
+      const sessions: any[] = [];
+      for (const [gameId, game] of activeGames.entries()) {
+        sessions.push({
+          gameId,
+          userId: game.userId,
+          betAmount: game.betAmount,
+          currency: game.currency,
+          createdAt: game.createdAt,
+          gameName: 'MINES',
+        });
+      }
+      return sessions;
+    });
+  }
 
   /**
    * Generate mine positions using HMAC-SHA256 Fisher-Yates shuffle
@@ -102,7 +119,7 @@ export class MinesService {
    * Calculate multiplier for revealing N gems with M mines
    * Uses combinatorial probability with 4% house edge
    */
-  calculateMultiplier(mineCount: number, revealedCount: number, houseEdge: number = 0.03): number {
+  calculateMultiplier(mineCount: number, revealedCount: number, houseEdge: number = 0.04): number {
     if (revealedCount === 0) return 1;
     
     const safeTiles = GRID_SIZE - mineCount;
@@ -154,6 +171,9 @@ export class MinesService {
     // Validate inputs
     if (betAmount < MIN_BET || betAmount > MAX_BET) {
       throw new BadRequestException(`Bet amount must be between ${MIN_BET} and ${MAX_BET}`);
+    }
+    if (!Number.isInteger(mineCount)) {
+      throw new BadRequestException("Mine count must be a whole number");
     }
     if (mineCount < MIN_MINES || mineCount > MAX_MINES) {
       throw new BadRequestException(`Mine count must be between ${MIN_MINES} and ${MAX_MINES}`);
@@ -209,9 +229,10 @@ export class MinesService {
       createdAt: now,
     });
 
-    // Clean up old games (>1 hour)
+    // Clean up old games (>24 hours) - refund handled by StuckSessionsCleanupService cron
+    // Only delete from memory here; the cron job handles wallet refunds
     for (const [gid, game] of activeGames.entries()) {
-      if (now - game.createdAt > 3600000) {
+      if (now - game.createdAt > 86400000) { // 24 hours
         activeGames.delete(gid);
       }
     }
@@ -248,6 +269,9 @@ export class MinesService {
     }
     if (tileIndex < 0 || tileIndex >= GRID_SIZE) {
       throw new BadRequestException('Invalid tile index');
+    }
+    if (!Number.isInteger(tileIndex)) {
+      throw new BadRequestException("Tile index must be a whole number");
     }
     if (game.revealedTiles.includes(tileIndex)) {
       throw new BadRequestException('Tile already revealed');

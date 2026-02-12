@@ -5,6 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import config from '@/config/api';
+import AuthGuard from '@/components/ui/AuthGuard';
 
 // Rank definitions with icons and colors
 const RANKS = [
@@ -74,6 +75,7 @@ interface LeaderboardEntry {
 
 export default function AffiliatesPage() {
   const { user, token, isLoading: authLoading } = useAuth();
+  const isSystemOwner = user?.role === 'ADMIN' || user?.role === 'SUPER_MASTER';
   const [stats, setStats] = useState<AffiliateStats | null>(null);
   const [network, setNetwork] = useState<{ tiers: NetworkTier[]; totalUsers: number; totalEarnings: number } | null>(null);
   const [history, setHistory] = useState<CommissionHistory | null>(null);
@@ -218,6 +220,7 @@ const API_URL = config.apiUrl;
   const nextRank = stats?.nextRank;
 
   return (
+    <AuthGuard>
     <MainLayout>
     <div className="min-h-screen bg-[#0A0E17] text-white">
       {/* Confetti Effect */}
@@ -257,9 +260,11 @@ const API_URL = config.apiUrl;
         {/* Page Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#00F0FF] to-[#A855F7] bg-clip-text text-transparent mb-2">
-            Affiliate Dashboard
+            {isSystemOwner ? '🛡️ Network Command Center' : 'Affiliate Dashboard'}
           </h1>
-          <p className="text-[#94A3B8] text-lg">Build your empire. Earn unlimited commissions.</p>
+          <p className="text-[#94A3B8] text-lg">
+            {isSystemOwner ? 'Global network overview & management' : 'Build your empire. Earn unlimited commissions.'}
+          </p>
         </div>
 
         {/* Section A: The Rank Card */}
@@ -341,7 +346,7 @@ const API_URL = config.apiUrl;
         </div>
 
         {/* Section B: The Money Card */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className={`grid ${isSystemOwner ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-6`}>
           {/* Commission Wallet */}
           <div className="bg-gradient-to-br from-[#131B2C] to-[#0F1520] rounded-2xl p-6 border border-[#1E293B] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-green-500/10 rounded-full blur-3xl" />
@@ -391,7 +396,8 @@ const API_URL = config.apiUrl;
             </div>
           </div>
 
-          {/* Referral Link */}
+          {/* Referral Link - Hidden for System Owner */}
+          {!isSystemOwner && (
           <div className="bg-gradient-to-br from-[#131B2C] to-[#0F1520] rounded-2xl p-6 border border-[#1E293B] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#00F0FF]/10 rounded-full blur-3xl" />
             
@@ -436,6 +442,7 @@ const API_URL = config.apiUrl;
               </button>
             </div>
           </div>
+          )}
         </div>
 
         {/* Section C: The Empire - Tabs */}
@@ -705,5 +712,6 @@ const API_URL = config.apiUrl;
       `}</style>
     </div>
     </MainLayout>
+    </AuthGuard>
   );
 }

@@ -273,6 +273,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       siteId: user.siteId, // *** MULTI-TENANT: Include in JWT ***
+      tokenVersion: user.tokenVersion ?? 0, // For token revocation on password change
     };
 
     return this.jwtService.sign(payload);
@@ -296,6 +297,41 @@ export class AuthService {
       xp: user.xp,
       siteId: user.siteId,
     };
+  }
+
+  /**
+   * Change user password and invalidate all existing tokens
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify current password
+    let isPasswordValid = false;
+    if (user.passwordHash.startsWith('$argon2')) {
+      isPasswordValid = await argon2.verify(user.passwordHash, currentPassword);
+    } else {
+      isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    }
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Hash new password with argon2
+    const newHash = await argon2.hash(newPassword);
+
+    // Update password AND increment tokenVersion to invalidate all existing tokens
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: newHash,
+        tokenVersion: { increment: 1 }, // This kills all zombie tokens!
+      },
+    });
+
+    return { message: 'Password changed successfully. All sessions have been invalidated.' };
   }
 
   private isValidEmail(email: string): boolean {

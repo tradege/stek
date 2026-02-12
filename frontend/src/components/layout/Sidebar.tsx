@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import VIPModal from '@/components/modals/VIPModal';
-import WalletModal from '@/components/wallet/WalletModal';
-import StatisticsModal from '@/components/modals/StatisticsModal';
+import { useModal } from '@/contexts/ModalContext';
+import { useProtectedNav } from '@/hooks/useProtectedNav';
+// StatisticsModal removed - now a full page
 import SettingsModal from '@/components/modals/SettingsModal';
 
 // ============================================
@@ -187,6 +188,9 @@ const casinoNavItems: NavItem[] = [
   { id: 'olympus', label: 'Olympus', icon: 'olympus', href: '/games/olympus', badge: 'NEW' },
   { id: 'nova-rush', label: 'Nova Rush', icon: 'nova-rush', href: '/games/nova-rush', badge: 'NEW' },
   { id: 'dragon-blaze', label: 'Dragon Blaze', icon: 'dragon-blaze', href: '/games/dragon-blaze', badge: 'HOT' },
+  { id: "card-rush", label: "Card Rush", icon: "card-rush", href: "/games/card-rush", badge: "NEW" },
+  { id: "limbo", label: "Limbo", icon: "limbo", href: "/games/limbo", badge: "NEW" },
+  { id: "penalty", label: "Penalty", icon: "penalty", href: "/games/penalty", badge: "NEW" },
 ];
 
 // Sports navigation items
@@ -268,12 +272,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const { openWallet } = useModal();
+  const { handleProtectedNav } = useProtectedNav();
   const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>(
     pathname?.startsWith('/sports') ? 'sports' : 'casino'
   );
   const [isVIPModalOpen, setIsVIPModalOpen] = useState(false);
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
-  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  // Stats modal state removed - now a full page
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const handleNavClick = () => {
@@ -296,6 +301,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   // Get the role panel config for current user
   const userRole = user?.role || 'USER';
   const panelConfig = rolePanelConfig[userRole];
+  const isSystemOwner = userRole === 'ADMIN' || userRole === 'SUPER_MASTER';
 
   return (
     <aside data-testid="sidebar" className="h-full flex flex-col bg-bg-card">
@@ -422,11 +428,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         <ul data-testid="nav-account-list" className="space-y-1 px-2">
           {/* Profile - Link to profile page */}
           <li>
-            <Link
-              href="/profile"
+            <button
               data-testid="nav-profile"
-              onClick={handleNavClick}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+              onClick={() => { handleProtectedNav('/profile', onClose); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 pathname === '/profile'
                   ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
                   : 'text-text-secondary hover:text-white hover:bg-white/5'
@@ -434,29 +439,33 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             >
               {icons.profile}
               <span className="font-medium">Profile</span>
-            </Link>
+            </button>
           </li>
           {/* Wallet - Modal */}
           <li>
             <button
               data-testid="nav-wallet"
-              onClick={() => setIsWalletModalOpen(true)}
+              onClick={() => { openWallet(); if (onClose) onClose(); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.wallet}
               <span className="font-medium">Wallet</span>
             </button>
           </li>
-          {/* Statistics - Modal */}
+          {/* Statistics - Full Page */}
           <li>
-            <button
+            <Link
+              href="/statistics"
               data-testid="nav-stats"
-              onClick={() => setIsStatsModalOpen(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                pathname === '/statistics'
+                  ? 'text-white bg-white/10'
+                  : 'text-text-secondary hover:text-white hover:bg-white/5'
+              }`}
             >
               {icons.stats}
               <span className="font-medium">Statistics</span>
-            </button>
+            </Link>
           </li>
           {/* Settings - Modal */}
           <li>
@@ -514,45 +523,64 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             </Link>
           </li>
           <li>
-            <Link
-              href="/affiliates"
+            <button
               data-testid="nav-affiliates"
-              onClick={handleNavClick}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+              onClick={() => { handleProtectedNav('/affiliates', onClose); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                 pathname === '/affiliates'
                   ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
                   : 'text-text-secondary hover:text-white hover:bg-white/5'
               }`}
             >
               {icons.affiliates}
-              <span className="font-medium">Affiliates</span>
-            </Link>
+              <span className="font-medium">
+                {isSystemOwner ? 'Network Overview' : 'Affiliates'}
+              </span>
+              {isSystemOwner && (
+                <span className="px-2 py-0.5 text-[10px] bg-yellow-500/20 text-yellow-400 rounded-full font-semibold">ROOT</span>
+              )}
+            </button>
           </li>
         </ul>
 
 
-      {/* VIP Banner */}
+      {/* VIP / System Owner Banner */}
       <div className="p-4 border-t border-white/10">
-        <div data-testid="vip-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
-          <div className="text-2xl mb-2">👑</div>
-          <p className="text-sm font-semibold text-accent-primary">VIP Program</p>
-          <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
-          <Link
-            href="/vip"
-            data-testid="vip-learn-more"
-            onClick={handleNavClick}
-            className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
-          >
-            Learn More
-          </Link>
-        </div>
+        {isSystemOwner ? (
+          <div data-testid="system-owner-banner" className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/30 rounded-xl p-4 text-center">
+            <div className="text-2xl mb-2">🛡️</div>
+            <p className="text-sm font-bold bg-gradient-to-r from-yellow-400 to-amber-300 bg-clip-text text-transparent">SYSTEM OWNER</p>
+            <p className="text-xs text-yellow-400/70 mt-1">Full platform control</p>
+            <Link
+              href="/admin/dashboard"
+              data-testid="admin-quick-access"
+              onClick={handleNavClick}
+              className="block w-full mt-3 px-4 py-2 border border-yellow-500/50 text-yellow-400 text-sm rounded-lg hover:bg-yellow-500/10 transition-colors text-center"
+            >
+              Admin Dashboard
+            </Link>
+          </div>
+        ) : (
+          <div data-testid="vip-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
+            <div className="text-2xl mb-2">👑</div>
+            <p className="text-sm font-semibold text-accent-primary">VIP Program</p>
+            <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
+            <Link
+              href="/vip"
+              data-testid="vip-learn-more"
+              onClick={handleNavClick}
+              className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
+            >
+              Learn More
+            </Link>
+          </div>
+        )}
       </div>
 
       </nav>
       {/* Modals */}
       <VIPModal isOpen={isVIPModalOpen} onClose={() => setIsVIPModalOpen(false)} />
-      <WalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
-      <StatisticsModal isOpen={isStatsModalOpen} onClose={() => setIsStatsModalOpen(false)} />
+      
       <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
     </aside>
   );

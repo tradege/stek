@@ -233,6 +233,9 @@ export default function Home() {
                   { name: 'Dice', icon: '🎲', desc: 'Roll over or under to win', href: '/games/dice', gradient: 'from-green-600 to-emerald-600', edge: '4%', isNew: true },
                   { name: 'Mines', icon: '💣', desc: 'Find gems, avoid mines', href: '/games/mines', gradient: 'from-yellow-600 to-amber-600', edge: '4%' },
                   { name: 'Olympus', icon: '⚡', desc: 'Gates of Olympus slots', href: '/games/olympus', gradient: 'from-purple-600 to-yellow-600', edge: '4%', isNew: true },
+                  { name: 'Card Rush', icon: '🃏', desc: 'Instant Blackjack action', href: '/games/card-rush', gradient: 'from-yellow-500 to-orange-600', edge: '3%', isNew: true },
+                  { name: 'Limbo', icon: '🎯', desc: 'Set your target multiplier', href: '/games/limbo', gradient: 'from-purple-600 to-pink-600', edge: '4%', isNew: true },
+                  { name: 'Penalty', icon: '⚽', desc: 'Score goals, stack multipliers', href: '/games/penalty', gradient: 'from-green-600 to-teal-600', edge: '4%', isNew: true },
                 ].map((game) => (
                   <Link
                     key={game.name}

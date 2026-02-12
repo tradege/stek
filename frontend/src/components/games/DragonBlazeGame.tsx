@@ -1528,7 +1528,7 @@ const DragonBlazeGame: React.FC = () => {
           active: false, hitDragon: 1, targetDragon: 1, destroyed: false,
         });
         startDragonFalling(d1);
-        shakeRef.current.intensity = 18;
+        shakeRef.current.intensity = 0; // shake disabled
         particleEngineRef.current.emit(d1.x, d1.y, 40, {
           type: 'explosion', size: 7, maxLife: 45, speed: 5.5, color: '#FF6B00', spread: Math.PI * 2
         });
@@ -1612,7 +1612,7 @@ const DragonBlazeGame: React.FC = () => {
           active: false, hitDragon: 2, targetDragon: 2, destroyed: false,
         });
         startDragonFalling(d2);
-        shakeRef.current.intensity = 12;
+        shakeRef.current.intensity = 0; // shake disabled
         particleEngineRef.current.emit(d2.x, d2.y, 30, {
           type: 'explosion', size: 6, maxLife: 38, speed: 4.5, color: '#4A90D9', spread: Math.PI * 2
         });
@@ -1690,7 +1690,7 @@ const DragonBlazeGame: React.FC = () => {
                 type: 'spark', size: 3, maxLife: 10, speed: 2.5, color: '#FFD700'
               });
             }
-            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 2);
+            // shake disabled
           }
         }
         if (!d2.isFalling && !d2.isGone) {
@@ -1703,7 +1703,7 @@ const DragonBlazeGame: React.FC = () => {
                 type: 'spark', size: 3, maxLife: 10, speed: 2.5, color: '#87CEEB'
               });
             }
-            shakeRef.current.intensity = Math.max(shakeRef.current.intensity, 2);
+            // shake disabled
           }
         }
         
@@ -1825,13 +1825,13 @@ const DragonBlazeGame: React.FC = () => {
       const amount = parseFloat(betAmount);
       if (isNaN(amount) || amount < MIN_BET || amount > MAX_BET) return;
       const ac = parseFloat(autoCashout);
-      placeBet(amount, isNaN(ac) || ac <= 1 ? undefined : ac);
+      placeBet(amount, isNaN(ac) || ac <= 1 ? undefined : ac, 'dragon');
       playSound('bet');
     } else {
       const amount = parseFloat(dragon2Bet);
       if (isNaN(amount) || amount < MIN_BET || amount > MAX_BET) return;
       const ac2 = parseFloat(dragon2AutoCashout);
-      placeBet2(amount, isNaN(ac2) || ac2 <= 1 ? undefined : ac2);
+      placeBet2(amount, isNaN(ac2) || ac2 <= 1 ? undefined : ac2, 'dragon');
       playSound('bet');
     }
   }, [betAmount, autoCashout, dragon2Bet, dragon2AutoCashout, placeBet, placeBet2, playSound]);

@@ -290,10 +290,11 @@ export class BotService implements OnModuleInit {
    * Handle tick events for cashout decisions - dispatch to all site pools
    */
   @OnEvent('crash.tick')
-  handleTick(data: { multiplier: string | number }) {
-    this.currentMultiplier = typeof data.multiplier === 'string'
-      ? parseFloat(data.multiplier)
-      : data.multiplier;
+  handleTick(data: { multiplier1?: string; multiplier2?: string; multiplier?: string | number }) {
+    const rawMultiplier = data.multiplier1 || data.multiplier || "1.00";
+    this.currentMultiplier = typeof rawMultiplier === "string"
+      ? parseFloat(rawMultiplier)
+      : (typeof rawMultiplier === "number" ? rawMultiplier : 1.0);
 
     for (const [siteId, pool] of this.sitePools.entries()) {
       if (pool.isEnabled) {
@@ -377,7 +378,7 @@ export class BotService implements OnModuleInit {
           siteId, // *** TENANT ISOLATION ***
         });
 
-        this.logger.debug(`💰 [${siteId}] ${bot.username} cashed out at ${multiplier.toFixed(2)}x (+$${profit.toFixed(2)})`);
+        this.logger.log(`💰 [${siteId}] ${bot.username} cashed out at ${multiplier.toFixed(2)}x (+$${profit.toFixed(2)})`);
         pool.activeBets.delete(botId);
       }
     }

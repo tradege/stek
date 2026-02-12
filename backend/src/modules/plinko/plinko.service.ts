@@ -52,8 +52,11 @@ export class PlinkoService {
     }
 
     // Validate inputs
-    if (betAmount <= 0) {
-      throw new BadRequestException('Bet amount must be positive');
+    if (betAmount < 0.01) {
+      throw new BadRequestException('Bet amount must be at least 0.01');
+    }
+    if (!Number.isInteger(rows)) {
+      throw new BadRequestException("Rows must be a whole number");
     }
     if (rows < 8 || rows > 16) {
       throw new BadRequestException('Rows must be between 8 and 16');

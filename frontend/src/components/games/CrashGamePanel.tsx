@@ -237,7 +237,7 @@ const CrashGamePanel: React.FC = () => {
       if (isNaN(amount) || amount <= 0) return;
 
       playSound('bet');
-      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined, 'classic');
       setAutoBetRemaining(prev => prev - 1);
     }, 500);
 
@@ -572,7 +572,7 @@ const CrashGamePanel: React.FC = () => {
       if (isNaN(amount) || amount < MIN_BET) return;
       if (amount > MAX_BET) return;
       playSound('bet');
-      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined);
+      placeBet(amount, autoCashoutValue > 1 ? autoCashoutValue : undefined, 'classic');
     } catch (e) {
       // 'Error placing bet:', e);
     }
