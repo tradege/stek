@@ -71,7 +71,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {/* Content + Chat */}
         <div className="flex-1 flex flex-col">
           {/* Main Content */}
-          <main className="flex-1 p-4 lg:p-6 overflow-auto pb-20 lg:pb-6">
+          <main className="flex-1 p-4 lg:p-6 overflow-auto">
             {children}
           </main>
 
@@ -91,44 +91,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <ChatPanel isVisible={isChatOpen} onClose={() => setIsChatOpen(false)} />
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-bg-card border-t border-white/10 z-30 lg:hidden safe-area-bottom">
-          <div className="flex items-center justify-around py-2">
-            <button
-              onClick={() => setIsSidebarOpen(true)} data-testid="mobile-sidebar-open"
-              className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <span className="text-xs">Menu</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 p-2 text-accent-primary">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span className="text-xs">Crash</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-xs">Wallet</span>
-            </button>
-            <button
-              onClick={() => setIsChatOpen(true)} data-testid="mobile-chat-open"
-              className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors relative"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span className="text-xs">Chat</span>
-              <span className="absolute top-1 right-1 w-2 h-2 bg-accent-primary rounded-full" />
-            </button>
-          </div>
-        </nav>
-      )}
+
     </div>
   );
 };

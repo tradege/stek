@@ -6,8 +6,10 @@ import MainLayout from '@/components/layout/MainLayout';
 import GameGrid from '@/components/lobby/GameGrid';
 import Link from 'next/link';
 import config from '@/config/api';
+import { useBranding } from '@/contexts/BrandingContext';
 
 const API_URL = config.apiUrl;
+  
 
 // Animated counter component
 function AnimatedCounter({ target, prefix = '', suffix = '', color }: { target: number; prefix?: string; suffix?: string; color: string }) {
@@ -70,6 +72,7 @@ const mockRecentWins = [
 ];
 
 export default function Home() {
+  const { branding } = useBranding();
   const [isLoading, setIsLoading] = useState(true);
   const [platformStats, setPlatformStats] = useState({
     totalWagered: 0,
@@ -137,7 +140,7 @@ export default function Home() {
               <span className="text-sm font-bold text-white">WELCOME BONUS</span>
             </div>
             <h1 className="text-4xl md:text-6xl font-black text-white mb-4">
-              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">StakePro</span>
+              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">{branding.brandName}</span>
             </h1>
             <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 mb-6">
               Get 200% Bonus on First Deposit!

@@ -118,52 +118,7 @@ export default function AdminLayout({
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
-        <nav
-          data-testid="admin-bottom-nav"
-          className="fixed bottom-0 left-0 right-0 bg-bg-card border-t border-white/10 z-30 lg:hidden safe-area-bottom"
-        >
-          <div className="flex items-center justify-around py-2">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              data-testid="admin-mobile-sidebar-open"
-              className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors"
-            >
-              <Menu className="w-6 h-6" />
-              <span className="text-xs">Menu</span>
-            </button>
-            <button
-              onClick={() => router.push('/admin/dashboard')}
-              className="flex flex-col items-center gap-1 p-2 text-accent-primary"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span className="text-xs">Dashboard</span>
-            </button>
-            <button
-              onClick={() => router.push('/admin/users')}
-              className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              <span className="text-xs">Users</span>
-            </button>
-            <button
-              onClick={() => router.push('/')}
-              className="flex flex-col items-center gap-1 p-2 text-text-secondary hover:text-accent-primary transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span className="text-xs">Casino</span>
-            </button>
-          </div>
-        </nav>
-      )}
-      {isMobile && <div className="h-16" />}
+
     </div>
   );
 }

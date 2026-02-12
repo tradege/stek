@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSoundContext } from "@/contexts/SoundContext";
 import { motion, AnimatePresence } from "framer-motion";
 import config from '@/config/api';
 
 const API_URL = config.apiUrl;
+const GRID_SIZE = 25;
+const HOUSE_EDGE = 0.04;
+const COEFFICIENT = 0.99;
 
 interface MinesGameState {
   gameId: string;
@@ -34,6 +37,42 @@ const CHIP_COLORS: Record<number, string> = {
   100: "from-yellow-500 to-yellow-600",
 };
 
+/** Calculate the multiplier for a given mine count and revealed count (mirrors backend) */
+function calcMultiplier(mineCount: number, revealedCount: number): number {
+  if (revealedCount === 0) return 1;
+  const safeTiles = GRID_SIZE - mineCount;
+  if (revealedCount > safeTiles) return 0;
+  let probability = 1;
+  for (let i = 0; i < revealedCount; i++) {
+    probability *= (safeTiles - i) / (GRID_SIZE - i);
+  }
+  if (probability <= 0) return 0;
+  const multiplier = ((1 - HOUSE_EDGE) / probability) * COEFFICIENT;
+  return Math.floor(multiplier * 10000) / 10000;
+}
+
+/** Build the full step-by-step stats table for a given mine count and bet */
+function buildStatsTable(mineCount: number, bet: number) {
+  const safeTiles = GRID_SIZE - mineCount;
+  const rows: { step: number; multiplier: number; payout: number; profit: number; survivalChance: number }[] = [];
+  let cumulativeProb = 1;
+  for (let step = 1; step <= safeTiles; step++) {
+    cumulativeProb *= (safeTiles - step + 1) / (GRID_SIZE - step + 1);
+    const mult = calcMultiplier(mineCount, step);
+    if (mult <= 0) break;
+    const payout = Math.floor(bet * mult * 100) / 100;
+    const profit = Math.floor((payout - bet) * 100) / 100;
+    rows.push({
+      step,
+      multiplier: mult,
+      payout,
+      profit,
+      survivalChance: cumulativeProb * 100,
+    });
+  }
+  return rows;
+}
+
 export default function MinesPage() {
   const { user, refreshUser } = useAuth();
   const { isSoundActive } = useSoundContext();
@@ -46,10 +85,20 @@ export default function MinesPage() {
   const [revealedAnimation, setRevealedAnimation] = useState<Set<number>>(new Set());
   const [lastClickedTile, setLastClickedTile] = useState<number | null>(null);
   const [screenShake, setScreenShake] = useState(false);
+  const [showStatsTable, setShowStatsTable] = useState(false);
 
   const gemSoundRef = useRef<HTMLAudioElement | null>(null);
   const bombSoundRef = useRef<HTMLAudioElement | null>(null);
   const cashoutSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Compute stats table reactively based on mineCount and betAmount
+  const statsTable = useMemo(() => {
+    const bet = parseFloat(betAmount) || 1;
+    return buildStatsTable(mineCount, bet);
+  }, [mineCount, betAmount]);
+
+  // Current step highlight (how many gems revealed so far)
+  const currentStep = gameState?.status === "ACTIVE" ? gameState.revealedTiles.length : 0;
 
   useEffect(() => {
     gemSoundRef.current = new Audio("/sounds/gem.mp3");
@@ -186,6 +235,15 @@ export default function MinesPage() {
   const isGameActive = gameState?.status === "ACTIVE";
   const isGameOver = gameState?.status === "LOST" || gameState?.status === "WON";
   const canStart = !gameState || isGameOver;
+
+  // Stats table scroll ref
+  const statsScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (statsScrollRef.current && currentStep > 0) {
+      const row = statsScrollRef.current.querySelector(`[data-step="${currentStep}"]`);
+      if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [currentStep]);
 
   return (
     <motion.div
@@ -404,8 +462,8 @@ export default function MinesPage() {
           )}
         </div>
 
-        {/* Right Panel - Mine Grid */}
-        <div className="lg:col-span-2">
+        {/* Right Panel - Mine Grid + Stats */}
+        <div className="lg:col-span-2 space-y-4">
           <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4 md:p-6">
             <div className="grid grid-cols-5 gap-2 md:gap-3 max-w-lg mx-auto">
               {Array.from({ length: 25 }, (_, i) => {
@@ -450,13 +508,151 @@ export default function MinesPage() {
             </div>
           </div>
 
+          {/* ============ STEP-BY-STEP STATISTICS TABLE ============ */}
+          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 overflow-hidden">
+            <button
+              onClick={() => setShowStatsTable(!showStatsTable)}
+              className="w-full px-4 py-3 flex items-center justify-between border-b border-[#2f4553]/50 hover:bg-[#2f4553]/20 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📊</span>
+                <span className="font-semibold text-sm text-gray-200">
+                  Payout Table — {mineCount} Mines
+                </span>
+                <span className="text-xs text-gray-500 font-mono">
+                  (${parseFloat(betAmount || "1").toFixed(2)} bet)
+                </span>
+              </div>
+              <motion.span
+                animate={{ rotate: showStatsTable ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-gray-400 text-sm"
+              >
+                ▼
+              </motion.span>
+            </button>
+
+            <AnimatePresence>
+              {showStatsTable && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden"
+                >
+                  <div
+                    ref={statsScrollRef}
+                    className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#2f4553] scrollbar-track-transparent"
+                  >
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="bg-[#0f1923] text-gray-400 text-xs uppercase tracking-wider">
+                          <th className="px-3 py-2.5 text-left">Step</th>
+                          <th className="px-3 py-2.5 text-right">Multiplier</th>
+                          <th className="px-3 py-2.5 text-right">Payout</th>
+                          <th className="px-3 py-2.5 text-right">Profit</th>
+                          <th className="px-3 py-2.5 text-right">Chance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {statsTable.map((row) => {
+                          const isCurrentStep = isGameActive && currentStep === row.step;
+                          const isCompleted = isGameActive && currentStep > row.step;
+                          const isNext = isGameActive && currentStep + 1 === row.step;
+                          return (
+                            <tr
+                              key={row.step}
+                              data-step={row.step}
+                              className={`border-b border-[#2f4553]/30 transition-all ${
+                                isCurrentStep
+                                  ? "bg-emerald-500/15 border-emerald-500/40"
+                                  : isCompleted
+                                  ? "bg-emerald-500/5"
+                                  : isNext
+                                  ? "bg-cyan-500/5"
+                                  : "hover:bg-white/5"
+                              }`}
+                            >
+                              <td className="px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  {isCompleted ? (
+                                    <span className="text-emerald-400 text-xs">✓</span>
+                                  ) : isCurrentStep ? (
+                                    <motion.span
+                                      animate={{ scale: [1, 1.3, 1] }}
+                                      transition={{ repeat: Infinity, duration: 1.5 }}
+                                      className="text-emerald-400 text-xs"
+                                    >
+                                      ●
+                                    </motion.span>
+                                  ) : isNext ? (
+                                    <span className="text-cyan-400 text-xs">→</span>
+                                  ) : (
+                                    <span className="text-gray-600 text-xs">{row.step}</span>
+                                  )}
+                                  <span className={`font-mono text-xs ${
+                                    isCurrentStep ? "text-emerald-300 font-bold" : isCompleted ? "text-emerald-400/70" : "text-gray-300"
+                                  }`}>
+                                    💎 {row.step}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className={`px-3 py-2 text-right font-mono text-xs ${
+                                isCurrentStep ? "text-cyan-300 font-bold" : "text-gray-300"
+                              }`}>
+                                {row.multiplier.toFixed(4)}×
+                              </td>
+                              <td className={`px-3 py-2 text-right font-mono text-xs ${
+                                isCurrentStep ? "text-yellow-300 font-bold" : "text-gray-300"
+                              }`}>
+                                ${row.payout.toFixed(2)}
+                              </td>
+                              <td className={`px-3 py-2 text-right font-mono text-xs font-bold ${
+                                row.profit > 0
+                                  ? isCurrentStep ? "text-green-300" : "text-green-400/80"
+                                  : "text-red-400/80"
+                              }`}>
+                                {row.profit >= 0 ? "+" : ""}{row.profit.toFixed(2)}
+                              </td>
+                              <td className={`px-3 py-2 text-right font-mono text-xs ${
+                                row.survivalChance < 5 ? "text-red-400" :
+                                row.survivalChance < 20 ? "text-orange-400" :
+                                row.survivalChance < 50 ? "text-yellow-400" :
+                                "text-gray-400"
+                              }`}>
+                                {row.survivalChance.toFixed(1)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Summary footer */}
+                  <div className="px-4 py-2.5 bg-[#0f1923]/80 border-t border-[#2f4553]/50 flex items-center justify-between text-xs">
+                    <span className="text-gray-500">
+                      {GRID_SIZE - mineCount} safe tiles | {mineCount} mines
+                    </span>
+                    <span className="text-gray-500">
+                      Max win: <span className="text-yellow-400 font-mono font-bold">
+                        ${statsTable.length > 0 ? statsTable[statsTable.length - 1].payout.toFixed(2) : "0.00"}
+                      </span>
+                      {" "}({statsTable.length > 0 ? statsTable[statsTable.length - 1].multiplier.toFixed(2) : "0"}×)
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Provably Fair */}
           <AnimatePresence>
             {gameState && gameState.serverSeedHash && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4 mt-4"
+                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">

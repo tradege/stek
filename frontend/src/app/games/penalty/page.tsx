@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSoundContext } from "@/contexts/SoundContext";
 import Link from "next/link";
@@ -952,39 +952,111 @@ export default function PenaltyPage() {
               )}
             </AnimatePresence>
 
-            {/* Multiplier Table */}
+            {/* Payout Statistics Table */}
             {multipliers.length > 0 && (
               <div className="mt-6 bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553] overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#2f4553]">
-                  <h3 className="font-semibold text-sm text-gray-300">Multiplier Ladder</h3>
+                <div className="px-4 py-3 border-b border-[#2f4553] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📊</span>
+                    <h3 className="font-semibold text-sm text-gray-200">Payout Table</h3>
+                    <span className="text-xs text-gray-500 font-mono">(${parseFloat(betAmount || "1").toFixed(2)} bet)</span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-5 md:grid-cols-10 gap-1 p-3">
-                  {multipliers.map((m) => {
-                    const isActive = session && session.currentRound === m.round;
-                    const isPast = session && m.round < session.currentRound;
-                    const goalAtRound = goalHistory.find((g) => g.round === m.round);
-                    return (
-                      <motion.div
-                        key={m.round}
-                        className={`text-center p-2 rounded-lg text-xs transition-all ${
-                          isActive
-                            ? "bg-green-500/20 border border-green-500/50 ring-2 ring-green-500/30"
-                            : isPast && goalAtRound?.isGoal
-                            ? "bg-green-500/10 border border-green-500/20"
-                            : isPast && goalAtRound && !goalAtRound.isGoal
-                            ? "bg-red-500/10 border border-red-500/20"
-                            : "bg-[#0f1923]/80 border border-[#2f4553]/50"
-                        }`}
-                        animate={isActive ? { scale: [1, 1.05, 1] } : {}}
-                        transition={{ repeat: isActive ? Infinity : 0, duration: 2 }}
-                      >
-                        <div className="text-gray-500 text-[10px]">R{m.round}</div>
-                        <div className={`font-bold ${isActive ? "text-green-400" : "text-gray-300"}`}>
-                          {m.multiplier.toFixed(2)}&times;
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[#0f1923] text-gray-400 text-xs uppercase tracking-wider">
+                        <th className="px-3 py-2.5 text-left">Goal</th>
+                        <th className="px-3 py-2.5 text-right">Multiplier</th>
+                        <th className="px-3 py-2.5 text-right">Payout</th>
+                        <th className="px-3 py-2.5 text-right">Profit</th>
+                        <th className="px-3 py-2.5 text-right">Goal %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {multipliers.map((m) => {
+                        const bet = parseFloat(betAmount || "1");
+                        const payout = Math.floor(bet * m.multiplier * 100) / 100;
+                        const profit = Math.floor((payout - bet) * 100) / 100;
+                        const isActive = session && session.currentRound === m.round;
+                        const isPast = session && m.round < session.currentRound;
+                        const goalAtRound = goalHistory.find((g) => g.round === m.round);
+                        const isScored = isPast && goalAtRound?.isGoal;
+                        const isMissed = isPast && goalAtRound && !goalAtRound.isGoal;
+                        return (
+                          <tr
+                            key={m.round}
+                            className={`border-b border-[#2f4553]/30 transition-all ${
+                              isActive
+                                ? "bg-green-500/15 border-green-500/40"
+                                : isScored
+                                ? "bg-green-500/5"
+                                : isMissed
+                                ? "bg-red-500/5"
+                                : "hover:bg-white/5"
+                            }`}
+                          >
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                {isScored ? (
+                                  <span className="text-green-400 text-xs">\u26BD</span>
+                                ) : isMissed ? (
+                                  <span className="text-red-400 text-xs">\u270B</span>
+                                ) : isActive ? (
+                                  <motion.span
+                                    animate={{ scale: [1, 1.3, 1] }}
+                                    transition={{ repeat: Infinity, duration: 1.5 }}
+                                    className="text-green-400 text-xs"
+                                  >
+                                    \u25CF
+                                  </motion.span>
+                                ) : (
+                                  <span className="text-gray-600 text-xs">{m.round}</span>
+                                )}
+                                <span className={`font-mono text-xs ${
+                                  isActive ? "text-green-300 font-bold" : isScored ? "text-green-400/70" : "text-gray-300"
+                                }`}>
+                                  Goal {m.round}
+                                </span>
+                              </div>
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono text-xs ${
+                              isActive ? "text-cyan-300 font-bold" : "text-gray-300"
+                            }`}>
+                              {m.multiplier.toFixed(2)}&times;
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono text-xs ${
+                              isActive ? "text-yellow-300 font-bold" : "text-gray-300"
+                            }`}>
+                              ${payout.toFixed(2)}
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono text-xs font-bold ${
+                              profit > 0
+                                ? isActive ? "text-green-300" : "text-green-400/80"
+                                : "text-red-400/80"
+                            }`}>
+                              {profit >= 0 ? "+" : ""}{profit.toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-xs text-gray-400">
+                              {m.goalProbability}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Summary footer */}
+                <div className="px-4 py-2.5 bg-[#0f1923]/80 border-t border-[#2f4553]/50 flex items-center justify-between text-xs">
+                  <span className="text-gray-500">
+                    {multipliers.length} rounds | 66.7% goal chance per kick
+                  </span>
+                  <span className="text-gray-500">
+                    Max win: <span className="text-yellow-400 font-mono font-bold">
+                      ${multipliers.length > 0 ? (parseFloat(betAmount || "1") * multipliers[multipliers.length - 1].multiplier).toFixed(2) : "0.00"}
+                    </span>
+                    {" "}({multipliers.length > 0 ? multipliers[multipliers.length - 1].multiplier.toFixed(2) : "0"}&times;)
+                  </span>
                 </div>
               </div>
             )}

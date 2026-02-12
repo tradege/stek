@@ -110,7 +110,7 @@ export default function AdminTransactionsPage() {
     setSimulateMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/admin/deposit/simulate`, {
+      const response = await fetch(`${API_URL}/api/admin/deposit/simulate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

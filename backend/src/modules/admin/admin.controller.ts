@@ -153,4 +153,66 @@ export class AdminController {
     const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
     return this.adminService.getBotStats(siteId);
   }
+
+  // ============ USER DETAIL & BALANCE MANAGEMENT ============
+
+  @Get('users/:id/detail')
+  @ApiOperation({ summary: 'Get full user details including IP, bets, transactions' })
+  async getUserDetail(@Param('id') id: string) {
+    return this.adminService.getUserDetail(id);
+  }
+
+  @Get('users/:id/bets')
+  @ApiOperation({ summary: 'Get user bet history' })
+  async getUserBets(@Param('id') id: string, @Query('limit') limit?: string) {
+    return this.adminService.getUserBets(id, limit ? parseInt(limit) : 20);
+  }
+
+  @Post('users/:id/adjust-balance')
+  @ApiOperation({ summary: 'Credit or debit user balance (admin adjustment)' })
+  async adjustUserBalance(@Param('id') id: string, @Req() req: any, @Body() body: { amount: number; reason: string }) {
+    return this.adminService.adjustUserBalance(id, body.amount, body.reason, req.user.id);
+  }
+
+  // ============ WITHDRAWAL MANAGEMENT ============
+
+  @Get('withdrawals')
+  @ApiOperation({ summary: 'Get all withdrawal requests' })
+  async getWithdrawals(@Req() req: any, @Query('siteId') querySiteId?: string, @Query('status') status?: string, @Query('limit') limit?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getWithdrawals(siteId, status, limit ? parseInt(limit) : 100);
+  }
+
+  @Post('withdrawals/:id/approve')
+  @ApiOperation({ summary: 'Approve a withdrawal request' })
+  async approveWithdrawal(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.approveWithdrawal(id, req.user.id);
+  }
+
+  @Post('withdrawals/:id/reject')
+  @ApiOperation({ summary: 'Reject a withdrawal and refund balance' })
+  async rejectWithdrawal(@Param('id') id: string, @Req() req: any, @Body() body: { reason?: string }) {
+    return this.adminService.rejectWithdrawal(id, req.user.id, body.reason);
+  }
+
+  // ============ GLOBAL GAME HISTORY ============
+
+  @Get('game-history')
+  @ApiOperation({ summary: 'Get global game history with filters' })
+  async getGameHistory(
+    @Req() req: any,
+    @Query('siteId') querySiteId?: string,
+    @Query('gameType') gameType?: string,
+    @Query('minBet') minBet?: string,
+    @Query('minWin') minWin?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getGameHistory(siteId, {
+      gameType,
+      minBet: minBet ? parseFloat(minBet) : undefined,
+      minWin: minWin ? parseFloat(minWin) : undefined,
+      limit: limit ? parseInt(limit) : 100,
+    });
+  }
 }

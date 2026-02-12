@@ -495,4 +495,232 @@ export class AdminService {
     ]);
     return { activeBots: botCount, totalBets: botBets._count || 0, totalVolume: Number(botBets._sum.betAmount || 0) };
   }
+
+  // ============ USER DETAIL & BALANCE ============
+
+  async getUserDetail(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, username: true, email: true, status: true, role: true,
+        displayName: true, avatarUrl: true, country: true, language: true, timezone: true,
+        twoFactorEnabled: true, lastLoginAt: true, lastLoginIp: true,
+        vipLevel: true, totalWagered: true, xp: true, isBot: true,
+        createdAt: true, updatedAt: true, siteId: true,
+        wallets: { select: { id: true, balance: true, currency: true } },
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Get bet stats
+    const betStats = await this.prisma.bet.aggregate({
+      where: { userId },
+      _sum: { betAmount: true, payout: true, profit: true },
+      _count: true,
+    });
+
+    // Get transaction stats
+    const txStats = await this.prisma.transaction.groupBy({
+      by: ['type'],
+      where: { userId, status: 'CONFIRMED' },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    return {
+      ...user,
+      totalWagered: user.totalWagered.toString(),
+      wallets: user.wallets.map(w => ({ ...w, balance: w.balance.toString() })),
+      stats: {
+        totalBets: betStats._count,
+        totalWagered: Number(betStats._sum.betAmount || 0),
+        totalPayout: Number(betStats._sum.payout || 0),
+        totalProfit: Number(betStats._sum.profit || 0),
+        deposits: Number(txStats.find(t => t.type === 'DEPOSIT')?._sum.amount || 0),
+        withdrawals: Number(txStats.find(t => t.type === 'WITHDRAWAL')?._sum.amount || 0),
+      },
+    };
+  }
+
+  async getUserBets(userId: string, limit = 20) {
+    const bets = await this.prisma.bet.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true, gameType: true, currency: true,
+        betAmount: true, multiplier: true, payout: true, profit: true,
+        isWin: true, gameData: true, createdAt: true,
+      },
+    });
+
+    return bets.map(b => ({
+      ...b,
+      betAmount: b.betAmount.toString(),
+      multiplier: b.multiplier.toString(),
+      payout: b.payout.toString(),
+      profit: b.profit.toString(),
+    }));
+  }
+
+  async adjustUserBalance(userId: string, amount: number, reason: string, adminId: string) {
+    const wallet = await this.prisma.wallet.findFirst({ where: { userId } });
+    if (!wallet) throw new NotFoundException('Wallet not found for user');
+
+    const currentBalance = Number(wallet.balance);
+    const newBalance = currentBalance + amount;
+    if (newBalance < 0) throw new ForbiddenException('Cannot set balance below zero');
+
+    const txType = amount >= 0 ? 'DEPOSIT' : 'WITHDRAWAL';
+    const txData: any = {
+      user: { connect: { id: userId } },
+      wallet: { connect: { id: wallet.id } },
+      type: txType,
+      amount: Math.abs(amount),
+      status: 'CONFIRMED',
+      balanceBefore: currentBalance,
+      balanceAfter: newBalance,
+      externalRef: `ADMIN-${adminId}-${Date.now()}`,
+      metadata: { adminId, reason, type: 'ADMIN_ADJUSTMENT' },
+    };
+    if (wallet.siteId) { txData.site = { connect: { id: wallet.siteId } }; }
+
+    await this.prisma.$transaction([
+      this.prisma.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: amount } } }),
+      this.prisma.transaction.create({ data: txData }),
+    ]);
+
+    this.logger.log(`Admin ${adminId} adjusted balance for user ${userId}: ${amount > 0 ? '+' : ''}${amount} (${reason})`);
+    return { success: true, message: `Balance adjusted by ${amount > 0 ? '+' : ''}$${Math.abs(amount)}`, newBalance, reason };
+  }
+
+  // ============ WITHDRAWAL MANAGEMENT ============
+
+  async getWithdrawals(siteId?: string, status?: string, limit = 100) {
+    const sf = this.siteFilter(siteId);
+    const where: any = { type: 'WITHDRAWAL', ...sf };
+    if (status && status !== 'ALL') { where.status = status; }
+
+    const withdrawals = await this.prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        user: { select: { id: true, username: true, email: true, lastLoginIp: true, vipLevel: true } },
+        wallet: { select: { currency: true } },
+      },
+    });
+
+    return withdrawals.map(w => ({
+      id: w.id,
+      userId: w.userId,
+      username: w.user.username,
+      email: w.user.email,
+      amount: w.amount.toString(),
+      currency: w.wallet.currency,
+      status: w.status,
+      walletAddress: (w.metadata as any)?.walletAddress || (w.metadata as any)?.address || 'N/A',
+      network: (w.metadata as any)?.network || 'N/A',
+      userIp: w.user.lastLoginIp || 'N/A',
+      vipLevel: w.user.vipLevel,
+      riskScore: this.calculateRiskScore(w),
+      externalRef: w.externalRef,
+      createdAt: w.createdAt,
+      confirmedAt: w.confirmedAt,
+    }));
+  }
+
+  private calculateRiskScore(withdrawal: any): { score: number; level: string } {
+    let score = 0;
+    const amount = Number(withdrawal.amount);
+    if (amount > 5000) score += 30;
+    else if (amount > 1000) score += 15;
+    else if (amount > 500) score += 5;
+    if (!withdrawal.user.lastLoginIp) score += 20;
+    if (withdrawal.user.vipLevel === 0) score += 10;
+    const level = score >= 40 ? 'HIGH' : score >= 20 ? 'MEDIUM' : 'LOW';
+    return { score, level };
+  }
+
+  async approveWithdrawal(transactionId: string, adminId: string) {
+    const tx = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+    if (!tx) throw new NotFoundException('Withdrawal not found');
+    if (tx.type !== 'WITHDRAWAL') throw new ForbiddenException('Transaction is not a withdrawal');
+    if (tx.status !== 'PENDING') throw new ForbiddenException('Withdrawal is not pending');
+
+    await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: { status: 'CONFIRMED', confirmedAt: new Date() },
+    });
+
+    this.logger.log(`Withdrawal ${transactionId} approved by admin ${adminId}`);
+    return { success: true, message: 'Withdrawal approved' };
+  }
+
+  async rejectWithdrawal(transactionId: string, adminId: string, reason?: string) {
+    const tx = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+      include: { wallet: true },
+    });
+    if (!tx) throw new NotFoundException('Withdrawal not found');
+    if (tx.type !== 'WITHDRAWAL') throw new ForbiddenException('Transaction is not a withdrawal');
+    if (tx.status !== 'PENDING') throw new ForbiddenException('Withdrawal is not pending');
+
+    // Refund the balance
+    await this.prisma.$transaction([
+      this.prisma.transaction.update({
+        where: { id: transactionId },
+        data: { status: 'CANCELLED', metadata: { ...(tx.metadata as any || {}), rejectedBy: adminId, rejectReason: reason } },
+      }),
+      this.prisma.wallet.update({
+        where: { id: tx.walletId },
+        data: { balance: { increment: tx.amount } },
+      }),
+    ]);
+
+    this.logger.log(`Withdrawal ${transactionId} rejected by admin ${adminId}: ${reason}`);
+    return { success: true, message: 'Withdrawal rejected, balance refunded' };
+  }
+
+  // ============ GLOBAL GAME HISTORY ============
+
+  async getGameHistory(siteId?: string, filters?: { gameType?: string; minBet?: number; minWin?: number; limit?: number }) {
+    const sf = this.siteFilter(siteId);
+    const where: any = { ...sf };
+
+    if (filters?.gameType && filters.gameType !== 'ALL') {
+      where.gameType = filters.gameType;
+    }
+    if (filters?.minBet) {
+      where.betAmount = { gte: filters.minBet };
+    }
+    if (filters?.minWin) {
+      where.payout = { gte: filters.minWin };
+    }
+
+    const bets = await this.prisma.bet.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: filters?.limit || 100,
+      include: {
+        user: { select: { id: true, username: true, isBot: true } },
+      },
+    });
+
+    return bets.map(b => ({
+      id: b.id,
+      userId: b.userId,
+      username: b.user.username,
+      isBot: b.user.isBot,
+      gameType: b.gameType,
+      currency: b.currency,
+      betAmount: b.betAmount.toString(),
+      multiplier: b.multiplier.toString(),
+      payout: b.payout.toString(),
+      profit: b.profit.toString(),
+      isWin: b.isWin,
+      gameData: b.gameData,
+      createdAt: b.createdAt,
+    }));
+  }
 }

@@ -11,9 +11,12 @@ import {
   Gamepad2,
   Settings,
   ArrowLeft,
+  Globe,
   Shield,
   X,
   Menu,
+  Wallet,
+  ScrollText,
 } from 'lucide-react';
 
 // ============================================
@@ -52,6 +55,18 @@ const adminNavItems: NavItem[] = [
     label: 'Transactions',
     icon: <CreditCard className="w-5 h-5" />,
     href: '/admin/transactions',
+  },
+  {
+    id: 'withdrawals',
+    label: 'Withdrawals',
+    icon: <Wallet className="w-5 h-5" />,
+    href: '/admin/withdrawals',
+  },
+  {
+    id: 'game-logs',
+    label: 'Game Logs',
+    icon: <ScrollText className="w-5 h-5" />,
+    href: '/admin/game-history',
   },
   {
     id: 'games',
@@ -211,6 +226,17 @@ export default function AdminSidebar({ isOpen, onClose, onOpen }: AdminSidebarPr
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5 group"
                 >
                   <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              <li>
+                <Link
+                  href="/super-admin/dashboard"
+                  onClick={handleNavClick}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 group"
+                >
+                  <Globe className="w-5 h-5" />
+                  <span className="font-medium">Super Admin</span>
+                  <span className="px-1.5 py-0.5 text-[9px] bg-cyan-500/20 text-cyan-400 rounded-full font-semibold ml-auto">SA</span>
+                </Link>
+              </li>
                   <span className="font-medium">Back to Casino</span>
                 </Link>
               </li>

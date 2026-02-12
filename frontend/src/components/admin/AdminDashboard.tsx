@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   // Fetch real stats
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/admin/stats/real`, {
+      const response = await fetch(`${API_URL}/api/admin/stats/real`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
   // Fetch game config
   const fetchConfig = async () => {
     try {
-      const response = await fetch(`${API_URL}/admin/game/config`, {
+      const response = await fetch(`${API_URL}/api/admin/game/config`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
   const updateConfig = async (updates: Partial<GameConfig>) => {
     setSaving(true);
     try {
-      const response = await fetch(`${API_URL}/admin/game/config`, {
+      const response = await fetch(`${API_URL}/api/admin/game/config`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

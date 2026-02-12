@@ -98,7 +98,7 @@ export default function AdminGames() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/game/config`, {
+      const res = await fetch(`${API_URL}/api/admin/game/config`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
@@ -115,7 +115,7 @@ export default function AdminGames() {
 
   const fetchGameStats = async () => {
     try {
-      const res = await fetch(`${API_URL}/admin/stats`, {
+      const res = await fetch(`${API_URL}/api/admin/stats`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
@@ -131,7 +131,7 @@ export default function AdminGames() {
     setMessage(null);
 
     try {
-      const res = await fetch(`${API_URL}/admin/game/config`, {
+      const res = await fetch(`${API_URL}/api/admin/game/config`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

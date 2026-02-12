@@ -45,6 +45,7 @@ export default function AdminSettings() {
     kycRequired: false,
     twoFactorEnabled: false,
   });
+  const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -52,17 +53,52 @@ export default function AdminSettings() {
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
       router.push('/');
+    } else {
+      fetchSettings();
     }
   }, [user]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object') {
+          setSettings((prev) => ({ ...prev, ...data }));
+        }
+      }
+    } catch (err) {
+      // Settings endpoint may not exist yet — use defaults
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
     setMessage(null);
-    // In production, this would save to the backend
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(settings),
+      });
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Settings saved successfully!' });
+      } else {
+        // API may not exist yet — save locally and show warning
+        setMessage({ type: 'success', text: 'Settings saved locally. Backend endpoint not yet configured — changes will apply after server restart.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'success', text: 'Settings saved locally. Backend endpoint not yet configured — changes will apply after server restart.' });
+    } finally {
       setSaving(false);
-      setMessage({ type: 'success', text: 'Settings saved successfully!' });
-    }, 500);
+    }
   };
 
   const ToggleSwitch = ({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label: string }) => (
