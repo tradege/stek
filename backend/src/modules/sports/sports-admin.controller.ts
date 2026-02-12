@@ -11,16 +11,19 @@ import {
   Put,
 } from '@nestjs/common';
 import { SportsOddsService } from './sports-odds.service';
+import { BetValidatorService } from './bet-validator.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('admin/sports')
 @UseGuards(JwtAuthGuard)
 export class SportsAdminController {
-  constructor(private readonly sportsService: SportsOddsService) {}
+  constructor(
+    private readonly sportsService: SportsOddsService,
+    private readonly betValidator: BetValidatorService,
+  ) {}
 
   /**
-   * GET /api/admin/sports/stats
-   * Get sports betting statistics
+   * GET /admin/sports/stats
    */
   @Get('stats')
   async getStats(@Req() req: any) {
@@ -29,8 +32,7 @@ export class SportsAdminController {
   }
 
   /**
-   * GET /api/admin/sports/bets
-   * Get all sports bets with filters
+   * GET /admin/sports/bets
    */
   @Get('bets')
   async getAllBets(
@@ -49,8 +51,7 @@ export class SportsAdminController {
   }
 
   /**
-   * GET /api/admin/sports/events
-   * Get all events (admin view with bet counts)
+   * GET /admin/sports/events
    */
   @Get('events')
   async getEvents(@Query('status') status?: string) {
@@ -58,8 +59,7 @@ export class SportsAdminController {
   }
 
   /**
-   * POST /api/admin/sports/force-settle
-   * Force settle an event with manual scores
+   * POST /admin/sports/force-settle
    */
   @Post('force-settle')
   async forceSettle(
@@ -72,21 +72,15 @@ export class SportsAdminController {
     if (!body.eventId || body.homeScore === undefined || body.awayScore === undefined) {
       throw new BadRequestException('eventId, homeScore, and awayScore are required');
     }
-
     try {
-      return await this.sportsService.forceSettle(
-        body.eventId,
-        body.homeScore,
-        body.awayScore,
-      );
+      return await this.sportsService.forceSettle(body.eventId, body.homeScore, body.awayScore);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
   }
 
   /**
-   * POST /api/admin/sports/trigger-fetch
-   * Manually trigger odds fetch
+   * POST /admin/sports/trigger-fetch
    */
   @Post('trigger-fetch')
   async triggerFetch() {
@@ -94,8 +88,7 @@ export class SportsAdminController {
   }
 
   /**
-   * POST /api/admin/sports/trigger-settlement
-   * Manually trigger bet settlement
+   * POST /admin/sports/trigger-settlement
    */
   @Post('trigger-settlement')
   async triggerSettlement() {
@@ -104,52 +97,111 @@ export class SportsAdminController {
 
   /**
    * GET /admin/sports/config
-   * Get sports betting configuration
+   * Get full sports betting configuration including AI Risk Layer
    */
-  @Get("config")
-  @UseGuards(JwtAuthGuard)
+  @Get('config')
   async getConfig() {
     return {
-      minBet: parseFloat(process.env.SPORTS_MIN_BET || "1"),
-      maxBet: parseFloat(process.env.SPORTS_MAX_BET || "10000"),
+      betting: {
+        minBet: parseFloat(process.env.SPORTS_MIN_BET || '1'),
+        maxBet: parseFloat(process.env.SPORTS_MAX_BET || '10000'),
+      },
+      riskLayer: {
+        maxPayoutPerTicket: parseFloat(process.env.SPORTS_MAX_PAYOUT_TICKET || '25000'),
+        maxPayoutPerDay: parseFloat(process.env.SPORTS_MAX_PAYOUT_DAY || '100000'),
+        rateLimitPerMin: parseInt(process.env.SPORTS_RATE_LIMIT_PER_MIN || '5'),
+        rateLimitPerHour: parseInt(process.env.SPORTS_RATE_LIMIT_PER_HOUR || '50'),
+        liveBufferSeconds: parseInt(process.env.SPORTS_LIVE_BUFFER_SECONDS || '7'),
+        oddsChangeThreshold: parseFloat(process.env.SPORTS_ODDS_CHANGE_THRESHOLD || '0.10') * 100 + '%',
+        aiValidationEnabled: process.env.SPORTS_AI_VALIDATION !== 'false',
+        discordWebhookConfigured: !!process.env.DISCORD_WEBHOOK_URL,
+      },
     };
   }
 
   /**
    * PUT /admin/sports/config
-   * Update sports betting configuration
+   * Update sports betting and risk layer configuration
    */
-  @Put("config")
-  @UseGuards(JwtAuthGuard)
-  async updateConfig(@Body() body: { minBet?: number; maxBet?: number }) {
-    const fs = require("fs");
-    const path = require("path");
-    const envPath = path.resolve(process.cwd(), "..", ".env");
-    let envContent = "";
-    try { envContent = fs.readFileSync(envPath, "utf8"); } catch(e) { envContent = ""; }
-    
-    if (body.minBet !== undefined) {
-      process.env.SPORTS_MIN_BET = String(body.minBet);
-      if (envContent.includes("SPORTS_MIN_BET=")) {
-        envContent = envContent.replace(/SPORTS_MIN_BET=.*/g, "SPORTS_MIN_BET=" + body.minBet);
+  @Put('config')
+  async updateConfig(@Body() body: {
+    minBet?: number;
+    maxBet?: number;
+    maxPayoutPerTicket?: number;
+    maxPayoutPerDay?: number;
+    rateLimitPerMin?: number;
+    rateLimitPerHour?: number;
+    liveBufferSeconds?: number;
+    oddsChangeThreshold?: number;
+    aiValidationEnabled?: boolean;
+    discordWebhookUrl?: string;
+  }) {
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.resolve(process.cwd(), '..', '.env');
+    let envContent = '';
+    try { envContent = fs.readFileSync(envPath, 'utf8'); } catch (e) { envContent = ''; }
+
+    const updateEnv = (key: string, value: string) => {
+      process.env[key] = value;
+      if (envContent.includes(key + '=')) {
+        envContent = envContent.replace(new RegExp(key + '=.*'), key + '=' + value);
       } else {
-        envContent += "\nSPORTS_MIN_BET=" + body.minBet;
+        envContent += '\n' + key + '=' + value;
       }
-    }
-    if (body.maxBet !== undefined) {
-      process.env.SPORTS_MAX_BET = String(body.maxBet);
-      if (envContent.includes("SPORTS_MAX_BET=")) {
-        envContent = envContent.replace(/SPORTS_MAX_BET=.*/g, "SPORTS_MAX_BET=" + body.maxBet);
-      } else {
-        envContent += "\nSPORTS_MAX_BET=" + body.maxBet;
-      }
-    }
-    try { fs.writeFileSync(envPath, envContent); } catch(e) {}
-    
-    return {
-      success: true,
-      minBet: parseFloat(process.env.SPORTS_MIN_BET || "1"),
-      maxBet: parseFloat(process.env.SPORTS_MAX_BET || "10000"),
     };
+
+    if (body.minBet !== undefined) updateEnv('SPORTS_MIN_BET', String(body.minBet));
+    if (body.maxBet !== undefined) updateEnv('SPORTS_MAX_BET', String(body.maxBet));
+    if (body.maxPayoutPerTicket !== undefined) updateEnv('SPORTS_MAX_PAYOUT_TICKET', String(body.maxPayoutPerTicket));
+    if (body.maxPayoutPerDay !== undefined) updateEnv('SPORTS_MAX_PAYOUT_DAY', String(body.maxPayoutPerDay));
+    if (body.rateLimitPerMin !== undefined) updateEnv('SPORTS_RATE_LIMIT_PER_MIN', String(body.rateLimitPerMin));
+    if (body.rateLimitPerHour !== undefined) updateEnv('SPORTS_RATE_LIMIT_PER_HOUR', String(body.rateLimitPerHour));
+    if (body.liveBufferSeconds !== undefined) updateEnv('SPORTS_LIVE_BUFFER_SECONDS', String(body.liveBufferSeconds));
+    if (body.oddsChangeThreshold !== undefined) updateEnv('SPORTS_ODDS_CHANGE_THRESHOLD', String(body.oddsChangeThreshold));
+    if (body.aiValidationEnabled !== undefined) updateEnv('SPORTS_AI_VALIDATION', String(body.aiValidationEnabled));
+    if (body.discordWebhookUrl !== undefined) updateEnv('DISCORD_WEBHOOK_URL', body.discordWebhookUrl);
+
+    try { fs.writeFileSync(envPath, envContent); } catch (e) {}
+
+    return { success: true, message: 'Configuration updated' };
+  }
+
+  /**
+   * GET /admin/sports/validator/stats
+   * Get AI validator statistics and health
+   */
+  @Get('validator/stats')
+  async getValidatorStats() {
+    return this.betValidator.getValidationStats();
+  }
+
+  /**
+   * GET /admin/sports/validator/alerts
+   * Get recent validation alerts
+   */
+  @Get('validator/alerts')
+  async getValidatorAlerts(@Query('limit') limit?: string) {
+    return this.betValidator.getRecentAlerts(limit ? parseInt(limit) : 50);
+  }
+
+  /**
+   * POST /admin/sports/validator/resolve-alert
+   * Mark an alert as resolved
+   */
+  @Post('validator/resolve-alert')
+  async resolveAlert(@Body() body: { alertId: string }) {
+    if (!body.alertId) {
+      throw new BadRequestException('alertId is required');
+    }
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      await prisma.$executeRaw`UPDATE "BetAlert" SET resolved = true WHERE id = ${body.alertId}`;
+      await prisma.$disconnect();
+      return { success: true };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }

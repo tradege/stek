@@ -902,3 +902,16 @@ model SportBet {
   @@index([siteId, status])
   @@index([createdAt])
 }
+
+model BetAlert {
+  id        String   @id @default(uuid())
+  type      String   // RATE_LIMIT, WIN_LIMIT, DAILY_CAP, ARBITRAGE, SUSPICIOUS_PATTERN, AI_ANOMALY, ODDS_CHANGED
+  userId    String
+  eventId   String
+  selection String
+  odds      Float
+  stake     Float
+  details   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
