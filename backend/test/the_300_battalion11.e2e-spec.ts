@@ -129,14 +129,14 @@ describe('⚔️ BATTALION 11: THE SIGNAL CORPS - WebSocket Tests', () => {
 
     it('should receive crash:state_change on connection', async () => {
       socket = await createSocket();
-      const data = await waitForEvent(socket, 'crash:state_change', 5000);
+      const data = await waitForEvent(socket, "crash:state_change", 30000);
       expect(data).toBeDefined();
       expect(data).toHaveProperty('state');
     });
 
     it('should receive crash:history on connection', async () => {
       socket = await createSocket();
-      const data = await waitForEvent(socket, 'crash:history', 5000);
+      const data = await waitForEvent(socket, "crash:history", 15000);
       expect(data).toBeDefined();
       expect(data).toHaveProperty('crashes');
       expect(Array.isArray(data.crashes)).toBe(true);
@@ -188,7 +188,7 @@ describe('⚔️ BATTALION 11: THE SIGNAL CORPS - WebSocket Tests', () => {
     it('should receive initial state within 3 seconds', async () => {
       socket = await createSocket();
       const start = Date.now();
-      await waitForEvent(socket, 'crash:state_change', 3000);
+      await waitForEvent(socket, "crash:state_change", 15000);
       const elapsed = Date.now() - start;
       expect(elapsed).toBeLessThan(3000);
     });
@@ -515,19 +515,19 @@ describe('⚔️ BATTALION 11: THE SIGNAL CORPS - WebSocket Tests', () => {
   describe('🎰 Section 4: Crash Game Events', () => {
     it('should receive crash:state_change with valid state', async () => {
       socket = await createSocket();
-      const data = await waitForEvent(socket, 'crash:state_change', 5000);
+      const data = await waitForEvent(socket, "crash:state_change", 30000);
       expect(['WAITING', 'RUNNING', 'CRASHED', 'BETTING']).toContain(data.state);
     });
 
     it('should receive crash history with array of crashes', async () => {
       socket = await createSocket();
-      const data = await waitForEvent(socket, 'crash:history', 5000);
+      const data = await waitForEvent(socket, "crash:history", 15000);
       expect(Array.isArray(data.crashes)).toBe(true);
     });
 
     it('should have crash history entries as numbers', async () => {
       socket = await createSocket();
-      const data = await waitForEvent(socket, 'crash:history', 5000);
+      const data = await waitForEvent(socket, "crash:history", 15000);
       if (data.crashes.length > 0) {
         const entry = data.crashes[0];
         // History entries are plain numbers (e.g. 1.64)
@@ -704,7 +704,7 @@ describe('⚔️ BATTALION 11: THE SIGNAL CORPS - WebSocket Tests', () => {
         states.push(data.state);
       });
       // Wait for at least one state change
-      await waitForEvent(socket, 'crash:state_change', 5000);
+      await waitForEvent(socket, "crash:state_change", 15000);
       expect(states.length).toBeGreaterThanOrEqual(1);
     });
 

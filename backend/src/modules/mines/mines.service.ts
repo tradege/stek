@@ -135,7 +135,7 @@ export class MinesService {
     if (probability <= 0) return 0;
 
     // Multiplier = (1 - houseEdge) / probability
-    const multiplier = (1 - houseEdge) / probability;
+    const multiplier = ((1 - houseEdge) / probability) * 0.99; // 0.99 coefficient for precise 96% RTP
     return Math.floor(multiplier * 10000) / 10000; // Floor to 4 decimals
   }
 

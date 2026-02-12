@@ -1,27 +1,21 @@
 /**
  * 💰 CashierController - Comprehensive Unit Tests
  * 
- * This test suite provides exhaustive coverage of the Cashier controller:
- * - Wallet balance endpoints
- * - Deposit functionality (valid/invalid currency, amount validation)
- * - Withdrawal functionality (insufficient funds, validation)
- * - Transaction history
- * - Admin transaction management
- * - Deposit address generation
- * 
- * Target: 100% coverage of CashierController endpoints
+ * Aligned with current CashierController implementation:
+ * - All endpoints are tenant-scoped (siteId from req.tenant)
+ * - Validation is handled by the service layer, not the controller
+ * - Methods: getBalances, getTransactions, deposit, withdraw, getPending, getAllTransactions, processTransaction, directDeposit
  */
-
 import { Test, TestingModule } from '@nestjs/testing';
-import { CashierController, AdminCashierController } from './cashier.controller';
+import { CashierController } from './cashier.controller';
 import { CashierService } from './cashier.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { RolesGuard } from '../auth/roles.guard';
+import { BadRequestException } from '@nestjs/common';
 
 // ============================================
 // MOCK DATA
 // ============================================
-
 const mockBalances = [
   { currency: 'USDT', balance: '1000.00', address: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' },
   { currency: 'BTC', balance: '0.05', address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh' },
@@ -29,56 +23,17 @@ const mockBalances = [
 ];
 
 const mockTransactions = [
-  {
-    id: 'tx-1',
-    type: 'DEPOSIT',
-    status: 'CONFIRMED',
-    amount: '1000.00',
-    currency: 'USDT',
-    txHash: '0x123abc...',
-    createdAt: new Date('2024-01-15'),
-  },
-  {
-    id: 'tx-2',
-    type: 'WITHDRAWAL',
-    status: 'PENDING',
-    amount: '500.00',
-    currency: 'USDT',
-    walletAddress: 'TRC20...',
-    createdAt: new Date('2024-01-16'),
-  },
+  { id: 'tx-1', type: 'DEPOSIT', status: 'CONFIRMED', amount: '1000.00', currency: 'USDT', createdAt: new Date('2024-01-15') },
+  { id: 'tx-2', type: 'WITHDRAWAL', status: 'PENDING', amount: '500.00', currency: 'USDT', createdAt: new Date('2024-01-16') },
 ];
 
-const mockDepositResult = {
-  success: true,
-  transactionId: 'tx-new-1',
-  message: 'Deposit request submitted',
-  status: 'PENDING',
-};
-
-const mockWithdrawResult = {
-  success: true,
-  transactionId: 'tx-new-2',
-  message: 'Withdrawal request submitted',
-  status: 'PENDING',
-};
-
-const mockPendingTransactions = [
-  {
-    id: 'tx-pending-1',
-    type: 'DEPOSIT',
-    status: 'PENDING',
-    amount: '500.00',
-    currency: 'USDT',
-    user: { id: 'user-1', username: 'testuser', email: 'test@example.com' },
-    createdAt: new Date('2024-01-17'),
-  },
-];
+const mockDepositResult = { success: true, transactionId: 'tx-new-1', message: 'Deposit request submitted', status: 'PENDING' };
+const mockWithdrawResult = { success: true, transactionId: 'tx-new-2', message: 'Withdrawal request submitted', status: 'PENDING' };
+const mockPendingTransactions = [{ id: 'tx-pending-1', type: 'DEPOSIT', status: 'PENDING', amount: '500.00', currency: 'USDT' }];
 
 // ============================================
 // MOCK SERVICES
 // ============================================
-
 const mockCashierService = {
   getUserBalances: jest.fn().mockResolvedValue(mockBalances),
   getUserTransactions: jest.fn().mockResolvedValue(mockTransactions),
@@ -87,52 +42,50 @@ const mockCashierService = {
   getPendingTransactions: jest.fn().mockResolvedValue(mockPendingTransactions),
   getAllTransactions: jest.fn().mockResolvedValue(mockTransactions),
   processTransaction: jest.fn().mockResolvedValue({ success: true, message: 'Transaction approved' }),
-  simulateDeposit: jest.fn().mockResolvedValue({ success: true, message: 'Deposit simulated', newBalance: '1500.00' }),
+  adminDirectDeposit: jest.fn().mockResolvedValue({ success: true, message: 'Deposit completed', newBalance: '1500.00' }),
 };
 
 // ============================================
-// CASHIER CONTROLLER TESTS
+// HELPER: Create mock request
 // ============================================
+function mockReq(userId = 'user-1', role = 'USER', siteId = 'site-001') {
+  return { user: { id: userId, role, siteId }, tenant: { siteId } };
+}
 
+function adminReq(siteId = 'site-001') {
+  return { user: { id: 'admin-1', role: 'ADMIN', siteId }, tenant: { siteId } };
+}
+
+// ============================================
+// TESTS
+// ============================================
 describe('💰 CashierController - Comprehensive Unit Tests', () => {
   let controller: CashierController;
-  let cashierService: CashierService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CashierController],
-      providers: [
-        { provide: CashierService, useValue: mockCashierService },
-      ],
+      providers: [{ provide: CashierService, useValue: mockCashierService }],
     })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard).useValue({ canActivate: () => true })
       .compile();
-
     controller = module.get<CashierController>(CashierController);
-    cashierService = module.get<CashierService>(CashierService);
   });
 
-  // ============================================
-  // 💵 BALANCE ENDPOINTS
-  // ============================================
-
+  // ==================== BALANCES ====================
   describe('💵 Balance Endpoints', () => {
-    describe('GET /wallet/balance', () => {
-      it('Should return user balances', async () => {
-        const mockRequest = { user: { id: 'user-1' } };
-        const result = await controller.getBalance(mockRequest);
-
+    describe('GET /cashier/balances', () => {
+      it('Should return user balances with siteId', async () => {
+        const req = mockReq();
+        const result = await controller.getBalances(req);
         expect(result).toEqual(mockBalances);
-        expect(mockCashierService.getUserBalances).toHaveBeenCalledWith('user-1');
+        expect(mockCashierService.getUserBalances).toHaveBeenCalledWith('user-1', 'site-001');
       });
 
       it('Should return balances for all currencies', async () => {
-        const mockRequest = { user: { id: 'user-1' } };
-        const result = await controller.getBalance(mockRequest);
-
+        const result = await controller.getBalances(mockReq());
         expect(result.length).toBe(3);
         expect(result.map((b: any) => b.currency)).toContain('USDT');
         expect(result.map((b: any) => b.currency)).toContain('BTC');
@@ -140,582 +93,240 @@ describe('💰 CashierController - Comprehensive Unit Tests', () => {
       });
 
       it('Should include wallet addresses', async () => {
-        const mockRequest = { user: { id: 'user-1' } };
-        const result = await controller.getBalance(mockRequest);
-
-        result.forEach((balance: any) => {
-          expect(balance).toHaveProperty('address');
-          expect(balance.address.length).toBeGreaterThan(10);
+        const result = await controller.getBalances(mockReq());
+        result.forEach((b: any) => {
+          expect(b.address).toBeDefined();
+          expect(typeof b.address).toBe('string');
         });
+      });
+
+      it('Should pass null siteId when tenant is missing', async () => {
+        const req = { user: { id: 'user-1' } };
+        await controller.getBalances(req);
+        expect(mockCashierService.getUserBalances).toHaveBeenCalledWith('user-1', null);
       });
     });
   });
 
-  // ============================================
-  // 📜 TRANSACTION HISTORY
-  // ============================================
-
+  // ==================== TRANSACTIONS ====================
   describe('📜 Transaction History', () => {
-    describe('GET /wallet/transactions', () => {
-      it('Should return user transactions', async () => {
-        const mockRequest = { user: { id: 'user-1' } };
-        const result = await controller.getTransactions(mockRequest);
-
+    describe('GET /cashier/transactions', () => {
+      it('Should return user transactions with default limit', async () => {
+        const result = await controller.getTransactions(mockReq());
         expect(result).toEqual(mockTransactions);
-        expect(mockCashierService.getUserTransactions).toHaveBeenCalledWith('user-1');
+        expect(mockCashierService.getUserTransactions).toHaveBeenCalledWith('user-1', 50, 'site-001');
       });
 
-      it('Should return transactions with correct structure', async () => {
-        const mockRequest = { user: { id: 'user-1' } };
-        const result = await controller.getTransactions(mockRequest);
+      it('Should parse limit from query string', async () => {
+        await controller.getTransactions(mockReq(), '20');
+        expect(mockCashierService.getUserTransactions).toHaveBeenCalledWith('user-1', 20, 'site-001');
+      });
 
-        result.forEach((tx: any) => {
-          expect(tx).toHaveProperty('id');
-          expect(tx).toHaveProperty('type');
-          expect(tx).toHaveProperty('status');
-          expect(tx).toHaveProperty('amount');
-          expect(tx).toHaveProperty('currency');
-          expect(tx).toHaveProperty('createdAt');
-        });
+      it('Should use default limit 50 when not specified', async () => {
+        await controller.getTransactions(mockReq());
+        expect(mockCashierService.getUserTransactions).toHaveBeenCalledWith('user-1', 50, 'site-001');
       });
     });
   });
 
-  // ============================================
-  // 💳 DEPOSIT ENDPOINTS
-  // ============================================
-
+  // ==================== DEPOSIT ====================
   describe('💳 Deposit Endpoints', () => {
-    describe('POST /wallet/deposit', () => {
-      const mockRequest = { user: { id: 'user-1' } };
-
+    describe('POST /cashier/deposit', () => {
       it('Should create deposit request with valid data', async () => {
-        const dto = { amount: 100, currency: 'USDT', txHash: '0x1234567890abcdef' };
-        const result = await controller.deposit(mockRequest, dto);
-
+        const body = { amount: 100, currency: 'USDT', txHash: 'tx-hash-abc123def456' };
+        const result = await controller.deposit(mockReq(), body);
         expect(result).toEqual(mockDepositResult);
         expect(mockCashierService.createDepositRequest).toHaveBeenCalledWith(
-          'user-1',
-          100,
-          'USDT',
-          '0x1234567890abcdef'
+          'user-1', 100, 'USDT', 'tx-hash-abc123def456', 'site-001',
         );
       });
 
       it('Should accept all supported currencies', async () => {
-        const currencies = ['USDT', 'BTC', 'ETH', 'SOL'];
-        
-        for (const currency of currencies) {
-          const dto = { amount: 100, currency, txHash: '0x1234567890abcdef' };
-          await controller.deposit(mockRequest, dto);
-          
+        for (const currency of ['USDT', 'BTC', 'ETH', 'SOL', 'TRX']) {
+          jest.clearAllMocks();
+          await controller.deposit(mockReq(), { amount: 100, currency, txHash: `tx-${currency}` });
           expect(mockCashierService.createDepositRequest).toHaveBeenCalledWith(
-            'user-1',
-            100,
-            currency.toUpperCase(),
-            expect.any(String)
+            'user-1', 100, currency, `tx-${currency}`, 'site-001',
           );
         }
       });
 
-      it('Should convert currency to uppercase', async () => {
-        const dto = { amount: 100, currency: 'usdt', txHash: '0x1234567890abcdef' };
-        await controller.deposit(mockRequest, dto);
-
+      it('Should default currency to USDT when not provided', async () => {
+        const body = { amount: 100, currency: undefined as any, txHash: 'tx-123' };
+        await controller.deposit(mockReq(), body);
         expect(mockCashierService.createDepositRequest).toHaveBeenCalledWith(
-          'user-1',
-          100,
-          'USDT',
-          expect.any(String)
+          'user-1', 100, 'USDT', 'tx-123', 'site-001',
         );
       });
 
-      it('Should reject invalid amount (0)', async () => {
-        const dto = { amount: 0, currency: 'USDT', txHash: '0x1234567890abcdef' };
-
-        await expect(controller.deposit(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject negative amount', async () => {
-        const dto = { amount: -100, currency: 'USDT', txHash: '0x1234567890abcdef' };
-
-        await expect(controller.deposit(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject invalid transaction hash (too short)', async () => {
-        const dto = { amount: 100, currency: 'USDT', txHash: 'short' };
-
-        await expect(controller.deposit(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject unsupported currency', async () => {
-        const dto = { amount: 100, currency: 'DOGE', txHash: '0x1234567890abcdef' };
-
-        await expect(controller.deposit(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject missing currency', async () => {
-        const dto = { amount: 100, currency: '', txHash: '0x1234567890abcdef' };
-
-        await expect(controller.deposit(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-    });
-
-    describe('GET /wallet/deposit-address/:currency', () => {
-      it('Should return USDT deposit address', async () => {
-        const result = await controller.getDepositAddress('USDT');
-
-        expect(result).toHaveProperty('currency', 'USDT');
-        expect(result).toHaveProperty('address');
-        expect(result).toHaveProperty('network', 'TRC20');
-        expect(result).toHaveProperty('minDeposit', 10);
-      });
-
-      it('Should return BTC deposit address', async () => {
-        const result = await controller.getDepositAddress('BTC');
-
-        expect(result).toHaveProperty('currency', 'BTC');
-        expect(result).toHaveProperty('network', 'Bitcoin');
-        expect(result).toHaveProperty('minDeposit', 0.0001);
-      });
-
-      it('Should return ETH deposit address', async () => {
-        const result = await controller.getDepositAddress('ETH');
-
-        expect(result).toHaveProperty('currency', 'ETH');
-        expect(result).toHaveProperty('network', 'ERC20');
-        expect(result).toHaveProperty('minDeposit', 0.005);
-      });
-
-      it('Should return SOL deposit address', async () => {
-        const result = await controller.getDepositAddress('SOL');
-
-        expect(result).toHaveProperty('currency', 'SOL');
-        expect(result).toHaveProperty('network', 'Solana');
-        expect(result).toHaveProperty('minDeposit', 0.1);
-      });
-
-      it('Should handle lowercase currency', async () => {
-        const result = await controller.getDepositAddress('usdt');
-
-        expect(result.currency).toBe('USDT');
-      });
-
-      it('Should reject unsupported currency', async () => {
-        await expect(controller.getDepositAddress('DOGE'))
+      it('Should pass through service errors', async () => {
+        mockCashierService.createDepositRequest.mockRejectedValueOnce(
+          new BadRequestException('Invalid amount'),
+        );
+        await expect(controller.deposit(mockReq(), { amount: -1, currency: 'USDT', txHash: 'tx' }))
           .rejects.toThrow(BadRequestException);
       });
     });
   });
 
-  // ============================================
-  // 💸 WITHDRAWAL ENDPOINTS
-  // ============================================
-
+  // ==================== WITHDRAWAL ====================
   describe('💸 Withdrawal Endpoints', () => {
-    describe('POST /wallet/withdraw', () => {
-      const mockRequest = { user: { id: 'user-1' } };
-
+    describe('POST /cashier/withdraw', () => {
       it('Should create withdrawal request with valid data', async () => {
-        const dto = { amount: 100, currency: 'USDT', walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' };
-        const result = await controller.withdraw(mockRequest, dto);
-
+        const body = { amount: 500, currency: 'USDT', walletAddress: 'TRC20_wallet_address_here' };
+        const result = await controller.withdraw(mockReq(), body);
         expect(result).toEqual(mockWithdrawResult);
         expect(mockCashierService.createWithdrawRequest).toHaveBeenCalledWith(
-          'user-1',
-          100,
-          'USDT',
-          'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7'
+          'user-1', 500, 'USDT', 'TRC20_wallet_address_here', 'site-001',
         );
       });
 
       it('Should accept all supported currencies', async () => {
-        const currencies = ['USDT', 'BTC', 'ETH', 'SOL'];
-        
-        for (const currency of currencies) {
-          const dto = { amount: 100, currency, walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' };
-          await controller.withdraw(mockRequest, dto);
-          
+        for (const currency of ['USDT', 'BTC', 'ETH']) {
+          jest.clearAllMocks();
+          await controller.withdraw(mockReq(), { amount: 100, currency, walletAddress: `addr-${currency}` });
           expect(mockCashierService.createWithdrawRequest).toHaveBeenCalledWith(
-            'user-1',
-            100,
-            currency.toUpperCase(),
-            expect.any(String)
+            'user-1', 100, currency, `addr-${currency}`, 'site-001',
           );
         }
       });
 
-      it('Should reject invalid amount (0)', async () => {
-        const dto = { amount: 0, currency: 'USDT', walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' };
-
-        await expect(controller.withdraw(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
+      it('Should default currency to USDT when not provided', async () => {
+        const body = { amount: 100, currency: undefined as any, walletAddress: 'addr-123' };
+        await controller.withdraw(mockReq(), body);
+        expect(mockCashierService.createWithdrawRequest).toHaveBeenCalledWith(
+          'user-1', 100, 'USDT', 'addr-123', 'site-001',
+        );
       });
 
-      it('Should reject negative amount', async () => {
-        const dto = { amount: -100, currency: 'USDT', walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' };
-
-        await expect(controller.withdraw(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject invalid wallet address (too short)', async () => {
-        const dto = { amount: 100, currency: 'USDT', walletAddress: 'short' };
-
-        await expect(controller.withdraw(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject unsupported currency', async () => {
-        const dto = { amount: 100, currency: 'DOGE', walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' };
-
-        await expect(controller.withdraw(mockRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should handle insufficient funds error', async () => {
+      it('Should pass through service errors (insufficient balance)', async () => {
         mockCashierService.createWithdrawRequest.mockRejectedValueOnce(
-          new BadRequestException('Insufficient funds')
+          new BadRequestException('Insufficient balance'),
         );
-
-        const dto = { amount: 1000000, currency: 'USDT', walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7' };
-
-        await expect(controller.withdraw(mockRequest, dto))
+        await expect(controller.withdraw(mockReq(), { amount: 999999, currency: 'USDT', walletAddress: 'addr' }))
           .rejects.toThrow(BadRequestException);
       });
     });
   });
-});
 
-// ============================================
-// ADMIN CASHIER CONTROLLER TESTS
-// ============================================
-
-describe('🔐 AdminCashierController - Comprehensive Unit Tests', () => {
-  let controller: AdminCashierController;
-  let cashierService: CashierService;
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
-
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [AdminCashierController],
-      providers: [
-        { provide: CashierService, useValue: mockCashierService },
-      ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
-
-    controller = module.get<AdminCashierController>(AdminCashierController);
-    cashierService = module.get<CashierService>(CashierService);
-  });
-
-  // ============================================
-  // 📋 PENDING TRANSACTIONS
-  // ============================================
-
-  describe('📋 Pending Transactions', () => {
-    describe('GET /admin/transactions/pending', () => {
-      it('Should return pending transactions for admin', async () => {
-        const mockRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
-        const result = await controller.getPendingTransactions(mockRequest);
-
+  // ==================== ADMIN: PENDING ====================
+  describe('🔐 Admin Endpoints', () => {
+    describe('GET /cashier/admin/pending', () => {
+      it('Should return pending transactions for ADMIN (null siteId = see all)', async () => {
+        const req = adminReq();
+        const result = await controller.getPending(req);
         expect(result).toEqual(mockPendingTransactions);
-        expect(mockCashierService.getPendingTransactions).toHaveBeenCalledTimes(1);
+        expect(mockCashierService.getPendingTransactions).toHaveBeenCalledWith(null);
       });
 
-      it('Should reject non-admin users', async () => {
-        const mockRequest = { user: { id: 'user-1', role: 'USER' } };
-
-        await expect(controller.getPendingTransactions(mockRequest))
-          .rejects.toThrow(ForbiddenException);
-      });
-    });
-  });
-
-  // ============================================
-  // 📊 ALL TRANSACTIONS
-  // ============================================
-
-  describe('📊 All Transactions', () => {
-    describe('GET /admin/transactions', () => {
-      it('Should return all transactions for admin', async () => {
-        const mockRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
-        const result = await controller.getAllTransactions(mockRequest);
-
-        expect(result).toEqual(mockTransactions);
-        expect(mockCashierService.getAllTransactions).toHaveBeenCalledTimes(1);
-      });
-
-      it('Should reject non-admin users', async () => {
-        const mockRequest = { user: { id: 'user-1', role: 'USER' } };
-
-        await expect(controller.getAllTransactions(mockRequest))
-          .rejects.toThrow(ForbiddenException);
+      it('Should scope to siteId for SUPER_MASTER', async () => {
+        const req = { user: { id: 'sm-1', role: 'SUPER_MASTER' }, tenant: { siteId: 'brand-x' } };
+        await controller.getPending(req);
+        expect(mockCashierService.getPendingTransactions).toHaveBeenCalledWith('brand-x');
       });
     });
-  });
 
-  // ============================================
-  // ✅ TRANSACTION APPROVAL
-  // ============================================
+    describe('GET /cashier/admin/transactions', () => {
+      it('Should return all transactions with default limit', async () => {
+        await controller.getAllTransactions(adminReq());
+        expect(mockCashierService.getAllTransactions).toHaveBeenCalledWith(100, null);
+      });
 
-  describe('✅ Transaction Approval', () => {
-    describe('POST /admin/transactions/approve', () => {
-      const mockAdminRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
+      it('Should parse custom limit', async () => {
+        await controller.getAllTransactions(adminReq(), '25');
+        expect(mockCashierService.getAllTransactions).toHaveBeenCalledWith(25, null);
+      });
+    });
 
-      it('Should approve transaction', async () => {
-        const dto = { transactionId: 'tx-1', action: 'APPROVE' as const };
-        const result = await controller.approveTransaction(mockAdminRequest, dto);
+    describe('POST /cashier/admin/process', () => {
+      it('Should process (approve) a transaction', async () => {
+        const body = { transactionId: 'tx-1', action: 'APPROVE' as const };
+        await controller.processTransaction(adminReq(), body);
+        expect(mockCashierService.processTransaction).toHaveBeenCalledWith('tx-1', 'APPROVE', 'admin-1', undefined);
+      });
 
-        expect(result).toEqual({ success: true, message: 'Transaction approved' });
-        expect(mockCashierService.processTransaction).toHaveBeenCalledWith(
-          'tx-1',
-          'APPROVE',
-          'admin-1',
-          undefined
+      it('Should process (reject) a transaction with note', async () => {
+        const body = { transactionId: 'tx-2', action: 'REJECT' as const, note: 'Suspicious activity' };
+        await controller.processTransaction(adminReq(), body);
+        expect(mockCashierService.processTransaction).toHaveBeenCalledWith('tx-2', 'REJECT', 'admin-1', 'Suspicious activity');
+      });
+
+      it('Should throw BadRequestException when transactionId is missing', async () => {
+        const body = { transactionId: '', action: 'APPROVE' as const };
+        await expect(controller.processTransaction(adminReq(), body)).rejects.toThrow(BadRequestException);
+      });
+
+      it('Should throw BadRequestException when action is missing', async () => {
+        const body = { transactionId: 'tx-1', action: '' as any };
+        await expect(controller.processTransaction(adminReq(), body)).rejects.toThrow(BadRequestException);
+      });
+    });
+
+    describe('POST /cashier/admin/direct-deposit', () => {
+      it('Should execute admin direct deposit', async () => {
+        const body = { userId: 'user-target', amount: 1000, currency: 'USDT' };
+        await controller.directDeposit(adminReq(), body);
+        expect(mockCashierService.adminDirectDeposit).toHaveBeenCalledWith(
+          'user-target', 1000, 'USDT', 'admin-1', undefined,
         );
       });
 
-      it('Should reject transaction', async () => {
-        const dto = { transactionId: 'tx-1', action: 'REJECT' as const, adminNote: 'Invalid txHash' };
-        await controller.approveTransaction(mockAdminRequest, dto);
-
-        expect(mockCashierService.processTransaction).toHaveBeenCalledWith(
-          'tx-1',
-          'REJECT',
-          'admin-1',
-          'Invalid txHash'
+      it('Should pass note to service', async () => {
+        const body = { userId: 'user-target', amount: 500, currency: 'BTC', note: 'Bonus reward' };
+        await controller.directDeposit(adminReq(), body);
+        expect(mockCashierService.adminDirectDeposit).toHaveBeenCalledWith(
+          'user-target', 500, 'BTC', 'admin-1', 'Bonus reward',
         );
       });
 
-      it('Should reject non-admin users', async () => {
-        const mockRequest = { user: { id: 'user-1', role: 'USER' } };
-        const dto = { transactionId: 'tx-1', action: 'APPROVE' as const };
-
-        await expect(controller.approveTransaction(mockRequest, dto))
-          .rejects.toThrow(ForbiddenException);
-      });
-
-      it('Should reject missing transaction ID', async () => {
-        const dto = { transactionId: '', action: 'APPROVE' as const };
-
-        await expect(controller.approveTransaction(mockAdminRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject invalid action', async () => {
-        const dto = { transactionId: 'tx-1', action: 'INVALID' as any };
-
-        await expect(controller.approveTransaction(mockAdminRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-    });
-  });
-
-  // ============================================
-  // 🎭 SIMULATE DEPOSIT
-  // ============================================
-
-  describe('🎭 Simulate Deposit', () => {
-    describe('POST /admin/deposit/simulate', () => {
-      const mockAdminRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
-
-      it('Should simulate deposit by user ID', async () => {
-        const dto = { userId: 'user-1', amount: 1000, currency: 'USDT' };
-        const result = await controller.simulateDeposit(mockAdminRequest, dto);
-
-        expect(result).toEqual({ success: true, message: 'Deposit simulated', newBalance: '1500.00' });
-        expect(mockCashierService.simulateDeposit).toHaveBeenCalledWith(
-          'user-1',
-          null,
-          1000,
-          'USDT',
-          'admin-1'
+      it('Should default currency to USDT', async () => {
+        const body = { userId: 'user-target', amount: 100, currency: undefined as any };
+        await controller.directDeposit(adminReq(), body);
+        expect(mockCashierService.adminDirectDeposit).toHaveBeenCalledWith(
+          'user-target', 100, 'USDT', 'admin-1', undefined,
         );
       });
-
-      it('Should simulate deposit by user email', async () => {
-        const dto = { userEmail: 'test@example.com', amount: 1000, currency: 'USDT' };
-        await controller.simulateDeposit(mockAdminRequest, dto);
-
-        expect(mockCashierService.simulateDeposit).toHaveBeenCalledWith(
-          null,
-          'test@example.com',
-          1000,
-          'USDT',
-          'admin-1'
-        );
-      });
-
-      it('Should accept all supported currencies', async () => {
-        const currencies = ['USDT', 'BTC', 'ETH', 'SOL'];
-        
-        for (const currency of currencies) {
-          const dto = { userId: 'user-1', amount: 100, currency };
-          await controller.simulateDeposit(mockAdminRequest, dto);
-          
-          expect(mockCashierService.simulateDeposit).toHaveBeenCalledWith(
-            'user-1',
-            null,
-            100,
-            currency.toUpperCase(),
-            'admin-1'
-          );
-        }
-      });
-
-      it('Should reject non-admin users', async () => {
-        const mockRequest = { user: { id: 'user-1', role: 'USER' } };
-        const dto = { userId: 'user-1', amount: 1000, currency: 'USDT' };
-
-        await expect(controller.simulateDeposit(mockRequest, dto))
-          .rejects.toThrow(ForbiddenException);
-      });
-
-      it('Should reject invalid amount', async () => {
-        const dto = { userId: 'user-1', amount: 0, currency: 'USDT' };
-
-        await expect(controller.simulateDeposit(mockAdminRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject unsupported currency', async () => {
-        const dto = { userId: 'user-1', amount: 1000, currency: 'DOGE' };
-
-        await expect(controller.simulateDeposit(mockAdminRequest, dto))
-          .rejects.toThrow(BadRequestException);
-      });
-
-      it('Should reject missing user identifier', async () => {
-        const dto = { amount: 1000, currency: 'USDT' };
-
-        await expect(controller.simulateDeposit(mockAdminRequest, dto as any))
-          .rejects.toThrow(BadRequestException);
-      });
     });
   });
 
-  // ============================================
-  // 🔒 AUTHORIZATION TESTS
-  // ============================================
-
-  describe('🔒 Authorization', () => {
-    it('Controller should be defined', () => {
-      expect(controller).toBeDefined();
+  // ==================== TENANT ISOLATION ====================
+  describe('🏢 Tenant Isolation', () => {
+    it('Should pass siteId from tenant to all service calls', async () => {
+      const req = mockReq('user-1', 'USER', 'brand-alpha');
+      await controller.getBalances(req);
+      expect(mockCashierService.getUserBalances).toHaveBeenCalledWith('user-1', 'brand-alpha');
     });
 
-    it('Should check admin role for all endpoints', async () => {
-      const mockUserRequest = { user: { id: 'user-1', role: 'USER' } };
+    it('Should pass different siteId for different tenants', async () => {
+      await controller.getBalances(mockReq('user-1', 'USER', 'brand-a'));
+      expect(mockCashierService.getUserBalances).toHaveBeenCalledWith('user-1', 'brand-a');
 
-      await expect(controller.getPendingTransactions(mockUserRequest))
-        .rejects.toThrow(ForbiddenException);
-      
-      await expect(controller.getAllTransactions(mockUserRequest))
-        .rejects.toThrow(ForbiddenException);
-      
-      await expect(controller.approveTransaction(mockUserRequest, { transactionId: 'tx-1', action: 'APPROVE' }))
-        .rejects.toThrow(ForbiddenException);
-      
-      await expect(controller.simulateDeposit(mockUserRequest, { userId: 'user-1', amount: 100, currency: 'USDT' }))
-        .rejects.toThrow(ForbiddenException);
+      jest.clearAllMocks();
+      await controller.getBalances(mockReq('user-2', 'USER', 'brand-b'));
+      expect(mockCashierService.getUserBalances).toHaveBeenCalledWith('user-2', 'brand-b');
     });
   });
-});
 
-// ============================================
-// 🧪 INTEGRATION-STYLE TESTS
-// ============================================
+  // ==================== INTEGRATION FLOW ====================
+  describe('🔄 Full Flow Integration', () => {
+    it('Should complete deposit -> check balance -> withdraw flow', async () => {
+      const userReq = mockReq();
 
-describe('🧪 Wallet Integration-Style Tests', () => {
-  let cashierController: CashierController;
-  let adminController: AdminCashierController;
+      // 1. Deposit
+      const depositResult = await controller.deposit(userReq, { amount: 100, currency: 'USDT', txHash: 'tx-flow-1' });
+      expect(depositResult.success).toBe(true);
 
-  beforeEach(async () => {
-    jest.clearAllMocks();
+      // 2. Check balance
+      const balances = await controller.getBalances(userReq);
+      expect(balances.length).toBeGreaterThan(0);
 
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [CashierController, AdminCashierController],
-      providers: [
-        { provide: CashierService, useValue: mockCashierService },
-      ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+      // 3. Withdraw
+      const withdrawResult = await controller.withdraw(userReq, { amount: 50, currency: 'USDT', walletAddress: 'addr-flow-1' });
+      expect(withdrawResult.success).toBe(true);
 
-    cashierController = module.get<CashierController>(CashierController);
-    adminController = module.get<AdminCashierController>(AdminCashierController);
-  });
-
-  it('Should handle complete deposit flow', async () => {
-    const userRequest = { user: { id: 'user-1' } };
-    const adminRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
-
-    // 1. Get deposit address
-    const address = await cashierController.getDepositAddress('USDT');
-    expect(address.address).toBeDefined();
-
-    // 2. Submit deposit
-    const depositResult = await cashierController.deposit(userRequest, {
-      amount: 100,
-      currency: 'USDT',
-      txHash: '0x1234567890abcdef',
+      // 4. Check transactions
+      const txns = await controller.getTransactions(userReq);
+      expect(txns).toBeDefined();
     });
-    expect(depositResult.success).toBe(true);
-
-    // 3. Admin approves
-    const approveResult = await adminController.approveTransaction(adminRequest, {
-      transactionId: depositResult.transactionId,
-      action: 'APPROVE',
-    });
-    expect(approveResult.success).toBe(true);
-  });
-
-  it('Should handle complete withdrawal flow', async () => {
-    const userRequest = { user: { id: 'user-1' } };
-    const adminRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
-
-    // 1. Check balance
-    const balances = await cashierController.getBalance(userRequest);
-    expect(balances.length).toBeGreaterThan(0);
-
-    // 2. Submit withdrawal
-    const withdrawResult = await cashierController.withdraw(userRequest, {
-      amount: 100,
-      currency: 'USDT',
-      walletAddress: 'TYDzsYUEpvnYmQk4zGP9sWWcTEd2MiAtW7',
-    });
-    expect(withdrawResult.success).toBe(true);
-
-    // 3. Admin approves
-    const approveResult = await adminController.approveTransaction(adminRequest, {
-      transactionId: withdrawResult.transactionId,
-      action: 'APPROVE',
-    });
-    expect(approveResult.success).toBe(true);
-  });
-
-  it('Should handle admin simulate deposit flow', async () => {
-    const userRequest = { user: { id: 'user-1' } };
-    const adminRequest = { user: { id: 'admin-1', role: 'ADMIN' } };
-
-    // 1. Get initial balance
-    const initialBalances = await cashierController.getBalance(userRequest);
-
-    // 2. Admin simulates deposit
-    const simulateResult = await adminController.simulateDeposit(adminRequest, {
-      userId: 'user-1',
-      amount: 500,
-      currency: 'USDT',
-    });
-    expect(simulateResult.success).toBe(true);
   });
 });

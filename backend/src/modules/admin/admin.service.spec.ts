@@ -196,7 +196,7 @@ describe('AdminService', () => {
 
     it('2.2 - Should respect limit parameter', async () => {
       jest.spyOn(prisma.user, 'findMany').mockResolvedValue([]);
-      await service.getAllUsers(50);
+      await service.getAllUsers(undefined, 50);
       expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 50 }));
     });
   });

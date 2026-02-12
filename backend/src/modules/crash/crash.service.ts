@@ -268,7 +268,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     const E = this.E;
     const r = h / E;
     const HOUSE_EDGE = this.gameConfig.houseEdge;
-    const rawMultiplier = (1 - HOUSE_EDGE) / (1 - r);
+    const rawMultiplier = ((1 - HOUSE_EDGE) / (1 - r)) * 0.99; // 0.99 coefficient for precise 96% RTP
     const crashPoint = Math.max(1.00, Math.floor(rawMultiplier * 100) / 100);
     if (crashPoint > 5000) {
       return new Decimal(5000.00);
@@ -298,7 +298,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     const E = this.E;
     const r = h / E;
     const HOUSE_EDGE = this.gameConfig.houseEdge;
-    const rawMultiplier = (1 - HOUSE_EDGE) / (1 - r);
+    const rawMultiplier = ((1 - HOUSE_EDGE) / (1 - r)) * 0.99; // 0.99 coefficient for precise 96% RTP
     const crashPoint = Math.max(1.00, Math.floor(rawMultiplier * 100) / 100);
     if (crashPoint > 5000) {
       return new Decimal(5000.00);

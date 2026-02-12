@@ -58,7 +58,7 @@ describe('PlinkoController - Security & API Tests', () => {
 
       await controller.play(mockRequest, validDto as any);
 
-      expect(service.play).toHaveBeenCalledWith('user-123', validDto);
+      expect(service.play).toHaveBeenCalledWith('user-123', validDto, 'default-site-001');
     });
 
     it('1.2 Should return the full result from service', async () => {
@@ -100,7 +100,7 @@ describe('PlinkoController - Security & API Tests', () => {
     });
 
     it('1.5 Should extract userId from request.user.id', async () => {
-      const customRequest = { user: { id: 'custom-user-xyz' } };
+      const customRequest = { user: { id: 'custom-user-xyz' }, tenant: {} };
       mockPlinkoService.play.mockResolvedValue({
         path: [],
         bucketIndex: 0,
@@ -114,7 +114,7 @@ describe('PlinkoController - Security & API Tests', () => {
 
       await controller.play(customRequest, validDto as any);
 
-      expect(service.play).toHaveBeenCalledWith('custom-user-xyz', validDto);
+      expect(service.play).toHaveBeenCalledWith('custom-user-xyz', validDto, 'default-site-001');
     });
   });
 

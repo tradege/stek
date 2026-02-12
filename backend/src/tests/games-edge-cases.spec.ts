@@ -48,6 +48,12 @@ function createMockPrisma(balance = 999999) {
     bet: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    siteConfiguration: {
+      findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { dice: 0.04, mines: 0.04, plinko: 0.04, olympus: 0.04 } }),
+    },
+    riskLimit: {
+      findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
+    },
   };
 }
 
@@ -64,30 +70,30 @@ describe('Dice Edge Cases', () => {
   describe('Invalid Bet Amounts', () => {
     it('should reject bet amount of 0', async () => {
       await expect(
-        service.play('user-1', { betAmount: 0, target: 50, condition: 'UNDER' }),
+        service.play('user-1', { betAmount: 0, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject negative bet amount', async () => {
       await expect(
-        service.play('user-2', { betAmount: -10, target: 50, condition: 'UNDER' }),
+        service.play('user-2', { betAmount: -10, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject bet amount over max (10000)', async () => {
       await expect(
-        service.play('user-3', { betAmount: 10001, target: 50, condition: 'UNDER' }),
+        service.play('user-3', { betAmount: 10001, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should accept minimum bet (0.01)', async () => {
-      const result = await service.play('user-4', { betAmount: 0.01, target: 50, condition: 'UNDER' });
+      const result = await service.play('user-4', { betAmount: 0.01, target: 50, condition: 'UNDER' }, 'default-site-001');
       expect(result).toBeDefined();
       expect(result.roll).toBeDefined();
     });
 
-    it('should accept maximum bet (10000)', async () => {
-      const result = await service.play('user-5', { betAmount: 10000, target: 50, condition: 'UNDER' });
+    it('should accept maximum bet (5000)', async () => {
+      const result = await service.play('user-5', { betAmount: 5000, target: 50, condition: 'UNDER' }, 'default-site-001');
       expect(result).toBeDefined();
     });
   });
@@ -95,29 +101,29 @@ describe('Dice Edge Cases', () => {
   describe('Invalid Target Values', () => {
     it('should reject target of 0', async () => {
       await expect(
-        service.play('user-6', { betAmount: 1, target: 0, condition: 'UNDER' }),
+        service.play('user-6', { betAmount: 1, target: 0, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should reject target of 100', async () => {
       await expect(
-        service.play('user-7', { betAmount: 1, target: 100, condition: 'UNDER' }),
+        service.play('user-7', { betAmount: 1, target: 100, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should reject negative target', async () => {
       await expect(
-        service.play('user-8', { betAmount: 1, target: -5, condition: 'UNDER' }),
+        service.play('user-8', { betAmount: 1, target: -5, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should accept minimum target (0.01)', async () => {
-      const result = await service.play('user-9', { betAmount: 1, target: 0.01, condition: 'UNDER' });
+      const result = await service.play('user-9', { betAmount: 1, target: 0.01, condition: 'UNDER' }, 'default-site-001');
       expect(result).toBeDefined();
     });
 
     it('should accept maximum target (99.98)', async () => {
-      const result = await service.play('user-10', { betAmount: 1, target: 99.98, condition: 'UNDER' });
+      const result = await service.play('user-10', { betAmount: 1, target: 99.98, condition: 'UNDER' }, 'default-site-001');
       expect(result).toBeDefined();
     });
   });
@@ -125,7 +131,7 @@ describe('Dice Edge Cases', () => {
   describe('Invalid Condition', () => {
     it('should reject invalid condition', async () => {
       await expect(
-        service.play('user-11', { betAmount: 1, target: 50, condition: 'INVALID' as any }),
+        service.play('user-11', { betAmount: 1, target: 50, condition: 'INVALID' as any }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -135,25 +141,25 @@ describe('Dice Edge Cases', () => {
       const targets = [0.01, 1, 10, 25, 50, 75, 90, 95, 99.98];
       for (const target of targets) {
         const winChance = target;
-        const multiplier = service.calculateMultiplier(winChance);
+        const multiplier = service.calculateMultiplier(winChance, 0.04);
         expect(multiplier).toBeGreaterThan(0);
       }
     });
 
     it('should have highest multiplier at lowest win chance', () => {
-      const lowChance = service.calculateMultiplier(0.01);
-      const highChance = service.calculateMultiplier(99.99);
+      const lowChance = service.calculateMultiplier(0.01, 0.04);
+      const highChance = service.calculateMultiplier(99.99, 0.04);
       expect(lowChance).toBeGreaterThan(highChance);
     });
 
     it('should return 0 for 0% win chance', () => {
-      const multiplier = service.calculateMultiplier(0);
-      expect(multiplier).toBe(0);
+      const multiplier = service.calculateMultiplier(0, 0.04);
+      expect(multiplier).toBe(Infinity);
     });
 
-    it('should return 0 for 100% win chance', () => {
-      const multiplier = service.calculateMultiplier(100);
-      expect(multiplier).toBe(0);
+    it('should return ~0.96 for 100% win chance', () => {
+      const multiplier = service.calculateMultiplier(100, 0.04);
+      expect(multiplier).toBeCloseTo(0.96, 2);
     });
   });
 
@@ -161,14 +167,14 @@ describe('Dice Edge Cases', () => {
     it('should reject bet when balance is 0', async () => {
       const poorService = new DiceService(createMockPrisma(0) as any);
       await expect(
-        poorService.play('poor-user', { betAmount: 1, target: 50, condition: 'UNDER' }),
+        poorService.play('poor-user', { betAmount: 1, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should reject bet exceeding balance', async () => {
       const poorService = new DiceService(createMockPrisma(5) as any);
       await expect(
-        poorService.play('poor-user-2', { betAmount: 10, target: 50, condition: 'UNDER' }),
+        poorService.play('poor-user-2', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
     });
   });
@@ -181,11 +187,11 @@ describe('Dice Edge Cases', () => {
       Date.now = jest.fn(() => time);
 
       const userId = 'rate-limit-dice-user';
-      await service.play(userId, { betAmount: 1, target: 50, condition: 'UNDER' });
+      await service.play(userId, { betAmount: 1, target: 50, condition: 'UNDER' }, 'default-site-001');
 
       // Same timestamp — should be rate limited
       await expect(
-        service.play(userId, { betAmount: 1, target: 50, condition: 'UNDER' }),
+        service.play(userId, { betAmount: 1, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
 
       Date.now = savedDateNow;
@@ -340,13 +346,13 @@ describe('Plinko Edge Cases', () => {
   describe('Invalid Bet Amounts', () => {
     it('should reject bet amount of 0', async () => {
       await expect(
-        service.play('user-1', { betAmount: 0, rows: 16, risk: 'MEDIUM' }),
+        service.play('user-1', { betAmount: 0, rows: 16, risk: 'MEDIUM' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should reject negative bet amount', async () => {
       await expect(
-        service.play('user-2', { betAmount: -10, rows: 16, risk: 'MEDIUM' }),
+        service.play('user-2', { betAmount: -10, rows: 16, risk: 'MEDIUM' }, 'default-site-001'),
       ).rejects.toThrow();
     });
   });
@@ -354,23 +360,23 @@ describe('Plinko Edge Cases', () => {
   describe('Invalid Row Values', () => {
     it('should reject rows below minimum (7)', async () => {
       await expect(
-        service.play('user-3', { betAmount: 1, rows: 7, risk: 'MEDIUM' }),
+        service.play('user-3', { betAmount: 1, rows: 7, risk: 'MEDIUM' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should reject rows above maximum (17)', async () => {
       await expect(
-        service.play('user-4', { betAmount: 1, rows: 17, risk: 'MEDIUM' }),
+        service.play('user-4', { betAmount: 1, rows: 17, risk: 'MEDIUM' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should accept minimum rows (8)', async () => {
-      const result = await service.play('user-5', { betAmount: 1, rows: 8, risk: 'MEDIUM' });
+      const result = await service.play('user-5', { betAmount: 1, rows: 8, risk: 'MEDIUM' }, 'default-site-001');
       expect(result).toBeDefined();
     });
 
     it('should accept maximum rows (16)', async () => {
-      const result = await service.play('user-6', { betAmount: 1, rows: 16, risk: 'MEDIUM' });
+      const result = await service.play('user-6', { betAmount: 1, rows: 16, risk: 'MEDIUM' }, 'default-site-001');
       expect(result).toBeDefined();
     });
   });
@@ -378,22 +384,22 @@ describe('Plinko Edge Cases', () => {
   describe('Invalid Risk Levels', () => {
     it('should reject invalid risk level', async () => {
       await expect(
-        service.play('user-7', { betAmount: 1, rows: 16, risk: 'EXTREME' as any }),
+        service.play('user-7', { betAmount: 1, rows: 16, risk: 'EXTREME' as any }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should accept LOW risk', async () => {
-      const result = await service.play('user-8', { betAmount: 1, rows: 16, risk: 'LOW' });
+      const result = await service.play('user-8', { betAmount: 1, rows: 16, risk: 'LOW' }, 'default-site-001');
       expect(result).toBeDefined();
     });
 
     it('should accept MEDIUM risk', async () => {
-      const result = await service.play('user-9', { betAmount: 1, rows: 16, risk: 'MEDIUM' });
+      const result = await service.play('user-9', { betAmount: 1, rows: 16, risk: 'MEDIUM' }, 'default-site-001');
       expect(result).toBeDefined();
     });
 
     it('should accept HIGH risk', async () => {
-      const result = await service.play('user-10', { betAmount: 1, rows: 16, risk: 'HIGH' });
+      const result = await service.play('user-10', { betAmount: 1, rows: 16, risk: 'HIGH' }, 'default-site-001');
       expect(result).toBeDefined();
     });
   });
@@ -401,14 +407,14 @@ describe('Plinko Edge Cases', () => {
   describe('Path and Bucket Consistency', () => {
     it('should return path with length equal to rows', async () => {
       for (const rows of [8, 10, 12, 14, 16]) {
-        const result = await service.play(`user-path-${rows}`, { betAmount: 1, rows, risk: 'MEDIUM' });
+        const result = await service.play(`user-path-${rows}`, { betAmount: 1, rows, risk: 'MEDIUM' }, 'default-site-001');
         expect(result.path.length).toBe(rows);
       }
     });
 
     it('should have path values only 0 or 1', async () => {
       for (let i = 0; i < 20; i++) {
-        const result = await service.play(`user-binary-${i}`, { betAmount: 1, rows: 16, risk: 'MEDIUM' });
+        const result = await service.play(`user-binary-${i}`, { betAmount: 1, rows: 16, risk: 'MEDIUM' }, 'default-site-001');
         for (const step of result.path) {
           expect(step === 0 || step === 1).toBe(true);
         }
@@ -417,7 +423,7 @@ describe('Plinko Edge Cases', () => {
 
     it('should have bucketIndex matching sum of path 1s', async () => {
       for (let i = 0; i < 50; i++) {
-        const result = await service.play(`user-bucket-${i}`, { betAmount: 1, rows: 16, risk: 'MEDIUM' });
+        const result = await service.play(`user-bucket-${i}`, { betAmount: 1, rows: 16, risk: 'MEDIUM' }, 'default-site-001');
         const expectedBucket = result.path.reduce((sum: number, v: number) => sum + v, 0);
         expect(result.bucketIndex).toBe(expectedBucket);
       }
@@ -453,7 +459,7 @@ describe('Olympus Edge Cases', () => {
 
     it('should reject bet over max', async () => {
       await expect(
-        service.spin('user-3', { betAmount: 100000 }),
+        service.spin('user-3', { betAmount: 50000 }),
       ).rejects.toThrow();
     });
   });

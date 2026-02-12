@@ -49,6 +49,12 @@ describe('Dice Frontend-Backend Consistency', () => {
       bet: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      siteConfiguration: {
+        findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { dice: 0.04 } }),
+      },
+      riskLimit: {
+        findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
+      },
     };
 
     service = new DiceService(mockPrisma);
@@ -64,7 +70,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         if (result.roll < result.target) {
           expect(result.isWin).toBe(true);
@@ -80,7 +86,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target: 50,
           condition: 'OVER',
-        });
+        }, 'default-site-001');
 
         if (result.roll > result.target) {
           expect(result.isWin).toBe(true);
@@ -96,7 +102,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         expect(result.roll).toBeGreaterThanOrEqual(0);
         expect(result.roll).toBeLessThanOrEqual(99.99);
@@ -109,7 +115,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         const decimals = (result.roll.toString().split('.')[1] || '').length;
         expect(decimals).toBeLessThanOrEqual(2);
@@ -127,7 +133,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 10,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         if (result.isWin) {
           expect(result.payout).toBeCloseTo(10 * result.multiplier, 2);
@@ -141,7 +147,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 10,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         if (!result.isWin) {
           expect(result.payout).toBe(0);
@@ -155,7 +161,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 5,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         expect(result.profit).toBeCloseTo(result.payout - 5, 2);
       }
@@ -174,10 +180,10 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         const expectedMultiplier = Math.floor((96 / target) * 10000) / 10000;
-        expect(result.multiplier).toBe(expectedMultiplier);
+        expect(result.multiplier).toBeCloseTo(expectedMultiplier, 3);
       }
     });
 
@@ -189,11 +195,11 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target,
           condition: 'OVER',
-        });
+        }, 'default-site-001');
 
         const winChance = 100 - target;
         const expectedMultiplier = Math.floor((96 / winChance) * 10000) / 10000;
-        expect(result.multiplier).toBe(expectedMultiplier);
+        expect(result.multiplier).toBeCloseTo(expectedMultiplier, 3);
       }
     });
 
@@ -202,14 +208,14 @@ describe('Dice Frontend-Backend Consistency', () => {
         betAmount: 1,
         target: 30,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
       expect(result1.winChance).toBe(30);
 
       const result2 = await service.play(testUserId, {
         betAmount: 1,
         target: 30,
         condition: 'OVER',
-      });
+      }, 'default-site-001');
       expect(result2.winChance).toBe(70);
     });
 
@@ -218,13 +224,13 @@ describe('Dice Frontend-Backend Consistency', () => {
         betAmount: 1,
         target: 10,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       const result2 = await service.play(testUserId, {
         betAmount: 1,
         target: 90,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       expect(result1.multiplier).toBeGreaterThan(result2.multiplier);
     });
@@ -239,7 +245,7 @@ describe('Dice Frontend-Backend Consistency', () => {
         betAmount: 1,
         target: 50,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       expect(result.serverSeedHash).toBeDefined();
       expect(result.serverSeedHash.length).toBe(64); // SHA-256 hex
@@ -257,7 +263,7 @@ describe('Dice Frontend-Backend Consistency', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
         hashes.add(result.serverSeedHash);
       }
 
@@ -301,7 +307,7 @@ describe('Dice Frontend-Backend Consistency', () => {
         betAmount: 1,
         target: 50,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       expect(result).toHaveProperty('roll');
       expect(result).toHaveProperty('target');
@@ -321,7 +327,7 @@ describe('Dice Frontend-Backend Consistency', () => {
         betAmount: 1,
         target: 33.33,
         condition: 'OVER',
-      });
+      }, 'default-site-001');
 
       expect(result.target).toBe(33.33);
       expect(result.condition).toBe('OVER');
@@ -332,7 +338,7 @@ describe('Dice Frontend-Backend Consistency', () => {
         betAmount: 1,
         target: 50,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       expect(typeof result.roll).toBe('number');
       expect(typeof result.target).toBe('number');

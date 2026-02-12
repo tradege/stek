@@ -136,12 +136,12 @@ describe('Mines Frontend-Backend Consistency', () => {
   // SECTION 2: Multiplier Formula Consistency
   // ============================================
   describe('Multiplier Formula Consistency', () => {
-    it('should calculate multiplier as (0.96 / probability) floored to 4 decimals', () => {
+    it('should calculate multiplier as (0.96 / probability) * 0.99 floored to 4 decimals', () => {
       // For 5 mines, revealing 1 tile:
       // P = 20/25 = 0.8
-      // Multiplier = 0.96 / 0.8 = 1.2
+      // Multiplier = (0.96 / 0.8) * 0.99 = 1.188
       const multiplier = service.calculateMultiplier(5, 1);
-      expect(multiplier).toBe(Math.floor(1.2 * 10000) / 10000);
+      expect(multiplier).toBe(Math.floor(1.2 * 0.99 * 10000) / 10000);
     });
 
     it('should have multiplier = 1 for 0 reveals', () => {
@@ -176,7 +176,7 @@ describe('Mines Frontend-Backend Consistency', () => {
       for (let mineCount = 1; mineCount <= 24; mineCount++) {
         const safeTiles = 25 - mineCount;
         const probability = safeTiles / 25;
-        const expected = Math.floor((0.96 / probability) * 10000) / 10000;
+        const expected = Math.floor((0.96 / probability) * 0.99 * 10000) / 10000;
         const actual = service.calculateMultiplier(mineCount, 1);
         expect(actual).toBe(expected);
       }
@@ -192,7 +192,7 @@ describe('Mines Frontend-Backend Consistency', () => {
       let probability = 1;
       for (let reveals = 1; reveals <= 5; reveals++) {
         probability *= (safeTiles - reveals + 1) / (25 - reveals + 1);
-        const expected = Math.floor((0.96 / probability) * 10000) / 10000;
+        const expected = Math.floor((0.96 / probability) * 0.99 * 10000) / 10000;
         const actual = service.calculateMultiplier(mineCount, reveals);
         expect(actual).toBe(expected);
       }

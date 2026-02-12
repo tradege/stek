@@ -117,8 +117,8 @@ describe('MinesService', () => {
       // With 1 mine, 1 reveal: probability = 24/25 = 0.96
       // Multiplier = 0.96 / 0.96 = 1.0 (exactly 1x with house edge)
       const mult = service.calculateMultiplier(1, 1);
-      // Fair would be 25/24 = 1.0416... With 4% edge: 0.96 * 25/24 = 1.0
-      expect(mult).toBe(1);
+      // Fair would be 25/24 = 1.0416... With 4% edge: 0.96 * 25/24 * 0.99 = 0.99
+      expect(mult).toBe(0.99);
     });
 
     it('should floor to 4 decimal places', () => {

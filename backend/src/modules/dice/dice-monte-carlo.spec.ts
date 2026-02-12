@@ -63,7 +63,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: BET,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         totalWagered += BET;
         totalReturned += result.payout;
@@ -88,7 +88,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: BET,
           target: 50,
           condition: 'OVER',
-        });
+        }, 'default-site-001');
 
         totalWagered += BET;
         totalReturned += result.payout;
@@ -116,7 +116,7 @@ describe('Dice Monte Carlo Stress Test', () => {
             betAmount: BET,
             target,
             condition: 'UNDER',
-          });
+          }, 'default-site-001');
 
           totalWagered += BET;
           totalReturned += result.payout;
@@ -146,7 +146,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         if (result.isWin) wins++;
       }
@@ -168,7 +168,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: 1,
           target: 25,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         if (result.isWin) wins++;
       }
@@ -195,7 +195,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         const bucketIndex = Math.min(Math.floor(result.roll / 10), 9);
         buckets[bucketIndex]++;
@@ -228,7 +228,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: BET,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         totalWagered += BET;
         totalReturned += result.payout;
@@ -259,7 +259,7 @@ describe('Dice Monte Carlo Stress Test', () => {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
-        });
+        }, 'default-site-001');
 
         if (result.isWin) {
           currentWinStreak++;

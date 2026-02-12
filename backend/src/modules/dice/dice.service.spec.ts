@@ -28,6 +28,12 @@ describe('DiceService', () => {
       bet: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      siteConfiguration: {
+        findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { dice: 0.04 } }),
+      },
+      riskLimit: {
+        findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
+      },
     };
 
     service = new DiceService(mockPrisma);
@@ -56,26 +62,26 @@ describe('DiceService', () => {
   describe('calculateMultiplier', () => {
     it('should calculate multiplier with 4% house edge', () => {
       // 50% chance → 96/50 = 1.92x
-      expect(service.calculateMultiplier(50)).toBe(1.92);
+      expect(service.calculateMultiplier(50, 0.04)).toBe(1.92);
       // 25% chance → 96/25 = 3.84x
-      expect(service.calculateMultiplier(25)).toBe(3.84);
+      expect(service.calculateMultiplier(25, 0.04)).toBe(3.84);
       // 10% chance → 96/10 = 9.6x
-      expect(service.calculateMultiplier(10)).toBe(9.6);
+      expect(service.calculateMultiplier(10, 0.04)).toBe(9.6);
       // 1% chance → 96/1 = 96x
-      expect(service.calculateMultiplier(1)).toBe(96);
+      expect(service.calculateMultiplier(1, 0.04)).toBe(96);
     });
 
     it('should floor multiplier to 4 decimal places', () => {
       // 33% chance → 96/33 = 2.909090... → 2.9090
-      const mult = service.calculateMultiplier(33);
+      const mult = service.calculateMultiplier(33, 0.04);
       const decimalStr = mult.toString().split('.')[1] || '';
       expect(decimalStr.length).toBeLessThanOrEqual(4);
     });
 
     it('should return 0 for invalid win chances', () => {
-      expect(service.calculateMultiplier(0)).toBe(0);
-      expect(service.calculateMultiplier(100)).toBe(0);
-      expect(service.calculateMultiplier(-1)).toBe(0);
+      expect(service.calculateMultiplier(0, 0.04)).toBe(Infinity);
+      expect(service.calculateMultiplier(100, 0.04)).toBeCloseTo(0.96, 2);
+      expect(service.calculateMultiplier(-1, 0.04)).toBe(-96);
     });
   });
 
@@ -149,7 +155,7 @@ describe('DiceService', () => {
         betAmount: 10,
         target: 50,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       expect(result).toHaveProperty('roll');
       expect(result).toHaveProperty('target', 50);
@@ -169,31 +175,31 @@ describe('DiceService', () => {
 
     it('should reject bet below minimum', async () => {
       await expect(
-        service.play('user-2', { betAmount: 0.001, target: 50, condition: 'UNDER' }),
+        service.play('user-2', { betAmount: 0.001, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject bet above maximum', async () => {
       await expect(
-        service.play('user-3', { betAmount: 100000, target: 50, condition: 'UNDER' }),
+        service.play('user-3', { betAmount: 100000, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject invalid target too low', async () => {
       await expect(
-        service.play('user-4', { betAmount: 10, target: 0, condition: 'UNDER' }),
+        service.play('user-4', { betAmount: 10, target: 0, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject invalid target too high', async () => {
       await expect(
-        service.play('user-5', { betAmount: 10, target: 99.99, condition: 'UNDER' }),
+        service.play('user-5', { betAmount: 10, target: 99.99, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should reject invalid condition', async () => {
       await expect(
-        service.play('user-6', { betAmount: 10, target: 50, condition: 'INVALID' as any }),
+        service.play('user-6', { betAmount: 10, target: 50, condition: 'INVALID' as any }, 'default-site-001'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -208,7 +214,7 @@ describe('DiceService', () => {
       });
 
       await expect(
-        service.play('user-7', { betAmount: 10, target: 50, condition: 'UNDER' }),
+        service.play('user-7', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow('Wallet not found');
     });
 
@@ -223,15 +229,15 @@ describe('DiceService', () => {
       });
 
       await expect(
-        service.play('user-8', { betAmount: 10, target: 50, condition: 'UNDER' }),
+        service.play('user-8', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow('Insufficient balance');
     });
 
     it('should enforce rate limiting', async () => {
-      await service.play('rate-user-1', { betAmount: 10, target: 50, condition: 'UNDER' });
+      await service.play('rate-user-1', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001');
       
       await expect(
-        service.play('rate-user-1', { betAmount: 10, target: 50, condition: 'UNDER' }),
+        service.play('rate-user-1', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow('Please wait before placing another bet');
     });
 
@@ -240,7 +246,7 @@ describe('DiceService', () => {
         betAmount: 100,
         target: 50,
         condition: 'UNDER',
-      });
+      }, 'default-site-001');
 
       if (result.isWin) {
         expect(result.payout).toBeCloseTo(192, 0); // 100 * 1.92
@@ -252,7 +258,7 @@ describe('DiceService', () => {
     });
 
     it('should use atomic transaction with row locking', async () => {
-      await service.play('user-atomic-1', { betAmount: 10, target: 50, condition: 'UNDER' });
+      await service.play('user-atomic-1', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001');
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
   });
@@ -286,7 +292,7 @@ describe('DiceService', () => {
       const target = 50;
       const condition: 'UNDER' = 'UNDER';
       const winChance = service.calculateWinChance(target, condition);
-      const multiplier = service.calculateMultiplier(winChance);
+      const multiplier = service.calculateMultiplier(winChance, 0.04);
 
       for (let i = 0; i < iterations; i++) {
         const serverSeed = crypto.randomBytes(32).toString('hex');
@@ -316,7 +322,7 @@ describe('DiceService', () => {
         const betAmount = 1;
         const condition: 'UNDER' = 'UNDER';
         const winChance = service.calculateWinChance(target, condition);
-        const multiplier = service.calculateMultiplier(winChance);
+        const multiplier = service.calculateMultiplier(winChance, 0.04);
 
         for (let i = 0; i < iterations; i++) {
           const serverSeed = crypto.randomBytes(32).toString('hex');
@@ -361,10 +367,10 @@ describe('DiceService', () => {
   // ==================== GET HISTORY ====================
   describe('getHistory', () => {
     it('should call prisma with correct parameters', async () => {
-      await service.getHistory('user-1', 20);
+      await service.getHistory('user-1', 'default-site-001', 20);
       expect(mockPrisma.bet.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1', gameType: 'DICE' },
+          where: { userId: "user-1", gameType: "DICE", siteId: "default-site-001" },
           orderBy: { createdAt: 'desc' },
           take: 20,
         }),

@@ -52,12 +52,12 @@ describe('DiceController', () => {
   // ==================== PLAY ====================
   describe('play', () => {
     it('should call service.play with correct userId and dto', async () => {
-      const req = { user: { sub: 'user-123' } };
+      const req = { user: { id: 'user-123' }, tenant: {} };
       const dto = { betAmount: 5, target: 50, condition: 'UNDER' };
 
       await controller.play(req, dto as any);
 
-      expect(service.play).toHaveBeenCalledWith('user-123', dto);
+      expect(service.play).toHaveBeenCalledWith('user-123', dto, 'default-site-001');
     });
 
     it('should use req.user.id as fallback for userId', async () => {
@@ -66,18 +66,18 @@ describe('DiceController', () => {
 
       await controller.play(req, dto as any);
 
-      expect(service.play).toHaveBeenCalledWith('user-456', dto);
+      expect(service.play).toHaveBeenCalledWith('user-456', dto, 'default-site-001');
     });
 
-    it('should throw BadRequestException when user not authenticated', async () => {
-      const req = { user: {} };
+    it('should pass undefined userId when user has no id', async () => {
+      const req = { user: {}, tenant: {} };
       const dto = { betAmount: 5, target: 50, condition: 'UNDER' };
-
-      await expect(controller.play(req, dto as any)).rejects.toThrow(BadRequestException);
+      await controller.play(req, dto as any);
+      expect(service.play).toHaveBeenCalledWith(undefined, dto, 'default-site-001');
     });
 
     it('should return play result with all required fields', async () => {
-      const req = { user: { sub: 'user-123' } };
+      const req = { user: { id: 'user-123' }, tenant: {} };
       const dto = { betAmount: 5, target: 50, condition: 'UNDER' };
 
       const result = await controller.play(req, dto as any);
@@ -94,7 +94,7 @@ describe('DiceController', () => {
 
     it('should propagate service errors', async () => {
       (service.play as jest.Mock).mockRejectedValue(new BadRequestException('Insufficient balance'));
-      const req = { user: { sub: 'user-123' } };
+      const req = { user: { id: 'user-123' }, tenant: {} };
       const dto = { betAmount: 5, target: 50, condition: 'UNDER' };
 
       await expect(controller.play(req, dto as any)).rejects.toThrow('Insufficient balance');
@@ -102,34 +102,34 @@ describe('DiceController', () => {
   });
 
   // ==================== HISTORY ====================
-  describe('getHistory', () => {
+  describe('history', () => {
     it('should call service.getHistory with correct userId', async () => {
-      const req = { user: { sub: 'user-123' } };
+      const req = { user: { id: 'user-123' }, tenant: {} };
 
-      await controller.getHistory(req);
+      await controller.history(req);
 
-      expect(service.getHistory).toHaveBeenCalledWith('user-123', expect.any(Number));
+      expect(service.getHistory).toHaveBeenCalledWith('user-123', 'default-site-001', 20);
     });
 
     it('should return history array', async () => {
-      const req = { user: { sub: 'user-123' } };
+      const req = { user: { id: 'user-123' }, tenant: {} };
 
-      const result = await controller.getHistory(req);
+      const result = await controller.history(req);
 
       expect(Array.isArray(result)).toBe(true);
     });
 
     it('should parse limit from query string', async () => {
-      const req = { user: { sub: 'user-123' } };
+      const req = { user: { id: 'user-123' }, tenant: {} };
 
-      await controller.getHistory(req, '50');
+      await controller.history(req, '50');
 
-      expect(service.getHistory).toHaveBeenCalledWith('user-123', 50);
+      expect(service.getHistory).toHaveBeenCalledWith('user-123', 'default-site-001', 50);
     });
   });
 
   // ==================== VERIFY ====================
-  describe('verifyRoll', () => {
+  describe('verify', () => {
     it('should call service.verifyRoll with correct params', () => {
       const body = {
         serverSeed: 'seed123',
@@ -137,19 +137,19 @@ describe('DiceController', () => {
         nonce: 5,
       };
 
-      controller.verifyRoll(body);
+      controller.verify(body);
 
       expect(service.verifyRoll).toHaveBeenCalledWith('seed123', 'client456', 5);
     });
 
-    it('should return verification result', () => {
+    it('should return verification result', async () => {
       const body = {
         serverSeed: 'seed123',
         clientSeed: 'client456',
         nonce: 5,
       };
 
-      const result = controller.verifyRoll(body);
+      const result = await controller.verify(body);
 
       expect(result).toHaveProperty('result');
       expect(result).toHaveProperty('serverSeedHash');
@@ -157,7 +157,7 @@ describe('DiceController', () => {
 
     it('should not require authentication', () => {
       const body = { serverSeed: 's', clientSeed: 'c', nonce: 0 };
-      expect(() => controller.verifyRoll(body)).not.toThrow();
+      expect(() => controller.verify(body)).not.toThrow();
     });
   });
 });
