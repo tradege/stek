@@ -40,6 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         displayName: true,
         avatarUrl: true,
         tokenVersion: true,
+        siteId: true,
       },
     });
 

@@ -17,6 +17,7 @@ import { Trophy,
   Menu,
   Wallet,
   ScrollText,
+  Palette,
 } from 'lucide-react';
 
 // ============================================
@@ -80,6 +81,12 @@ const adminNavItems: NavItem[] = [
     icon: <Trophy className="w-5 h-5" />,
     href: "/admin/sports",
     badge: "NEW",
+  },
+  {
+    id: 'brand-settings',
+    label: 'Brand Settings',
+    icon: <Palette className="w-5 h-5" />,
+    href: '/admin/brand-settings',
   },
   {
     id: 'god-mode',

@@ -11,6 +11,12 @@ import {
   ArrowRight,
   Check,
   AlertCircle,
+  UserPlus,
+  Eye,
+  EyeOff,
+  Copy,
+  Shield,
+  Key,
 } from 'lucide-react';
 import config from '@/config/api';
 
@@ -25,9 +31,10 @@ const ALL_GAMES = [
   { id: 'PENALTY', label: 'Penalty', icon: '⚽' },
   { id: 'OLYMPUS', label: 'Olympus Slots', icon: '⚡' },
   { id: 'CARD_RUSH', label: 'Card Rush', icon: '🃏' },
+  { id: 'SPORTS', label: 'Sports Betting', icon: '🏆' },
 ];
 
-const STEPS = ['Brand Info', 'Theme', 'Games', 'Review'];
+const STEPS = ['Brand Info', 'Admin Account', 'Theme', 'Games', 'Review'];
 
 export default function CreateTenantPage() {
   const { token } = useAuth();
@@ -36,12 +43,17 @@ export default function CreateTenantPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<any>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
     brandName: '',
     domain: '',
     ownerEmail: '',
+    ownerPassword: '',
+    ownerUsername: '',
     ggrFee: 12,
     locale: 'en',
     jurisdiction: '',
@@ -73,16 +85,24 @@ export default function CreateTenantPage() {
   const canProceed = () => {
     switch (step) {
       case 0:
-        return form.brandName.trim() && form.domain.trim() && form.ownerEmail.trim() && form.ggrFee >= 0;
+        return form.brandName.trim() && form.domain.trim() && form.ggrFee >= 0;
       case 1:
-        return true;
+        return form.ownerEmail.trim() && form.ownerEmail.includes('@');
       case 2:
-        return form.allowedGames.length > 0;
+        return true;
       case 3:
+        return form.allowedGames.length > 0;
+      case 4:
         return true;
       default:
         return false;
     }
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   const handleSubmit = async () => {
@@ -103,8 +123,8 @@ export default function CreateTenantPage() {
         throw new Error(data.message || 'Failed to create tenant');
       }
 
+      setCreatedCredentials(data.adminCredentials);
       setSuccess(true);
-      setTimeout(() => router.push('/super-admin/tenants'), 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -112,14 +132,130 @@ export default function CreateTenantPage() {
     }
   };
 
+  // Success screen with credentials
   if (success) {
     return (
-      <div className="max-w-2xl mx-auto mt-20 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
-          <Check className="w-10 h-10 text-green-400" />
+      <div className="max-w-2xl mx-auto mt-10">
+        <div className="bg-bg-card border border-green-500/30 rounded-xl p-8">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
+              <Check className="w-10 h-10 text-green-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Brand Created Successfully!</h2>
+            <p className="text-text-secondary">
+              <span className="text-cyan-400 font-semibold">{form.brandName}</span> is now live at{' '}
+              <span className="text-cyan-400 font-semibold">{form.domain}</span>
+            </p>
+          </div>
+
+          {/* Admin Credentials Card */}
+          {createdCredentials && (
+            <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-6 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                  <Key className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Admin Login Credentials</h3>
+                  <p className="text-xs text-yellow-400">Save these credentials — the password will not be shown again!</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { label: 'Login URL', value: createdCredentials.loginUrl, key: 'url' },
+                  { label: 'Email', value: createdCredentials.email, key: 'email' },
+                  { label: 'Username', value: createdCredentials.username, key: 'username' },
+                  { label: 'Password', value: createdCredentials.password, key: 'password' },
+                  { label: 'Role', value: createdCredentials.role, key: 'role' },
+                ].map((item) => (
+                  <div key={item.key} className="flex items-center justify-between bg-black/30 rounded-lg px-4 py-3">
+                    <div>
+                      <span className="text-xs text-text-secondary block">{item.label}</span>
+                      <span className="text-white font-mono text-sm">
+                        {item.key === 'password' && !showPassword
+                          ? '••••••••••••'
+                          : item.value}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {item.key === 'password' && (
+                        <button
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4 text-text-secondary" />
+                          ) : (
+                            <Eye className="w-4 h-4 text-text-secondary" />
+                          )}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => copyToClipboard(item.value, item.key)}
+                        className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        {copiedField === item.key ? (
+                          <Check className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-text-secondary" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  const text = `Brand: ${form.brandName}\nLogin URL: ${createdCredentials.loginUrl}\nEmail: ${createdCredentials.email}\nUsername: ${createdCredentials.username}\nPassword: ${createdCredentials.password}\nRole: ${createdCredentials.role}`;
+                  navigator.clipboard.writeText(text);
+                  setCopiedField('all');
+                  setTimeout(() => setCopiedField(null), 2000);
+                }}
+                className="w-full mt-4 px-4 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                {copiedField === 'all' ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied All Credentials!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy All Credentials
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push('/super-admin/tenants')}
+              className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-colors"
+            >
+              Back to Brands
+            </button>
+            <button
+              onClick={() => {
+                setSuccess(false);
+                setCreatedCredentials(null);
+                setForm({
+                  brandName: '', domain: '', ownerEmail: '', ownerPassword: '', ownerUsername: '',
+                  ggrFee: 12, locale: 'en', jurisdiction: '', licenseType: '',
+                  primaryColor: '#00F0FF', secondaryColor: '#131B2C', accentColor: '#00D46E',
+                  dangerColor: '#FF385C', backgroundColor: '#0A0E17', cardColor: '#131B2C',
+                  logoUrl: '', allowedGames: ALL_GAMES.map((g) => g.id),
+                });
+                setStep(0);
+              }}
+              className="flex-1 px-4 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Create Another Brand
+            </button>
+          </div>
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">Brand Created Successfully!</h2>
-        <p className="text-text-secondary">Redirecting to brands list...</p>
       </div>
     );
   }
@@ -136,7 +272,7 @@ export default function CreateTenantPage() {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-white">Create New Brand</h1>
-          <p className="text-text-secondary mt-1">Set up a new white-label casino brand</p>
+          <p className="text-text-secondary mt-1">Set up a new white-label casino brand with admin access</p>
         </div>
       </div>
 
@@ -201,16 +337,6 @@ export default function CreateTenantPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">Owner Email *</label>
-                <input
-                  type="email"
-                  value={form.ownerEmail}
-                  onChange={(e) => updateForm('ownerEmail', e.target.value)}
-                  placeholder="e.g., owner@luckycasino.com"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-text-secondary focus:border-cyan-500 focus:outline-none transition-colors"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">GGR Fee (%) *</label>
                 <input
                   type="number"
@@ -221,7 +347,7 @@ export default function CreateTenantPage() {
                   step={0.5}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:border-cyan-500 focus:outline-none transition-colors"
                 />
-                <p className="text-xs text-text-secondary mt-1">Your commission from the brand's GGR</p>
+                <p className="text-xs text-text-secondary mt-1">Your commission from the brand&apos;s GGR</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">Locale</label>
@@ -260,8 +386,87 @@ export default function CreateTenantPage() {
           </div>
         )}
 
-        {/* Step 1: Theme */}
+        {/* Step 1: Admin Account */}
         {step === 1 && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <UserPlus className="w-6 h-6 text-cyan-400" />
+              <h2 className="text-xl font-semibold text-white">Admin Account</h2>
+            </div>
+
+            <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <Shield className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-cyan-300 font-medium">Automatic Admin Creation</p>
+                  <p className="text-xs text-text-secondary mt-1">
+                    An ADMIN account will be automatically created for the brand owner. They will have full access to the Admin Panel for their brand, including player management, bet monitoring, and brand settings.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Admin Email *</label>
+                <input
+                  type="email"
+                  value={form.ownerEmail}
+                  onChange={(e) => updateForm('ownerEmail', e.target.value)}
+                  placeholder="e.g., admin@luckycasino.com"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-text-secondary focus:border-cyan-500 focus:outline-none transition-colors"
+                />
+                <p className="text-xs text-text-secondary mt-1">This email will be used to login to the admin panel</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Admin Username</label>
+                <input
+                  type="text"
+                  value={form.ownerUsername}
+                  onChange={(e) => updateForm('ownerUsername', e.target.value)}
+                  placeholder={form.brandName ? form.brandName.toLowerCase().replace(/[^a-z0-9]/g, '') + '_admin' : 'auto-generated'}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-text-secondary focus:border-cyan-500 focus:outline-none transition-colors"
+                />
+                <p className="text-xs text-text-secondary mt-1">Leave empty to auto-generate from brand name</p>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-text-secondary mb-2">Admin Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.ownerPassword}
+                    onChange={(e) => updateForm('ownerPassword', e.target.value)}
+                    placeholder="Leave empty to auto-generate a secure password"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-text-secondary focus:border-cyan-500 focus:outline-none transition-colors pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5 text-text-secondary" />
+                    ) : (
+                      <Eye className="w-5 h-5 text-text-secondary" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-text-secondary mt-1">
+                  If left empty, a secure 12-character password will be generated automatically. The credentials will be shown after creation.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+              <p className="text-sm text-yellow-300">
+                <strong>Important:</strong> The admin credentials will only be shown once after creation. Make sure to save them securely.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Theme */}
+        {step === 2 && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
               <Palette className="w-6 h-6 text-cyan-400" />
@@ -354,8 +559,8 @@ export default function CreateTenantPage() {
           </div>
         )}
 
-        {/* Step 2: Games */}
-        {step === 2 && (
+        {/* Step 3: Games */}
+        {step === 3 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -378,7 +583,7 @@ export default function CreateTenantPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {ALL_GAMES.map((game) => {
                 const isSelected = form.allowedGames.includes(game.id);
                 return (
@@ -411,8 +616,8 @@ export default function CreateTenantPage() {
           </div>
         )}
 
-        {/* Step 3: Review */}
-        {step === 3 && (
+        {/* Step 4: Review */}
+        {step === 4 && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
               <Check className="w-6 h-6 text-cyan-400" />
@@ -432,10 +637,6 @@ export default function CreateTenantPage() {
                     <span className="text-white font-medium">{form.domain}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-text-secondary">Owner Email</span>
-                    <span className="text-white font-medium">{form.ownerEmail}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-text-secondary">GGR Fee</span>
                     <span className="text-yellow-400 font-bold">{form.ggrFee}%</span>
                   </div>
@@ -453,6 +654,32 @@ export default function CreateTenantPage() {
               </div>
 
               <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-text-secondary uppercase">Admin Account</h3>
+                <div className="bg-white/5 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Email</span>
+                    <span className="text-white font-medium">{form.ownerEmail}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Username</span>
+                    <span className="text-white font-medium">
+                      {form.ownerUsername || form.brandName.toLowerCase().replace(/[^a-z0-9]/g, '') + '_admin'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Password</span>
+                    <span className="text-white font-medium">
+                      {form.ownerPassword ? '••••••••' : 'Auto-generated'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Role</span>
+                    <span className="text-cyan-400 font-bold">ADMIN</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 md:col-span-2">
                 <h3 className="text-sm font-semibold text-text-secondary uppercase">Theme & Games</h3>
                 <div className="bg-white/5 rounded-lg p-4 space-y-3">
                   <div className="flex gap-2 flex-wrap">
@@ -529,7 +756,7 @@ export default function CreateTenantPage() {
               {submitting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white" />
-                  Creating...
+                  Creating Brand & Admin...
                 </>
               ) : (
                 <>

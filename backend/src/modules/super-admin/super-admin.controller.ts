@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -71,6 +72,8 @@ export class SuperAdminController {
     brandName: string;
     domain: string;
     ownerEmail: string;
+    ownerPassword?: string;
+    ownerUsername?: string;
     ggrFee: number;
     allowedGames: string[];
     primaryColor?: string;
@@ -190,4 +193,43 @@ export class SuperAdminController {
   ) {
     return this.superAdminService.getTenantReport(tenantId, period || 'all');
   }
+
+  // ============================================
+  // BRAND SETTINGS (for tenant admins)
+  // ============================================
+  /**
+   * Get brand settings for the current admin's site
+   */
+  @Get('brand-settings')
+  async getBrandSettings(@Req() req: any) {
+    const user = req.user;
+    if (!user.siteId) {
+      throw new BadRequestException('No site associated with this admin');
+    }
+    return this.superAdminService.getTenantBrandSettings(user.siteId, user.id);
+  }
+
+  /**
+   * Update brand colors for the current admin's site
+   */
+  @Put('brand-settings')
+  async updateBrandSettings(@Req() req: any, @Body() body: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+    backgroundColor?: string;
+    cardColor?: string;
+    dangerColor?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
+    heroImageUrl?: string;
+    backgroundImageUrl?: string;
+  }) {
+    const user = req.user;
+    if (!user.siteId) {
+      throw new BadRequestException('No site associated with this admin');
+    }
+    return this.superAdminService.updateTenantColors(user.siteId, user.id, body);
+  }
+
 }
