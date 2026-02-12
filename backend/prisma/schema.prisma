@@ -64,6 +64,7 @@ model SiteConfiguration {
   transactions Transaction[]
   chatMessages ChatMessage[]
   bots         BotConfig[]
+  sportBets    SportBet[]
 
   @@index([domain])
   @@index([active])
@@ -157,6 +158,7 @@ model User {
   vaultDeposits        VaultDeposit[]
   sessions             UserSession[]
   gameSessions         GameSession[]  @relation("GameSessions")
+  sportBets          SportBet[]
   chatMessages         ChatMessage[]  @relation("UserChatMessages")
   statistics           Statistic[]    @relation("UserStatistics")
 
@@ -473,6 +475,7 @@ enum GameType {
   DRAGON_BLAZE
   NOVA_RUSH
   EXTERNAL // For external provider games
+  SPORTS  // Sports betting
 }
 
 // ============================================
@@ -786,4 +789,116 @@ model FraudAlert {
   @@index([userId])
   @@index([status])
   @@index([siteId, status])
+}
+
+// ============================================
+// SPORTS BETTING (Sportsbook Integration)
+// ============================================
+
+enum SportEventStatus {
+  UPCOMING
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum SportBetStatus {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+  CANCELLED
+}
+
+model SportEvent {
+  id            String           @id @default(uuid())
+  externalId    String           @unique  // The Odds API event ID
+  sportKey      String                    // e.g., "soccer_epl", "basketball_nba"
+  sportTitle    String                    // e.g., "EPL", "NBA"
+  homeTeam      String
+  awayTeam      String
+  commenceTime  DateTime
+  status        SportEventStatus @default(UPCOMING)
+
+  // Scores (populated after settlement)
+  homeScore     Int?
+  awayScore     Int?
+  completed     Boolean          @default(false)
+
+  // Multi-tenant
+  // Events are global (shared across tenants), bets are per-tenant
+
+  // Timestamps
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  markets       SportMarket[]
+  bets          SportBet[]
+
+  @@index([sportKey])
+  @@index([status])
+  @@index([commenceTime])
+  @@index([externalId])
+  @@index([sportKey, status])
+}
+
+model SportMarket {
+  id          String     @id @default(uuid())
+  eventId     String
+  event       SportEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  bookmaker   String     @default("pinnacle")  // Source bookmaker
+  marketType  String                            // "h2h", "spreads", "totals"
+  
+  // Outcomes stored as JSON: { "home": 1.90, "away": 2.10, "draw": 3.50 }
+  outcomes    Json
+  
+  // Last update from API
+  lastUpdated DateTime   @default(now())
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([eventId, bookmaker, marketType])
+  @@index([eventId])
+  @@index([marketType])
+}
+
+model SportBet {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  
+  eventId       String
+  event         SportEvent     @relation(fields: [eventId], references: [id])
+  
+  // Multi-tenant
+  siteId        String?
+  site          SiteConfiguration? @relation(fields: [siteId], references: [id])
+  
+  // Bet details
+  selection     String                // "home", "away", "draw"
+  selectionName String                // "Manchester United", "Draw", etc.
+  odds          Decimal        @db.Decimal(10, 4)
+  stake         Decimal        @db.Decimal(18, 8)
+  potentialWin  Decimal        @db.Decimal(18, 8)
+  currency      Currency       @default(USDT)
+  
+  // Settlement
+  status        SportBetStatus @default(PENDING)
+  settledAt     DateTime?
+  profit        Decimal?       @db.Decimal(18, 8)
+  
+  // Timestamps
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@index([siteId])
+  @@index([userId, status])
+  @@index([siteId, status])
+  @@index([createdAt])
 }

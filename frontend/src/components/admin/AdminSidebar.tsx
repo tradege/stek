@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
+import { Trophy,
   LayoutDashboard,
   Users,
   DollarSign,
@@ -73,6 +73,13 @@ const adminNavItems: NavItem[] = [
     label: 'Game Control',
     icon: <Gamepad2 className="w-5 h-5" />,
     href: '/admin/games',
+  },
+  {
+    id: "sports",
+    label: "Sports Betting",
+    icon: <Trophy className="w-5 h-5" />,
+    href: "/admin/sports",
+    badge: "NEW",
   },
   {
     id: 'god-mode',

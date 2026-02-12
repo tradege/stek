@@ -196,6 +196,7 @@ const casinoNavItems: NavItem[] = [
 // Sports navigation items
 const sportsNavItems: NavItem[] = [
   { id: 'sports-home', label: 'Sports Home', icon: 'sports', href: '/sports' },
+  { id: 'my-bets', label: 'My Bets', icon: 'sports', href: '/sports/my-bets', badge: 'NEW' },
   { id: 'football', label: 'Football', icon: 'football', href: '/sports/football', badge: 'LIVE' },
   { id: 'basketball', label: 'Basketball', icon: 'basketball', href: '/sports/basketball', badge: 'LIVE' },
   { id: 'tennis', label: 'Tennis', icon: 'tennis', href: '/sports/tennis' },

@@ -26,6 +26,7 @@ import { CardRushModule } from './modules/card-rush/card-rush.module';
 import { LimboModule } from './modules/limbo/limbo.module';
 import { PenaltyModule } from './modules/penalty/penalty.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+import { SportsModule } from './modules/sports/sports.module';
 import { StuckSessionsCleanupService } from './modules/shared/stuck-sessions-cleanup.service';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
@@ -62,6 +63,7 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
     LimboModule,
     PenaltyModule,
     SuperAdminModule,
+    SportsModule,
     HealthModule,
   ],
   controllers: [],
