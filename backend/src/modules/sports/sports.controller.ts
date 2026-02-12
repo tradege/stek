@@ -127,4 +127,20 @@ export class SportsController {
       ],
     };
   }
+
+  /**
+   * GET /api/v1/sports/config
+   * Get sports betting configuration (min/max bet)
+   */
+  @Get("config")
+  async getConfig() {
+    const minBet = parseFloat(process.env.SPORTS_MIN_BET || "1");
+    const maxBet = parseFloat(process.env.SPORTS_MAX_BET || "10000");
+    return {
+      minBet,
+      maxBet,
+      currencies: ["USDT"],
+      oddsFormats: ["decimal", "american", "fractional"],
+    };
+  }
 }

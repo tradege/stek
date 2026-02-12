@@ -291,13 +291,13 @@ export default function Home() {
           <section className="text-center py-20">
             <div className="inline-block p-12 bg-bg-card border border-white/10 rounded-3xl">
               <div className="text-6xl mb-4">⚽</div>
-              <h3 className="text-2xl font-bold text-white mb-3">Sports Betting Coming Soon!</h3>
+              <h3 className="text-2xl font-bold text-white mb-3">Sports Betting is Live!</h3>
               <p className="text-gray-400 max-w-md mx-auto">
-                We are working hard to bring you the best sports betting experience. 
-                Stay tuned for live odds, in-play betting, and more!
+                Explore live odds on Premier League, Champions League, NBA, and Euroleague. 
+                
               </p>
               <button className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-400 hover:to-emerald-400 transition-all">
-                Notify Me
+                Go to Sports Betting
               </button>
             </div>
           </section>
