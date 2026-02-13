@@ -178,7 +178,7 @@ export default function FAQPage() {
         <div className="bg-bg-card border border-white/10 rounded-2xl p-6 text-center">
           <h2 className="text-xl font-bold text-white mb-2">Still have questions?</h2>
           <p className="text-text-secondary mb-4">Our support team is available 24/7 via live chat.</p>
-          <button className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold hover:from-cyan-400 hover:to-blue-400 transition-all">
+          <button className="px-6 py-3 bg-gradient-to-r from-primary to-blue-500 text-white rounded-xl font-semibold hover:from-primary hover:to-blue-400 transition-all">
             Open Live Chat
           </button>
         </div>

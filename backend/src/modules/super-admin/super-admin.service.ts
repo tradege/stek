@@ -691,6 +691,159 @@ export class SuperAdminService {
   }
 
 
+
+  // ============================================
+  // TENANT ADMIN MANAGEMENT
+  // ============================================
+
+  /**
+   * Reset or set admin password for a tenant
+   */
+  async resetAdminPassword(tenantId: string, newPassword: string) {
+    const tenant = await this.prisma.siteConfiguration.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
+    if (!tenant.adminUserId) {
+      throw new NotFoundException('No admin user linked to this tenant');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: tenant.adminUserId },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: 'Admin password updated successfully' };
+  }
+
+  /**
+   * Create admin user for a tenant that doesn't have one
+   */
+  async createTenantAdmin(tenantId: string, email: string, password: string, username: string) {
+    const tenant = await this.prisma.siteConfiguration.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
+    if (tenant.adminUserId) {
+      throw new Error('Tenant already has an admin user');
+    }
+
+    const passwordHash = await bcrypt.hash(password, this.SALT_ROUNDS);
+    const adminUser = await this.prisma.user.create({
+      data: {
+        username: username.toLowerCase(),
+        email: email.toLowerCase(),
+        passwordHash,
+        role: 'ADMIN',
+        status: 'ACTIVE',
+        displayName: tenant.brandName + ' Admin',
+        siteId: tenant.id,
+        hierarchyPath: '/',
+        hierarchyLevel: 1,
+      },
+    });
+
+    await this.prisma.wallet.create({
+      data: {
+        userId: adminUser.id,
+        currency: 'USDT',
+        balance: 0,
+        lockedBalance: 0,
+        siteId: tenant.id,
+      },
+    });
+
+    await this.prisma.siteConfiguration.update({
+      where: { id: tenantId },
+      data: { adminUserId: adminUser.id },
+    });
+
+    return {
+      success: true,
+      admin: { id: adminUser.id, email: adminUser.email, username: adminUser.username },
+    };
+  }
+
+  /**
+   * Get admin info for a tenant
+   */
+  async getTenantAdmin(tenantId: string) {
+    const tenant = await this.prisma.siteConfiguration.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
+    if (!tenant.adminUserId) {
+      return { hasAdmin: false, admin: null };
+    }
+
+    const admin = await this.prisma.user.findUnique({
+      where: { id: tenant.adminUserId },
+      select: { id: true, email: true, username: true, displayName: true, role: true, status: true, createdAt: true },
+    });
+
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { userId: tenant.adminUserId, siteId: tenantId },
+    });
+
+    return {
+      hasAdmin: true,
+      admin: {
+        ...admin,
+        balance: wallet ? Number(wallet.balance) : 0,
+      },
+    };
+  }
+
+  /**
+   * Add credits/balance to tenant admin wallet
+   */
+  async addCreditsToAdmin(tenantId: string, amount: number, note?: string) {
+    const tenant = await this.prisma.siteConfiguration.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
+    if (!tenant.adminUserId) {
+      throw new NotFoundException('No admin user linked to this tenant');
+    }
+
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { userId: tenant.adminUserId, siteId: tenantId },
+    });
+    if (!wallet) {
+      throw new NotFoundException('Admin wallet not found');
+    }
+
+    const updated = await this.prisma.wallet.update({
+      where: { id: wallet.id },
+      data: {
+        balance: { increment: amount },
+      },
+    });
+
+    // Log the transaction
+    await this.prisma.transaction.create({
+      data: {
+        userId: tenant.adminUserId,
+        walletId: wallet.id,
+        type: amount > 0 ? 'DEPOSIT' : 'WITHDRAWAL',
+        amount: Math.abs(amount),
+        status: 'CONFIRMED',
+        balanceBefore: Number(wallet.balance),
+        balanceAfter: Number(updated.balance),
+        metadata: { note: note || 'Super Admin credit: $' + amount, source: 'SUPER_ADMIN' },
+        siteId: tenantId,
+        confirmedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      newBalance: Number(updated.balance),
+      added: amount,
+    };
+  }
+
   // HELPERS
   // ============================================
 

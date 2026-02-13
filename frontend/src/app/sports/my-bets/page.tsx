@@ -77,7 +77,7 @@ export default function MyBetsPage() {
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
             <span className="text-xl">🎫</span>
           </div>
           <div>
@@ -102,7 +102,7 @@ export default function MyBetsPage() {
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
             <p className="text-xs text-gray-400 mb-1">Win Rate</p>
-            <p className="text-lg font-bold text-cyan-400">
+            <p className="text-lg font-bold text-accent-primary">
               {bets.length > 0 ? ((bets.filter(b => b.status === 'WON').length / bets.filter(b => b.status !== 'PENDING').length * 100) || 0).toFixed(0) : 0}%
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function MyBetsPage() {
               onClick={() => { setActiveTab(tab.key); setLoading(true); }}
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                 activeTab === tab.key
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                  ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
                   : 'bg-[#131B2C] text-gray-400 border border-gray-700/30 hover:border-gray-600/50'
               }`}
             >
@@ -147,7 +147,7 @@ export default function MyBetsPage() {
             <div className="text-5xl mb-4">🎫</div>
             <h3 className="text-xl font-bold text-white mb-2">No Bets Found</h3>
             <p className="text-gray-400 mb-4">Place your first sports bet to see it here</p>
-            <a href="/sports" className="inline-block px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-cyan-500 transition-all">
+            <a href="/sports" className="inline-block px-6 py-3 bg-gradient-to-r from-primary to-primary text-white font-bold rounded-xl hover:from-primary hover:to-primary transition-all">
               Browse Events
             </a>
           </div>
@@ -180,7 +180,7 @@ export default function MyBetsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
                     <div>
                       <p className="text-xs text-gray-500">Pick</p>
-                      <p className="text-sm font-semibold text-cyan-400">{bet.selectionName}</p>
+                      <p className="text-sm font-semibold text-accent-primary">{bet.selectionName}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Odds</p>

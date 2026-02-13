@@ -77,7 +77,7 @@ export default function ResponsibleGamingPage() {
             </div>
           </div>
 
-          <button className="mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold hover:from-cyan-400 hover:to-blue-400 transition-all">
+          <button className="mt-6 px-6 py-3 bg-gradient-to-r from-primary to-blue-500 text-white rounded-xl font-semibold hover:from-primary hover:to-blue-400 transition-all">
             Save Limits
           </button>
         </div>

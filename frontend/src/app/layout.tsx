@@ -39,7 +39,7 @@ export default function RootLayout({
           }
         `}} />
       </head>
-      <body className="bg-main text-text-primary antialiased">
+      <body className="bg-main text-text-accent-primary antialiased">
         <Providers>
           {children}
         </Providers>

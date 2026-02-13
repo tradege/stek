@@ -6,12 +6,12 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 // MLM Rank definitions
 const RANKS = [
-  { name: 'Iron', icon: '🔩', color: '#6B7280', minVolume: 0, tier1Rate: 0.05, tier2Rate: 0.02, tier3Rate: 0.01 },
-  { name: 'Bronze', icon: '🥉', color: '#CD7F32', minVolume: 1000, tier1Rate: 0.06, tier2Rate: 0.025, tier3Rate: 0.01 },
-  { name: 'Silver', icon: '🥈', color: '#C0C0C0', minVolume: 5000, tier1Rate: 0.07, tier2Rate: 0.03, tier3Rate: 0.015 },
-  { name: 'Gold', icon: '🥇', color: '#FFD700', minVolume: 25000, tier1Rate: 0.08, tier2Rate: 0.035, tier3Rate: 0.02 },
-  { name: 'Platinum', icon: '💎', color: '#E5E4E2', minVolume: 100000, tier1Rate: 0.10, tier2Rate: 0.04, tier3Rate: 0.02 },
-  { name: 'Diamond', icon: '👑', color: '#00F0FF', minVolume: 500000, tier1Rate: 0.12, tier2Rate: 0.05, tier3Rate: 0.025 },
+  { name: 'Bronze', icon: '🥉', color: '#CD7F32', minVolume: 0, tier1Rate: 0.05, tier2Rate: 0.02, tier3Rate: 0.01 },
+  { name: 'Silver', icon: '🥈', color: '#C0C0C0', minVolume: 1000, tier1Rate: 0.07, tier2Rate: 0.03, tier3Rate: 0.015 },
+  { name: 'Gold', icon: '🥇', color: '#FFD700', minVolume: 10000, tier1Rate: 0.10, tier2Rate: 0.04, tier3Rate: 0.02 },
+  { name: 'Platinum', icon: '💎', color: '#E5E4E2', minVolume: 50000, tier1Rate: 0.12, tier2Rate: 0.05, tier3Rate: 0.025 },
+  { name: 'Diamond', icon: '👑', color: '#00F0FF', minVolume: 250000, tier1Rate: 0.15, tier2Rate: 0.06, tier3Rate: 0.03 },
+  { name: 'Iron', icon: '🏆', color: '#FF4500', minVolume: 1000000, tier1Rate: 0.20, tier2Rate: 0.08, tier3Rate: 0.04 },
 ];
 
 @Injectable()

@@ -29,7 +29,7 @@ export default function SuperAdminLayout({
 
   // Auth guard - only ADMIN can access Super Admin
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'ADMIN')) {
+    if (!isLoading && (!user || user.email !== 'marketedgepros@gmail.com')) {
       router.push('/');
     }
   }, [user, isLoading, router]);
@@ -42,7 +42,7 @@ export default function SuperAdminLayout({
     );
   }
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || user.email !== 'marketedgepros@gmail.com') {
     return null;
   }
 

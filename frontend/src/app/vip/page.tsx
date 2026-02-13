@@ -42,8 +42,8 @@ const vipTiers = [
     level: 3,
     name: 'Platinum',
     icon: '💎',
-    color: 'from-cyan-300 to-cyan-500',
-    border: 'border-cyan-300/30',
+    color: 'from-primary to-primary',
+    border: 'border-accent-primary/30',
     minWager: 50000,
     rakeback: '12%',
     withdrawalLimit: '$50,000/day',
@@ -62,7 +62,7 @@ const vipTiers = [
   },
   {
     level: 5,
-    name: 'Master',
+    name: 'Iron',
     icon: '🏆',
     color: 'from-red-500 to-orange-500',
     border: 'border-red-500/30',
@@ -83,7 +83,7 @@ export default function VIPPage() {
       <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8" data-testid="vip-page">
         {/* Hero Section */}
         <div className="relative bg-bg-card border border-white/10 rounded-2xl p-8 lg:p-12 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-500/5" />
+          <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/5 via-transparent to-purple-500/5" />
           <div className="relative z-10 text-center">
             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
               👑 VIP Program
@@ -111,7 +111,7 @@ export default function VIPPage() {
               onClick={() => setSelectedTier(selectedTier === tier.level ? null : tier.level)}
               className={`bg-bg-card border rounded-2xl p-6 cursor-pointer transition-all hover:scale-[1.02] ${
                 currentLevel === tier.level
-                  ? 'border-accent-primary shadow-glow-cyan'
+                  ? 'border-accent-primary shadow-glow'
                   : tier.border + ' hover:border-white/20'
               }`}
             >

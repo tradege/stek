@@ -42,7 +42,7 @@ class GameErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
-            className="px-6 py-3 bg-cyan-500 text-white rounded-lg hover:bg-cyan-400 font-semibold"
+            className="px-6 py-3 bg-accent-primary text-white rounded-lg hover:bg-accent-primary font-semibold"
           >
             Reload Game
           </button>
@@ -60,7 +60,7 @@ const CrashGamePanel = dynamic(
     ssr: false,
     loading: () => (
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-primary mb-4"></div>
         <p className="text-gray-400 text-lg">Loading Game Engine...</p>
         <p className="text-gray-500 text-sm mt-2">Initializing Canvas & Audio</p>
       </div>

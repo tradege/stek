@@ -227,7 +227,7 @@ export function SoundToggleButton() {
             step="0.1"
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-24 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent-primary"
+            className="w-24 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
           />
           <div className="text-xs text-text-secondary text-center mt-1">
             {Math.round(volume * 100)}%

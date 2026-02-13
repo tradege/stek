@@ -86,7 +86,7 @@ const MULTIPLIER_TABLE: Record<number, number> = {
   3: 3.24,    // After 3 goals (was 2.62)
   4: 4.86,    // After 4 goals (was 3.61)
   5: 7.29,    // After 5 goals (was 4.98)
-  6: 10.94,   // After 6 goals (was 6.87)
+  6: 10.93,   // After 6 goals (was 6.87)
   7: 16.40,   // After 7 goals (was 9.47)
   8: 24.60,   // After 8 goals (was 13.06)
   9: 36.91,   // After 9 goals (was 18.01)

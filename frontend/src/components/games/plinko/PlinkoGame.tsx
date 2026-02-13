@@ -850,7 +850,7 @@ const PlinkoGame: React.FC = () => {
         <div className="bg-gradient-to-b from-[#111827] to-[#0d1117] rounded-2xl p-3 sm:p-4 border border-gray-800/50">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
                 <span className="text-lg sm:text-xl">🎯</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-white">Plinko</h2>
@@ -860,7 +860,7 @@ const PlinkoGame: React.FC = () => {
                 onClick={toggleGameSound}
                 className={`p-2 rounded-lg transition-all ${
                   isSoundActive
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                    ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
                     : 'bg-gray-700/50 text-gray-500 border border-gray-600/30'
                 }`}
                 title={!isSoundActive ? 'Sound Off (enable in Settings)' : gameSoundEnabled ? 'Mute Game' : 'Unmute Game'}
@@ -907,13 +907,13 @@ const PlinkoGame: React.FC = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Server Seed Hash:</span>
-                    <span className="text-cyan-400 font-mono text-xs break-all max-w-[200px]">
+                    <span className="text-accent-primary font-mono text-xs break-all max-w-[200px]">
                       {lastGameData.serverSeedHash || 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Client Seed:</span>
-                    <span className="text-cyan-400 font-mono text-xs break-all max-w-[200px]">
+                    <span className="text-accent-primary font-mono text-xs break-all max-w-[200px]">
                       {lastGameData.clientSeed || 'N/A'}
                     </span>
                   </div>
@@ -959,7 +959,7 @@ const PlinkoGame: React.FC = () => {
               onClick={() => setActiveTab('manual')}
               className={`flex-1 py-2.5 font-bold text-sm transition-all ${
                 activeTab === 'manual'
-                  ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                  ? 'bg-accent-primary text-white shadow-lg shadow-primary/30'
                   : 'bg-[#1a1f2e] text-gray-400 hover:bg-[#252b3d]'
               }`}
             >
@@ -988,7 +988,7 @@ const PlinkoGame: React.FC = () => {
                   data-testid="bet-amount-input"
                   value={betAmount}
                   onChange={(e) => setBetAmount(Math.max(0.1, Number(e.target.value)))}
-                  className="w-full bg-[#1a1f2e] border border-gray-700/50 rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
+                  className="w-full bg-[#1a1f2e] border border-gray-700/50 rounded-xl pl-8 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary/50 transition-all"
                   min="0.1"
                   step="0.1"
                   disabled={autoBet.enabled}
@@ -1042,7 +1042,7 @@ const PlinkoGame: React.FC = () => {
           {/* Rows Slider */}
           <div>
             <label className="block text-xs sm:text-sm text-gray-400 mb-2 font-medium">
-              ROWS: <span data-testid="rows-display" className="text-cyan-400">{rows}</span>
+              ROWS: <span data-testid="rows-display" className="text-accent-primary">{rows}</span>
             </label>
             <div className="relative">
               <input
@@ -1053,7 +1053,7 @@ const PlinkoGame: React.FC = () => {
                 value={rows}
                 onChange={(e) => setRows(Number(e.target.value))}
                 disabled={autoBet.enabled || activeBalls > 0}
-                className="w-full h-2 bg-[#1a1f2e] rounded-lg appearance-none cursor-pointer accent-cyan-500 disabled:opacity-50"
+                className="w-full h-2 bg-[#1a1f2e] rounded-lg appearance-none cursor-pointer primary disabled:opacity-50"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
                 <span>8</span><span>10</span><span>12</span><span>14</span><span>16</span>
@@ -1135,12 +1135,12 @@ const PlinkoGame: React.FC = () => {
               className={`w-full py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all ${
                 activeBalls >= 10
                   ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 active:scale-[0.98]'
+                  : 'bg-gradient-to-r from-primary to-blue-600 text-white hover:from-primary hover:to-blue-500 shadow-lg shadow-primary/30 hover:shadow-primary/50 active:scale-[0.98]'
               }`}
             >
               {activeBalls > 0 ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-cyan-400/30 flex items-center justify-center text-xs font-bold text-cyan-300">{activeBalls}</span>
+                  <span className="w-5 h-5 rounded-full bg-accent-primary/30 flex items-center justify-center text-xs font-bold text-accent-primary">{activeBalls}</span>
                   DROP BALL [SPACE]
                 </span>
               ) : (

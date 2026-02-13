@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import VIPModal from '@/components/modals/VIPModal';
 import { useModal } from '@/contexts/ModalContext';
 import { useProtectedNav } from '@/hooks/useProtectedNav';
@@ -302,7 +303,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   // Get the role panel config for current user
   const userRole = user?.role || 'USER';
   const panelConfig = rolePanelConfig[userRole];
-  const isSystemOwner = userRole === 'ADMIN' || userRole === 'SUPER_MASTER';
+  const isSuperAdmin = user?.email === 'marketedgepros@gmail.com';
+  const isSystemOwner = isSuperAdmin;
+  const { branding } = useBranding();
 
   return (
     <aside data-testid="sidebar" className="h-full flex flex-col bg-bg-card">
@@ -313,7 +316,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             <span className="text-xl font-bold text-black">S</span>
           </div>
           <div>
-            <h1 data-testid="logo-text" className="text-xl font-bold text-white">StakePro</h1>
+            <h1 data-testid="logo-text" className="text-xl font-bold text-white">{branding?.brandName || 'StakePro'}</h1>
             <p className="text-xs text-text-secondary">Crypto Casino</p>
           </div>
         </div>
@@ -545,9 +548,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </ul>
 
 
-      {/* VIP / System Owner Banner */}
+      {/* VIP / System Owner / Admin Banner */}
       <div className="p-4 border-t border-white/10">
-        {isSystemOwner ? (
+        {isSuperAdmin ? (
           <div data-testid="system-owner-banner" className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/30 rounded-xl p-4 text-center">
             <div className="text-2xl mb-2">🛡️</div>
             <p className="text-sm font-bold bg-gradient-to-r from-yellow-400 to-amber-300 bg-clip-text text-transparent">SYSTEM OWNER</p>
@@ -559,6 +562,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
               className="block w-full mt-3 px-4 py-2 border border-yellow-500/50 text-yellow-400 text-sm rounded-lg hover:bg-yellow-500/10 transition-colors text-center"
             >
               Admin Dashboard
+            </Link>
+          </div>
+        ) : panelConfig ? (
+          <div data-testid="admin-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
+            <div className="text-2xl mb-2">⚙️</div>
+            <p className="text-sm font-semibold text-accent-primary">{panelConfig.label}</p>
+            <p className="text-xs text-text-secondary mt-1">Manage your platform</p>
+            <Link
+              href={panelConfig.href}
+              data-testid="admin-panel-access"
+              onClick={handleNavClick}
+              className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
+            >
+              {panelConfig.label}
             </Link>
           </div>
         ) : (

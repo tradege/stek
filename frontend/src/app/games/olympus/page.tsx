@@ -1,4 +1,5 @@
 "use client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -889,6 +890,7 @@ export default function OlympusPage() {
                 };
 
                 return (
+                  <ErrorBoundary gameName="Olympus">
                   <div
                     key={index}
                     className={`
@@ -935,6 +937,7 @@ export default function OlympusPage() {
                       />
                     )}
                   </div>
+                  </ErrorBoundary>
                 );
               })}
             </div>

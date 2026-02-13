@@ -102,13 +102,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isVisible }) => {
           messages.map((msg, i) => (
             <div key={i} className={`flex gap-2 ${msg.userId === user?.id ? 'flex-row-reverse' : ''}`}>
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                msg.isVIP ? 'bg-accent-primary/20 text-accent-primary' : 'bg-white/10 text-text-secondary'
+                msg.isVIP ? 'bg-accent-primary/20 text-primary' : 'bg-white/10 text-text-secondary'
               }`}>
                 {msg.username[0]?.toUpperCase()}
               </div>
               <div className={`max-w-[80%] ${msg.userId === user?.id ? 'text-right' : ''}`}>
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className={`text-xs font-medium ${msg.isVIP ? 'text-accent-primary' : 'text-text-secondary'}`}>
+                  <span className={`text-xs font-medium ${msg.isVIP ? 'text-primary' : 'text-text-secondary'}`}>
                     {msg.username}
                   </span>
                   {msg.isVIP && (

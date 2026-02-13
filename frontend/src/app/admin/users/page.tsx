@@ -106,7 +106,7 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
 
   if (loading) return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>
   );
 
@@ -138,7 +138,7 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
           {(["info", "balance", "bets"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab ? "text-accent-primary border-b-2 border-accent-primary" : "text-text-secondary hover:text-white"
+                activeTab === tab ? "text-accent-primary border-b-2 border-primary" : "text-text-secondary hover:text-white"
               }`}>
               {tab === "info" ? "User Info" : tab === "balance" ? "Balance Manager" : "Bet History"}
             </button>
@@ -442,7 +442,7 @@ export default function AdminUsersPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>
   );
 
@@ -511,7 +511,7 @@ export default function AdminUsersPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filterStatus === s
                     ? s === "PENDING_APPROVAL" ? "bg-yellow-500 text-black" : "bg-accent-primary text-text-inverse"
-                    : "bg-card-hover text-text-secondary hover:text-text-primary"
+                    : "bg-card-hover text-text-secondary hover:text-text-accent-primary"
                 }`}>
                 {s === "PENDING_APPROVAL" ? "⏳ Pending" : s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
               </button>
@@ -568,7 +568,7 @@ export default function AdminUsersPage() {
                   <input type="checkbox" checked={isAllSelected}
                     ref={el => { if (el) el.indeterminate = isSomeSelected && !isAllSelected; }}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-accent-primary cursor-pointer" />
+                    className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-primary cursor-pointer" />
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">User</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">Status</th>
@@ -586,7 +586,7 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3">
                       {u.role !== "ADMIN" ? (
                         <input type="checkbox" checked={sel} onChange={() => toggleSelect(u.id)}
-                          className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-accent-primary cursor-pointer" />
+                          className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-primary cursor-pointer" />
                       ) : <div className="w-4 h-4" />}
                     </td>
                     <td className="px-4 py-3">

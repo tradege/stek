@@ -326,7 +326,7 @@ function auditPenalty(): string {
   // Hardcoded multiplier table from code (goals 1-10)
   const MULTIPLIER_TABLE: Record<number, number> = {
     1: 1.44, 2: 2.16, 3: 3.24, 4: 4.86, 5: 7.29,
-    6: 10.94, 7: 16.40, 8: 24.60, 9: 36.91, 10: 55.36,
+    6: 10.93, 7: 16.40, 8: 24.60, 9: 36.91, 10: 55.36,
   };
 
   output += subHeader('4A: PENALTY — Hardcoded Table (Goals 1-10) vs Formula');

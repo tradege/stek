@@ -82,7 +82,7 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
         <div className="overflow-y-auto max-h-[calc(85vh-130px)] px-6 py-5 space-y-5">
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="w-10 h-10 border-4 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
+              <div className="w-10 h-10 border-4 border-accent-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : stats ? (
             <>
@@ -120,7 +120,7 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
                   </div>
                   <p className="text-lg font-bold text-yellow-400">{formatCurrency(Number(stats.biggestWin) || 0)}</p>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-xl border border-cyan-500/20">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-accent-primary/10 to-blue-500/10 rounded-xl border border-accent-primary/20">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">🚀</span>
                     <div>
@@ -128,7 +128,7 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
                       <p className="text-text-secondary text-xs">Best cashout</p>
                     </div>
                   </div>
-                  <p className="text-lg font-bold text-cyan-400">{Number(stats.biggestMultiplier || 0).toFixed(2)}x</p>
+                  <p className="text-lg font-bold text-accent-primary">{Number(stats.biggestMultiplier || 0).toFixed(2)}x</p>
                 </div>
               </div>
 

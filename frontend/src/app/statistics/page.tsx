@@ -14,7 +14,7 @@ const GAME_REGISTRY: Record<string, { icon: string; emoji: string; color: string
   PLINKO:       { icon: '🔮', emoji: '🔮', color: '#8B5CF6', gradient: 'from-purple-500/20 to-violet-500/20', label: 'Plinko' },
   OLYMPUS:      { icon: '⚡', emoji: '⚡', color: '#F97316', gradient: 'from-orange-500/20 to-amber-500/20', label: 'Olympus' },
   DRAGON_BLAZE: { icon: '🐉', emoji: '🐉', color: '#DC2626', gradient: 'from-red-600/20 to-orange-600/20', label: 'Dragon Blaze' },
-  NOVA_RUSH:    { icon: '🚀', emoji: '🚀', color: '#06B6D4', gradient: 'from-cyan-500/20 to-blue-500/20', label: 'Nova Rush' },
+  NOVA_RUSH:    { icon: '🚀', emoji: '🚀', color: '#06B6D4', gradient: 'from-accent-primary/20 to-blue-500/20', label: 'Nova Rush' },
   LIMBO:        { icon: '🎯', emoji: '🎯', color: '#10B981', gradient: 'from-emerald-500/20 to-green-500/20', label: 'Limbo' },
   KENO:         { icon: '🎰', emoji: '🎰', color: '#EC4899', gradient: 'from-pink-500/20 to-rose-500/20', label: 'Keno' },
   WHEEL:        { icon: '🎡', emoji: '🎡', color: '#14B8A6', gradient: 'from-teal-500/20 to-emerald-500/20', label: 'Wheel' },
@@ -129,7 +129,7 @@ export default function StatisticsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-6 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${
                 activeTab === tab.id
-                  ? 'bg-accent-primary text-white shadow-lg shadow-accent-primary/25'
+                  ? 'bg-accent-primary text-white shadow-lg shadow-primary/25'
                   : 'text-text-secondary hover:text-white hover:bg-white/10'
               }`}
             >
@@ -141,7 +141,7 @@ export default function StatisticsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-12 h-12 border-4 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
+            <div className="w-12 h-12 border-4 border-accent-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
         ) : error ? (
           <div className="text-center py-20">
@@ -201,7 +201,7 @@ export default function StatisticsPage() {
                     </div>
                     <p className="text-2xl font-bold text-yellow-400">{formatCurrency(stats.biggestWin)}</p>
                   </div>
-                  <div className="flex items-center justify-between p-5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-2xl border border-cyan-500/20">
+                  <div className="flex items-center justify-between p-5 bg-gradient-to-r from-accent-primary/10 to-blue-500/10 rounded-2xl border border-accent-primary/20">
                     <div className="flex items-center gap-4">
                       <span className="text-3xl">🚀</span>
                       <div>
@@ -209,7 +209,7 @@ export default function StatisticsPage() {
                         <p className="text-text-secondary text-sm">Best cashout</p>
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-cyan-400">{Number(stats.biggestMultiplier).toFixed(2)}x</p>
+                    <p className="text-2xl font-bold text-accent-primary">{Number(stats.biggestMultiplier).toFixed(2)}x</p>
                   </div>
                 </div>
 
@@ -314,9 +314,9 @@ export default function StatisticsPage() {
                         { label: 'Total Bets', value: stats.totalBets.toLocaleString(), color: 'text-white' },
                         { label: 'Won Bets', value: stats.wonBets.toLocaleString(), color: 'text-green-400' },
                         { label: 'Lost Bets', value: stats.lostBets.toLocaleString(), color: 'text-red-400' },
-                        { label: 'Win Rate', value: `${stats.winRate.toFixed(1)}%`, color: 'text-accent-primary' },
+                        { label: 'Win Rate', value: `${stats.winRate.toFixed(1)}%`, color: 'text-primary' },
                         { label: 'Biggest Win', value: formatCurrency(stats.biggestWin), color: 'text-yellow-400' },
-                        { label: 'Highest Multiplier', value: `${Number(stats.biggestMultiplier).toFixed(2)}x`, color: 'text-cyan-400' },
+                        { label: 'Highest Multiplier', value: `${Number(stats.biggestMultiplier).toFixed(2)}x`, color: 'text-primary' },
                       ].map((row, i) => (
                         <tr key={i} className="border-b border-white/5 hover:bg-white/5">
                           <td className="py-3 px-5 text-text-secondary">{row.label}</td>

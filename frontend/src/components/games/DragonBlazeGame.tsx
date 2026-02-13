@@ -2072,10 +2072,10 @@ const DragonBlazeGame: React.FC = () => {
                     placeholder="10" min={MIN_BET} max={MAX_BET} disabled={betStatus !== 'NONE'} />
                   <button onClick={() => setBetAmount(String(Math.max(MIN_BET, Math.floor(Number(betAmount) / 2))))}
                     disabled={betStatus !== 'NONE'}
-                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">½</button>
+                    className="px-3 py-2.5 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-sm text-gray-300 transition-colors disabled:opacity-40 min-h-[44px] flex items-center justify-center">½</button>
                   <button onClick={() => setBetAmount(String(Math.min(MAX_BET, Number(betAmount) * 2)))}
                     disabled={betStatus !== 'NONE'}
-                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">2×</button>
+                    className="px-3 py-2.5 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-sm text-gray-300 transition-colors disabled:opacity-40 min-h-[44px] flex items-center justify-center">2×</button>
                 </div>
                 {betMode !== 'both' && (
                   <div className="flex gap-1 mt-1">
@@ -2127,10 +2127,10 @@ const DragonBlazeGame: React.FC = () => {
                     placeholder="10" min={MIN_BET} max={MAX_BET} disabled={betStatus2 !== 'NONE'} />
                   <button onClick={() => setDragon2Bet(String(Math.max(MIN_BET, Math.floor(Number(dragon2Bet) / 2))))}
                     disabled={betStatus2 !== 'NONE'}
-                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">½</button>
+                    className="px-3 py-2.5 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-sm text-gray-300 transition-colors disabled:opacity-40 min-h-[44px] flex items-center justify-center">½</button>
                   <button onClick={() => setDragon2Bet(String(Math.min(MAX_BET, Number(dragon2Bet) * 2)))}
                     disabled={betStatus2 !== 'NONE'}
-                    className="px-2 py-1 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-xs text-gray-300 transition-colors disabled:opacity-40">2×</button>
+                    className="px-3 py-2.5 bg-[#2f4553] hover:bg-[#3d5a6e] rounded-lg text-sm text-gray-300 transition-colors disabled:opacity-40 min-h-[44px] flex items-center justify-center">2×</button>
                 </div>
                 {betMode !== 'both' && (
                   <div className="flex gap-1 mt-1">

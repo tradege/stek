@@ -106,7 +106,7 @@ export default function GameGrid({ category, limit }: GameGridProps) {
     if (game.slug === "limbo") return "from-purple-600 to-pink-600";
     if (game.slug === "penalty") return "from-green-600 to-teal-600";
     if (game.slug === 'plinko') return 'from-[#1475e1] to-[#1475e1]';
-    if (game.slug === 'dice') return 'from-blue-600 to-cyan-600';
+    if (game.slug === 'dice') return 'from-blue-600 to-primary';
     if (game.slug === 'mines') return 'from-gray-700 to-gray-900';
     if (game.category === 'SLOTS') return 'from-yellow-600 to-orange-600';
     if (game.category === 'LIVE_CASINO') return 'from-green-600 to-emerald-600';

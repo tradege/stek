@@ -1,4 +1,5 @@
 "use client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSoundContext } from "@/contexts/SoundContext";
@@ -383,7 +384,7 @@ export default function CardRushPage() {
                   </div>
                   <div className="bg-[#0a0e14] rounded-lg p-2.5 text-center">
                     <div className="text-[10px] text-gray-500 uppercase">Payout</div>
-                    <div className="text-cyan-400 font-bold">{currentOdds.multiplier}x</div>
+                    <div className="text-accent-primary font-bold">{currentOdds.multiplier}x</div>
                   </div>
                   <div className="bg-[#0a0e14] rounded-lg p-2.5 text-center">
                     <div className="text-[10px] text-gray-500 uppercase">Blackjack</div>
@@ -403,7 +404,7 @@ export default function CardRushPage() {
             ) : gameState === "RESULT" ? (
               <motion.button onClick={resetGame} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30 uppercase tracking-wider">
+                className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-primary to-blue-500 text-white shadow-lg shadow-primary/30 uppercase tracking-wider">
                 New Hand
               </motion.button>
             ) : (
@@ -518,12 +519,14 @@ export default function CardRushPage() {
                       ) : history.map((bet) => {
                         const profit = parseFloat(bet.profit);
                         return (
+                          <ErrorBoundary gameName="Card Rush">
                           <tr key={bet.id} className="border-b border-white/5 hover:bg-white/5">
                             <td className="px-4 py-2 font-mono text-xs">{bet.gameData?.handSize || "?"} cards</td>
                             <td className="px-4 py-2"><span className={`text-xs font-semibold px-2 py-0.5 rounded ${bet.isWin ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>{bet.isWin ? "WIN" : "LOSS"}</span></td>
                             <td className="px-4 py-2 text-right font-mono text-xs">${parseFloat(bet.betAmount).toFixed(2)}</td>
                             <td className={`px-4 py-2 text-right font-mono font-bold text-xs ${profit >= 0 ? "text-green-400" : "text-red-400"}`}>{profit >= 0 ? "+" : ""}${profit.toFixed(2)}</td>
                           </tr>
+                          </ErrorBoundary>
                         );
                       })}
                     </tbody>
@@ -545,7 +548,7 @@ export default function CardRushPage() {
                           <td className="px-3 py-2 font-bold">{o.handSize} {"\uD83C\uDCCF"}</td>
                           <td className="px-3 py-2 text-center text-green-400 text-xs">{o.winProbability}</td>
                           <td className="px-3 py-2 text-center text-red-400 text-xs">{o.bustProbability}</td>
-                          <td className="px-3 py-2 text-center text-cyan-400 font-bold text-xs">{o.multiplier}x</td>
+                          <td className="px-3 py-2 text-center text-accent-primary font-bold text-xs">{o.multiplier}x</td>
                           <td className="px-3 py-2 text-center text-yellow-400 font-bold text-xs">{o.blackjackMultiplier}x</td>
                         </tr>
                       ))}

@@ -3,7 +3,7 @@ import React from 'react';
 
 export default function FullPageLoader() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-accent-primary">
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
           <div className="w-12 h-12 border-2 border-accent-primary/20 rounded-full" />

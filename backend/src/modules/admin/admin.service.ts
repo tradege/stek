@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { invalidateSiteCache } from '../../common/helpers/game-tenant.helper';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserStatus } from '@prisma/client';
 
@@ -182,13 +183,25 @@ export class AdminService {
 
     const updateData: any = {};
     if (body.houseEdge !== undefined) {
-      const edge = body.houseEdge / 100;
+      // Smart Parse: if value > 1 (e.g. 4), treat as percentage -> convert to 0.04
+      // If value <= 1 (e.g. 0.04), treat as decimal -> keep as-is
+      let edge: number;
+      if (body.houseEdge > 1) {
+        edge = body.houseEdge / 100; // e.g. 4 -> 0.04
+      } else {
+        edge = body.houseEdge; // e.g. 0.04 -> 0.04
+      }
+      // Validate: must be between 0.001 (0.1%) and 0.20 (20%)
+      edge = Math.max(0.001, Math.min(0.20, edge));
       updateData.houseEdgeConfig = {
         crash: edge,
         dice: edge,
         mines: edge,
         plinko: edge,
         olympus: edge,
+        penalty: edge,
+        cardRush: edge,
+        limbo: edge,
       };
     }
 
@@ -197,6 +210,9 @@ export class AdminService {
         where: { id: targetSiteId },
         data: updateData,
       });
+      // Invalidate game config cache so games pick up new values immediately
+      invalidateSiteCache(targetSiteId);
+      this.logger.log(`House edge updated for ${targetSiteId}`);
     }
 
     if (body.botsEnabled !== undefined || body.maxBotBet !== undefined || body.minBotBet !== undefined) {
@@ -357,6 +373,7 @@ export class AdminService {
       where: { id: siteId },
       data: { houseEdgeConfig: config },
     });
+    invalidateSiteCache(siteId);
     return { success: true, siteId, houseEdgeConfig: config };
   }
 

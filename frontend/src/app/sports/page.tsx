@@ -121,7 +121,7 @@ function OddsFormatSelector({ format, onChange }: { format: OddsFormat; onChange
           onClick={() => onChange(o.key)}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             format === o.key
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+              ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
@@ -188,7 +188,7 @@ function BetSlip({ items, onRemove, onClear, onPlaceBet, oddsFormat, minBet }: {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">
           <span className="text-xl">🎫</span> Bet Slip
-          <span className="bg-cyan-500/20 text-cyan-400 text-xs px-2 py-0.5 rounded-full">{items.length}</span>
+          <span className="bg-accent-primary/20 text-accent-primary text-xs px-2 py-0.5 rounded-full">{items.length}</span>
         </h3>
         <button onClick={onClear} className="text-xs text-red-400 hover:text-red-300 transition-colors">Clear All</button>
       </div>
@@ -209,8 +209,8 @@ function BetSlip({ items, onRemove, onClear, onPlaceBet, oddsFormat, minBet }: {
                 <button onClick={() => onRemove(item.eventId)} className="text-gray-500 hover:text-red-400 ml-2">✕</button>
               </div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-cyan-400 text-sm font-semibold">{item.selectionName}</span>
-                <span className="bg-cyan-500/20 text-cyan-300 text-sm font-bold px-2 py-0.5 rounded">
+                <span className="text-accent-primary text-sm font-semibold">{item.selectionName}</span>
+                <span className="bg-accent-primary/20 text-accent-primary text-sm font-bold px-2 py-0.5 rounded">
                   {convertOdds(item.odds, oddsFormat)}
                 </span>
               </div>
@@ -223,7 +223,7 @@ function BetSlip({ items, onRemove, onClear, onPlaceBet, oddsFormat, minBet }: {
                     value={stakes[item.eventId] || ''}
                     onChange={(e) => handleStakeChange(item.eventId, e.target.value)}
                     className={`w-full bg-[#1a2235] border rounded-lg pl-5 pr-3 py-2 text-white text-sm focus:outline-none ${
-                      err ? 'border-red-500/50 focus:border-red-500' : 'border-gray-600/50 focus:border-cyan-500'
+                      err ? 'border-red-500/50 focus:border-red-500' : 'border-gray-600/50 focus:border-primary'
                     }`}
                     min={minBet}
                     step="1"
@@ -232,7 +232,7 @@ function BetSlip({ items, onRemove, onClear, onPlaceBet, oddsFormat, minBet }: {
                 <button
                   onClick={() => handlePlace(item)}
                   disabled={stake < minBet || isPlacing}
-                  className="bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-all disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-primary to-primary hover:from-primary hover:to-primary disabled:from-gray-600 disabled:to-gray-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-all disabled:cursor-not-allowed"
                 >
                   {isPlacing ? '...' : 'Bet'}
                 </button>
@@ -269,12 +269,12 @@ function OddsButton({ label, odds, isSelected, onClick, oddsFormat }: {
       onClick={onClick}
       className={`flex-1 rounded-lg p-2 text-center transition-all cursor-pointer border ${
         isSelected
-          ? 'bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
+          ? 'bg-accent-primary/20 border-accent-primary/50 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
           : 'bg-[#0A0E17] border-transparent hover:bg-[#1a2235] hover:border-gray-600/50'
       }`}
     >
       <div className="text-[10px] text-gray-400 uppercase">{label}</div>
-      <div className={`text-sm font-bold ${isSelected ? 'text-cyan-400' : 'text-white'}`}>
+      <div className={`text-sm font-bold ${isSelected ? 'text-primary' : 'text-white'}`}>
         {convertOdds(odds, oddsFormat)}
       </div>
     </button>
@@ -300,7 +300,7 @@ function EventCard({ event, selectedSelection, onSelectOdd, oddsFormat }: {
             <span className="bg-red-500/20 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">LIVE</span>
           )}
         </div>
-        <div className="text-xs text-cyan-400 font-medium">{timeLabel}</div>
+        <div className="text-xs text-accent-primary font-medium">{timeLabel}</div>
       </div>
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1">
@@ -479,7 +479,7 @@ export default function SportsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
               <span className="text-xl">⚽</span>
             </div>
             <div>
@@ -511,7 +511,7 @@ export default function SportsPage() {
             onClick={() => setActiveLeague(null)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
               !activeLeague
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
                 : 'bg-[#131B2C] text-gray-400 border border-gray-700/30 hover:border-gray-600/50'
             }`}
           >
@@ -523,7 +523,7 @@ export default function SportsPage() {
               onClick={() => setActiveLeague(league.key === activeLeague ? null : league.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
                 activeLeague === league.key
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                  ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
                   : 'bg-[#131B2C] text-gray-400 border border-gray-700/30 hover:border-gray-600/50'
               }`}
             >
@@ -581,8 +581,8 @@ export default function SportsPage() {
                               <div key={dateLabel}>
                                 {/* Date Header */}
                                 <div className="flex items-center gap-2 mb-2 ml-1">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                                  <span className="text-sm font-semibold text-cyan-400">{dateLabel}</span>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-accent-primary" />
+                                  <span className="text-sm font-semibold text-accent-primary">{dateLabel}</span>
                                   <div className="flex-1 h-px bg-gray-700/30" />
                                 </div>
 
@@ -632,7 +632,7 @@ export default function SportsPage() {
           <div className="lg:hidden fixed bottom-4 right-4 z-50">
             <button
               onClick={() => setShowMobileBetSlip(!showMobileBetSlip)}
-              className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-bold px-5 py-3 rounded-full shadow-lg shadow-cyan-500/30 flex items-center gap-2"
+              className="bg-gradient-to-r from-primary to-primary text-white font-bold px-5 py-3 rounded-full shadow-lg shadow-primary/30 flex items-center gap-2"
             >
               🎫 Bet Slip
               <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">{betSlip.length}</span>

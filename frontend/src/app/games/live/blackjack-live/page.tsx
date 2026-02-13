@@ -16,7 +16,7 @@ export default function BlackjackLivePage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-bg-accent-primary flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated background particles - green theme */}
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(12)].map((_, i) => (

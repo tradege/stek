@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as crypto from 'crypto';
 import Decimal from 'decimal.js';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getGameConfig } from '../../common/helpers/game-tenant.helper';
 import { GameType } from '@prisma/client';
 import { GameConfigService } from './game-config.service';
 
@@ -259,7 +260,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   /**
    * Generate a crash point from seed material
    */
-  private generateCrashPoint(serverSeed: string, clientSeed: string, nonce: number): Decimal {
+  private generateCrashPoint(serverSeed: string, clientSeed: string, nonce: number, houseEdgeOverride?: number): Decimal {
     const combinedSeed = `${clientSeed}:${nonce}`;
     const hmac = crypto.createHmac('sha256', serverSeed);
     hmac.update(combinedSeed);
@@ -268,7 +269,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     const E = this.E;
     const r = h / E;
     const HOUSE_EDGE = this.gameConfig.houseEdge;
-    const rawMultiplier = ((1 - HOUSE_EDGE) / (1 - r)) * 0.99; // 0.99 coefficient for precise 96% RTP
+    const rawMultiplier = ((1 - HOUSE_EDGE) / (1 - r)); // House edge from admin panel config
     const crashPoint = Math.max(1.00, Math.floor(rawMultiplier * 100) / 100);
     if (crashPoint > 5000) {
       return new Decimal(5000.00);
@@ -289,7 +290,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   /**
    * Generate a SECOND crash point using a different derivation
    */
-  private generateSecondCrashPoint(serverSeed: string, clientSeed: string, nonce: number): Decimal {
+  private generateSecondCrashPoint(serverSeed: string, clientSeed: string, nonce: number, houseEdgeOverride?: number): Decimal {
     const combinedSeed = `${clientSeed}:${nonce}:dragon2`;
     const hmac = crypto.createHmac('sha256', serverSeed);
     hmac.update(combinedSeed);
@@ -298,7 +299,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     const E = this.E;
     const r = h / E;
     const HOUSE_EDGE = this.gameConfig.houseEdge;
-    const rawMultiplier = ((1 - HOUSE_EDGE) / (1 - r)) * 0.99; // 0.99 coefficient for precise 96% RTP
+    const rawMultiplier = ((1 - HOUSE_EDGE) / (1 - r)); // House edge from admin panel config
     const crashPoint = Math.max(1.00, Math.floor(rawMultiplier * 100) / 100);
     if (crashPoint > 5000) {
       return new Decimal(5000.00);
@@ -310,15 +311,25 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   // STATE MACHINE
   // ============================================
 
-  private startNewRound(): void {
+  private async startNewRound(): Promise<void> {
     this.gameNumber++;
     
     const serverSeed = this.generateRoundServerSeed();
     const serverSeedHash = this.hashServerSeed(serverSeed);
     
-    // Generate TWO independent crash points
-    const crashPoint1 = this.generateCrashPoint(serverSeed, this.defaultClientSeed, this.gameNumber);
-    const crashPoint2 = this.generateSecondCrashPoint(serverSeed, this.defaultClientSeed, this.gameNumber);
+    // Load house edge from DB (single source of truth)
+    let dbHouseEdge: number | undefined;
+    try {
+      const config = await getGameConfig(this.prisma, 'default-site-001', 'crash');
+      dbHouseEdge = config.houseEdge;
+      // Also update the in-memory config for consistency
+      this.gameConfig.updateConfig({ houseEdge: dbHouseEdge });
+    } catch (e) {
+      this.logger.warn('Failed to load house edge from DB, using in-memory config');
+    }
+    // Generate TWO independent crash points using DB config
+    const crashPoint1 = this.generateCrashPoint(serverSeed, this.defaultClientSeed, this.gameNumber, dbHouseEdge);
+    const crashPoint2 = this.generateSecondCrashPoint(serverSeed, this.defaultClientSeed, this.gameNumber, dbHouseEdge);
     
     this.currentRound = {
       id: crypto.randomUUID(),

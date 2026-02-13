@@ -195,10 +195,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                   <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold">
                     ₮
                   </div>
-                  <span className="text-white font-semibold tabular-nums hidden sm:block">
+                  <span className="text-white font-semibold tabular-nums text-xs sm:text-base">
                     {balanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  <span className="text-text-secondary text-sm hidden sm:block">USDT</span>
+                  <span className="text-text-secondary text-[10px] sm:text-sm">USDT</span>
                   <svg className={`w-4 h-4 text-text-secondary transition-transform ${isWalletOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -275,7 +275,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                   data-testid="user-menu"
                   className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white font-bold text-sm">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent-secondary flex items-center justify-center text-white font-bold text-sm">
                     {user.username?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <span className="text-white font-medium hidden sm:block max-w-24 truncate">

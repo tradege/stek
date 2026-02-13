@@ -1,4 +1,5 @@
 "use client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -229,7 +230,7 @@ export default function MinesPage() {
     if (isGameOver && !isRevealed && !isMine) {
       return { icon: "💎", bg: "bg-gray-800/30 border-gray-600/20", text: "text-gray-600", revealed: false };
     }
-    return { icon: "", bg: "bg-gradient-to-br from-[#2a4a5e] to-[#1e3a4e] border-[#3d6a7e]/50 hover:from-[#3a5a6e] hover:to-[#2e4a5e] hover:border-cyan-500/40 hover:shadow-[0_0_10px_rgba(0,240,255,0.15)] cursor-pointer", text: "", revealed: false };
+    return { icon: "", bg: "bg-gradient-to-br from-[#2a4a5e] to-[#1e3a4e] border-[#3d6a7e]/50 hover:from-[#3a5a6e] hover:to-[#2e4a5e] hover:border-accent-primary/40 hover:shadow-[0_0_10px_rgba(0,240,255,0.15)] cursor-pointer", text: "", revealed: false };
   };
 
   const isGameActive = gameState?.status === "ACTIVE";
@@ -255,7 +256,7 @@ export default function MinesPage() {
       <div className="fixed inset-0 bg-gradient-to-br from-[#070d14] via-[#0c1620] to-[#0a1018] -z-10" />
       <div className="fixed inset-0 -z-10 opacity-20">
         <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-accent-primary/10 rounded-full blur-[120px]" />
       </div>
 
       {/* Floating Particles */}
@@ -360,7 +361,7 @@ export default function MinesPage() {
                   </div>
                   <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
                     <div className="text-xs text-gray-500 mb-1">Multiplier</div>
-                    <div className="text-cyan-400 font-mono font-bold text-xl">{Number(gameState.currentMultiplier).toFixed(2)}×</div>
+                    <div className="text-accent-primary font-mono font-bold text-xl">{Number(gameState.currentMultiplier).toFixed(2)}×</div>
                   </div>
                 </div>
                 <div className="bg-[#0f1923]/80 rounded-lg p-4 text-center border border-yellow-500/20">
@@ -369,7 +370,7 @@ export default function MinesPage() {
                 </div>
                 {gameState.nextMultiplier > 0 && (
                   <div className="text-center text-xs text-gray-400">
-                    Next reveal: <span className="text-cyan-400 font-mono font-bold">{gameState.nextMultiplier.toFixed(4)}×</span>
+                    Next reveal: <span className="text-accent-primary font-mono font-bold">{gameState.nextMultiplier.toFixed(4)}×</span>
                   </div>
                 )}
               </motion.div>
@@ -561,6 +562,7 @@ export default function MinesPage() {
                           const isCompleted = isGameActive && currentStep > row.step;
                           const isNext = isGameActive && currentStep + 1 === row.step;
                           return (
+                            <ErrorBoundary gameName="Mines">
                             <tr
                               key={row.step}
                               data-step={row.step}
@@ -570,7 +572,7 @@ export default function MinesPage() {
                                   : isCompleted
                                   ? "bg-emerald-500/5"
                                   : isNext
-                                  ? "bg-cyan-500/5"
+                                  ? "bg-accent-primary/5"
                                   : "hover:bg-white/5"
                               }`}
                             >
@@ -587,7 +589,7 @@ export default function MinesPage() {
                                       ●
                                     </motion.span>
                                   ) : isNext ? (
-                                    <span className="text-cyan-400 text-xs">→</span>
+                                    <span className="text-accent-primary text-xs">→</span>
                                   ) : (
                                     <span className="text-gray-600 text-xs">{row.step}</span>
                                   )}
@@ -599,7 +601,7 @@ export default function MinesPage() {
                                 </div>
                               </td>
                               <td className={`px-3 py-2 text-right font-mono text-xs ${
-                                isCurrentStep ? "text-cyan-300 font-bold" : "text-gray-300"
+                                isCurrentStep ? "text-accent-primary font-bold" : "text-gray-300"
                               }`}>
                                 {row.multiplier.toFixed(4)}×
                               </td>
@@ -624,6 +626,7 @@ export default function MinesPage() {
                                 {row.survivalChance.toFixed(1)}%
                               </td>
                             </tr>
+                            </ErrorBoundary>
                           );
                         })}
                       </tbody>

@@ -168,8 +168,8 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
           >
             <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-gradient-to-br from-gray-900/95 via-gray-900/90 to-black/95 border border-gray-700/50 shadow-2xl backdrop-blur-xl">
               {/* Decorative Elements */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+              <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent-primary/10 rounded-full blur-3xl pointer-events-none" />
               <div className="absolute -bottom-20 right-0 w-72 h-72 bg-[#1475e1]/10 rounded-full blur-3xl pointer-events-none" />
 
               {/* Close Button */}
@@ -244,7 +244,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
                     <div className="flex-1 max-w-md w-full">
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-gray-400">Progress to {TIERS[currentTier + 1]?.name || 'Max'}</span>
-                        <span className="text-cyan-400 font-medium">{getProgressToNextTier().toFixed(1)}%</span>
+                        <span className="text-accent-primary font-medium">{getProgressToNextTier().toFixed(1)}%</span>
                       </div>
                       <div className="h-4 bg-gray-800 rounded-full overflow-hidden relative">
                         <motion.div
@@ -298,7 +298,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
                           <motion.div
                             animate={{ scale: [1, 1.2, 1] }}
                             transition={{ duration: 2, repeat: Infinity }}
-                            className="absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg"
+                            className="absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-primary to-blue-500 text-white shadow-lg"
                           >
                             CURRENT
                           </motion.div>
@@ -341,7 +341,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
                         <div className="space-y-1 text-xs">
                           <div className="flex justify-between">
                             <span className="text-gray-500">Tier 1</span>
-                            <span className="text-cyan-400 font-medium">{tier.tier1Rate}</span>
+                            <span className="text-accent-primary font-medium">{tier.tier1Rate}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Tier 2</span>
@@ -378,7 +378,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => { onClose(); router.push('/affiliates'); }}
-                    className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/25 transition-all"
+                    className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-primary to-blue-600 hover:from-primary hover:to-blue-500 shadow-lg shadow-primary/25 transition-all"
                   >
                     Start Earning Now
                   </motion.button>

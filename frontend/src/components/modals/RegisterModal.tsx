@@ -75,7 +75,7 @@ const RegisterModal: React.FC = () => {
       <div className="p-8">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-accent-primary flex items-center justify-center shadow-glow-cyan mx-auto mb-3">
+          <div className="w-12 h-12 rounded-xl bg-accent-primary flex items-center justify-center shadow-glow mx-auto mb-3">
             <span className="text-2xl font-bold text-text-inverse">S</span>
           </div>
           <h2 className="text-2xl font-bold text-white">
@@ -186,7 +186,7 @@ const RegisterModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-accent-primary"
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,7 +247,7 @@ const RegisterModal: React.FC = () => {
                   type="checkbox"
                   id="modal-terms"
                   required
-                  className="mt-1 w-4 h-4 rounded border-card-border bg-card text-accent-primary focus:ring-accent-primary"
+                  className="mt-1 w-4 h-4 rounded border-card-border bg-card text-accent-primary focus:ring-primary"
                 />
                 <label htmlFor="modal-terms" className="text-sm text-text-secondary">
                   I agree to the{' '}

@@ -614,7 +614,7 @@ const CrashGamePanel: React.FC = () => {
       if (currentMultiplier >= 10) return 'text-yellow-300 animate-multiplier-pulse';
       if (currentMultiplier >= 5) return 'text-yellow-400 animate-multiplier-glow';
       if (currentMultiplier >= 2) return 'text-green-400';
-      return 'text-cyan-400';
+      return 'text-primary';
     }
     if (gameState === 'WAITING') return 'text-gray-400 animate-waiting-pulse';
     return 'text-gray-400';
@@ -638,7 +638,7 @@ const CrashGamePanel: React.FC = () => {
       if (betStatus === 'PLACED') {
         return { text: 'BET PLACED ✓', disabled: true, className: 'bg-green-600 btn-pulse-glow' };
       }
-      return { text: 'PLACE BET [SPACE]', disabled: false, className: 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 btn-shine' };
+      return { text: 'PLACE BET [SPACE]', disabled: false, className: 'bg-gradient-to-r from-primary to-blue-500 hover:from-primary hover:to-blue-400 btn-shine' };
     }
     if (gameState === 'RUNNING') {
       if (betStatus === 'PLACED') {
@@ -863,7 +863,7 @@ const CrashGamePanel: React.FC = () => {
               type="number"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
-              className="flex-1 bg-gray-800/80 border border-gray-700/50 rounded-l-lg px-3 md:px-4 py-2.5 md:py-3 text-white text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+              className="flex-1 bg-gray-800/80 border border-gray-700/50 rounded-l-lg px-3 md:px-4 py-2.5 md:py-3 text-white text-sm focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/50 transition-all"
               placeholder="100"
               min={MIN_BET}
               max={MAX_BET}
@@ -872,14 +872,14 @@ const CrashGamePanel: React.FC = () => {
             <div className="flex flex-col">
               <button
                 onClick={() => setBetAmount((prev) => Math.min(parseFloat(prev) * 2, MAX_BET).toString())}
-                className="bg-gray-700/80 px-2 md:px-3 py-1 text-xs hover:bg-gray-600 rounded-tr-lg transition-colors border-l border-gray-600/50"
+                className="bg-gray-700/80 px-3 md:px-4 py-2 md:py-2.5 text-xs hover:bg-gray-600 rounded-tr-lg transition-colors border-l border-gray-600/50 min-h-[44px] flex items-center justify-center"
                 disabled={betStatus !== 'NONE' || autoBetActive}
               >
                 2x
               </button>
               <button
                 onClick={() => setBetAmount((prev) => Math.max(parseFloat(prev) / 2, MIN_BET).toString())}
-                className="bg-gray-700/80 px-2 md:px-3 py-1 text-xs hover:bg-gray-600 rounded-br-lg transition-colors border-l border-t border-gray-600/50"
+                className="bg-gray-700/80 px-3 md:px-4 py-2 md:py-2.5 text-xs hover:bg-gray-600 rounded-br-lg transition-colors border-l border-t border-gray-600/50 min-h-[44px] flex items-center justify-center"
                 disabled={betStatus !== 'NONE' || autoBetActive}
               >
                 ½
@@ -894,7 +894,7 @@ const CrashGamePanel: React.FC = () => {
             type="number"
             value={autoCashout}
             onChange={(e) => setAutoCashout(e.target.value)}
-            className="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-3 md:px-4 py-2.5 md:py-3 text-white text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+            className="w-full bg-gray-800/80 border border-gray-700/50 rounded-lg px-3 md:px-4 py-2.5 md:py-3 text-white text-sm focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/50 transition-all"
             placeholder="2.00"
             step="0.1"
             min="1.01"
@@ -913,7 +913,7 @@ const CrashGamePanel: React.FC = () => {
                 type="number"
                 value={autoBetCount}
                 onChange={(e) => setAutoBetCount(e.target.value)}
-                className="w-full bg-gray-900/60 border border-gray-700/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-gray-900/60 border border-gray-700/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-primary transition-colors"
                 min="1"
                 max="1000"
                 disabled={autoBetActive}
@@ -925,7 +925,7 @@ const CrashGamePanel: React.FC = () => {
                 type="number"
                 value={stopOnWin}
                 onChange={(e) => setStopOnWin(e.target.value)}
-                className="w-full bg-gray-900/60 border border-gray-700/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-gray-900/60 border border-gray-700/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-primary transition-colors"
                 placeholder="Optional"
                 disabled={autoBetActive}
               />
@@ -936,7 +936,7 @@ const CrashGamePanel: React.FC = () => {
                 type="number"
                 value={stopOnLoss}
                 onChange={(e) => setStopOnLoss(e.target.value)}
-                className="w-full bg-gray-900/60 border border-gray-700/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                className="w-full bg-gray-900/60 border border-gray-700/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-primary transition-colors"
                 placeholder="Optional"
                 disabled={autoBetActive}
               />
@@ -944,11 +944,11 @@ const CrashGamePanel: React.FC = () => {
           </div>
 
           {autoBetActive && (
-            <div className="flex items-center justify-between bg-cyan-500/10 rounded-lg px-3 py-2 border border-cyan-500/20">
-              <span className="text-xs text-cyan-400 font-medium">
+            <div className="flex items-center justify-between bg-accent-primary/10 rounded-lg px-3 py-2 border border-accent-primary/20">
+              <span className="text-xs text-accent-primary font-medium">
                 Auto-betting: {autoBetRemaining} rounds remaining
               </span>
-              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+              <div className="w-2 h-2 bg-accent-primary rounded-full animate-pulse" />
             </div>
           )}
         </div>
@@ -970,7 +970,7 @@ const CrashGamePanel: React.FC = () => {
           className={`w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg transition-all duration-300 ${
             autoBetActive
               ? 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400'
-              : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400'
+              : 'bg-gradient-to-r from-primary to-blue-500 hover:from-primary hover:to-blue-400'
           } hover-lift relative overflow-hidden`}
           style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}
         >
@@ -984,7 +984,7 @@ const CrashGamePanel: React.FC = () => {
       {currentBet && (
         <div className="mt-3 md:mt-4 p-3 bg-gray-800/60 rounded-lg flex justify-between items-center backdrop-blur-sm border border-gray-700/30 animate-slide-in">
           <span className="text-gray-400 text-sm">Your Bet:</span>
-          <span className="text-cyan-400 font-bold font-mono">${Number(currentBet?.betAmount || 0).toFixed(2) || "0.00"}</span>
+          <span className="text-accent-primary font-bold font-mono">${Number(currentBet?.betAmount || 0).toFixed(2) || "0.00"}</span>
         </div>
       )}
 

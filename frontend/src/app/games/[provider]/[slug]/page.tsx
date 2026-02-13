@@ -70,7 +70,7 @@ export default function GamePage() {
       <MainLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-16 h-16 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-gray-400">Loading game...</p>
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function GamePage() {
             <p className="text-gray-400 mb-6">{error || 'The game you are looking for does not exist.'}</p>
             <button
               onClick={() => router.push('/')}
-              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-400 transition-all"
+              className="px-6 py-3 bg-gradient-to-r from-primary to-blue-500 text-white font-bold rounded-xl hover:from-primary hover:to-blue-400 transition-all"
             >
               Back to Home
             </button>
@@ -119,7 +119,7 @@ export default function GamePage() {
     <MainLayout>
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Game Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0f212e] via-blue-900 to-cyan-900 border border-white/10">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0f212e] via-blue-900 to-primary border border-white/10">
           {game.banner && (
             <img
               src={game.banner}
@@ -144,7 +144,7 @@ export default function GamePage() {
               {/* Game Info */}
               <div className="flex-1 text-center md:text-left">
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-4">
-                  <span className="px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full text-sm font-semibold">
+                  <span className="px-3 py-1 bg-accent-primary/20 text-accent-primary rounded-full text-sm font-semibold">
                     {game.category}
                   </span>
                   <span className="px-3 py-1 bg-[#1475e1]/20 text-[#1475e1] rounded-full text-sm font-semibold">
@@ -178,7 +178,7 @@ export default function GamePage() {
                   className={`px-8 py-4 font-bold rounded-xl transition-all text-lg ${
                     launching || !game.isActive
                       ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400 shadow-lg hover:shadow-cyan-500/50'
+                      : 'bg-gradient-to-r from-primary to-blue-500 text-white hover:from-primary hover:to-blue-400 shadow-lg hover:shadow-primary/50'
                   }`}
                 >
                   {launching ? 'Launching...' : !game.isActive ? 'Coming Soon' : '🎮 Play Now'}
@@ -204,7 +204,7 @@ export default function GamePage() {
           )}
           {game.minBet && (
             <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-              <p className="text-3xl font-bold text-cyan-400 mb-1">${game.minBet}</p>
+              <p className="text-3xl font-bold text-accent-primary mb-1">${game.minBet}</p>
               <p className="text-sm text-gray-400">Min Bet</p>
             </div>
           )}
@@ -220,7 +220,7 @@ export default function GamePage() {
         <div className="bg-bg-card border border-white/10 rounded-xl p-6">
           <h2 className="text-xl font-bold text-white mb-4">About the Provider</h2>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-500 rounded-xl flex items-center justify-center">
               <span className="text-2xl font-bold text-white">
                 {game.provider.name.charAt(0)}
               </span>

@@ -57,7 +57,7 @@ const LoginModal: React.FC = () => {
       <div className="p-8">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-accent-primary flex items-center justify-center shadow-glow-cyan mx-auto mb-3">
+          <div className="w-12 h-12 rounded-xl bg-accent-primary flex items-center justify-center shadow-glow mx-auto mb-3">
             <span className="text-2xl font-bold text-text-inverse">S</span>
           </div>
           <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
@@ -173,7 +173,7 @@ const LoginModal: React.FC = () => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-card-border bg-card text-accent-primary focus:ring-accent-primary"
+                className="w-4 h-4 rounded border-card-border bg-card text-accent-primary focus:ring-primary"
               />
               <span className="text-sm text-text-secondary">Remember me</span>
             </label>

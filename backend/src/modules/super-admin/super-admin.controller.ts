@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
+import { SuperAdminGuard } from '../auth/super-admin.guard';
 import { Roles } from '../auth/roles.decorator';
 import { SuperAdminService } from './super-admin.service';
 
@@ -26,7 +27,7 @@ import { SuperAdminService } from './super-admin.service';
  */
 @Controller('api/super-admin')
 @ApiTags('Super Admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
 @Roles('ADMIN')
 export class SuperAdminController {
   constructor(private readonly superAdminService: SuperAdminService) {}
@@ -122,6 +123,52 @@ export class SuperAdminController {
   @HttpCode(HttpStatus.OK)
   async deleteTenant(@Param('id') id: string) {
     return this.superAdminService.deleteTenant(id);
+  }
+
+
+  // ============================================
+  // TENANT ADMIN MANAGEMENT
+  // ============================================
+
+  /**
+   * Get admin info for a tenant
+   */
+  @Get('tenants/:id/admin')
+  async getTenantAdmin(@Param('id') id: string) {
+    return this.superAdminService.getTenantAdmin(id);
+  }
+
+  /**
+   * Create admin for a tenant that doesn't have one
+   */
+  @Post('tenants/:id/admin')
+  async createTenantAdmin(
+    @Param('id') id: string,
+    @Body() body: { email: string; password: string; username: string },
+  ) {
+    return this.superAdminService.createTenantAdmin(id, body.email, body.password, body.username);
+  }
+
+  /**
+   * Reset admin password for a tenant
+   */
+  @Post('tenants/:id/admin/reset-password')
+  async resetAdminPassword(
+    @Param('id') id: string,
+    @Body() body: { password: string },
+  ) {
+    return this.superAdminService.resetAdminPassword(id, body.password);
+  }
+
+  /**
+   * Add credits to tenant admin wallet
+   */
+  @Post('tenants/:id/admin/credits')
+  async addCreditsToAdmin(
+    @Param('id') id: string,
+    @Body() body: { amount: number; note?: string },
+  ) {
+    return this.superAdminService.addCreditsToAdmin(id, body.amount, body.note);
   }
 
   // ============================================

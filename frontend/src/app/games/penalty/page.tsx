@@ -1,4 +1,5 @@
 "use client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -809,7 +810,7 @@ export default function PenaltyPage() {
                   <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center col-span-2">
                     <div className="text-xs text-gray-400">Current Multiplier</div>
                     <motion.div
-                      className="text-cyan-400 font-bold text-2xl"
+                      className="text-accent-primary font-bold text-2xl"
                       key={session.currentMultiplier}
                       initial={{ scale: 1.3 }}
                       animate={{ scale: 1 }}
@@ -916,7 +917,7 @@ export default function PenaltyPage() {
                     <span className="text-white">{session.goals} \u26BD</span>
                   </div>
                   <div className="bg-[#1a1a2e]/90 backdrop-blur-sm px-3 py-1.5 rounded-r-lg border border-[#2f4553]/50">
-                    <span className="text-cyan-400">{session.currentMultiplier.toFixed(2)}&times;</span>
+                    <span className="text-accent-primary">{session.currentMultiplier.toFixed(2)}&times;</span>
                   </div>
                 </motion.div>
               )}
@@ -1021,7 +1022,7 @@ export default function PenaltyPage() {
                               </div>
                             </td>
                             <td className={`px-3 py-2 text-right font-mono text-xs ${
-                              isActive ? "text-cyan-300 font-bold" : "text-gray-300"
+                              isActive ? "text-accent-primary font-bold" : "text-gray-300"
                             }`}>
                               {m.multiplier.toFixed(2)}&times;
                             </td>
@@ -1087,6 +1088,7 @@ export default function PenaltyPage() {
                       history.map((bet) => {
                         const profit = parseFloat(bet.profit);
                         return (
+                          <ErrorBoundary gameName="Penalty">
                           <tr key={bet.id} className="border-b border-[#2f4553]/50 hover:bg-white/5">
                             <td className="px-4 py-2">
                               <span className="text-green-400 font-mono">
@@ -1107,6 +1109,7 @@ export default function PenaltyPage() {
                               {profit >= 0 ? "+" : ""}${profit.toFixed(2)}
                             </td>
                           </tr>
+                          </ErrorBoundary>
                         );
                       })
                     )}

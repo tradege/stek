@@ -41,7 +41,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary">
+    <div className="min-h-screen bg-bg-main text-text-accent-primary">
       {/* Overlay for Sidebar (mobile) or Chat (all viewports) */}
       {((isSidebarOpen && isMobile) || isChatOpen) && (
         <div

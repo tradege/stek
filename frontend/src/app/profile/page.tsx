@@ -102,15 +102,15 @@ export default function ProfilePage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       </MainLayout>
     );
   }
 
   const vipLevels = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master'];
-  const vipColors = ['text-amber-600', 'text-gray-400', 'text-yellow-400', 'text-cyan-400', 'text-purple-400', 'text-red-400'];
-  const vipGradients = ['from-amber-700 to-amber-900', 'from-gray-400 to-gray-600', 'from-yellow-400 to-yellow-600', 'from-cyan-400 to-cyan-600', 'from-purple-400 to-purple-600', 'from-red-400 to-red-600'];
+  const vipColors = ['text-amber-600', 'text-gray-400', 'text-yellow-400', 'text-primary', 'text-purple-400', 'text-red-400'];
+  const vipGradients = ['from-amber-700 to-amber-900', 'from-gray-400 to-gray-600', 'from-yellow-400 to-yellow-600', 'from-primary to-primary', 'from-purple-400 to-purple-600', 'from-red-400 to-red-600'];
   const currentVipLevel = user?.vipLevel || 0;
   const vipName = vipLevels[Math.min(currentVipLevel, vipLevels.length - 1)] || 'Bronze';
   const vipColor = vipColors[Math.min(currentVipLevel, vipColors.length - 1)];
@@ -196,7 +196,7 @@ export default function ProfilePage() {
         {/* Wallet Balances */}
         <div className="bg-bg-card border border-white/10 rounded-xl p-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+            <svg className="w-5 h-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
             Wallet
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -327,7 +327,7 @@ export default function ProfilePage() {
             <h3 className="text-lg font-bold text-white mb-4">Bet History</h3>
             {betsLoading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-400"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : betHistory.length > 0 ? (
               <div className="overflow-x-auto">
@@ -347,7 +347,7 @@ export default function ProfilePage() {
                       <tr key={bet.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                         <td className="py-3 px-2 text-white text-sm font-medium">{bet.game}</td>
                         <td className="py-3 px-2 text-right text-white text-sm font-mono">${bet.amount.toFixed(2)}</td>
-                        <td className="py-3 px-2 text-right text-cyan-400 text-sm font-mono">{bet.multiplier}x</td>
+                        <td className="py-3 px-2 text-right text-accent-primary text-sm font-mono">{bet.multiplier}x</td>
                         <td className="py-3 px-2 text-right text-sm font-mono">
                           <span className={bet.result === 'win' ? 'text-green-400' : 'text-red-400'}>
                             ${bet.payout.toFixed(2)}
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                 <p className="text-text-secondary">No bets yet. Start playing to see your history!</p>
                 <button
                   onClick={() => router.push('/games/crash')}
-                  className="mt-4 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold hover:from-cyan-400 hover:to-blue-400 transition-all text-sm"
+                  className="mt-4 px-6 py-2 bg-gradient-to-r from-primary to-blue-500 text-white rounded-xl font-semibold hover:from-primary hover:to-blue-400 transition-all text-sm"
                 >
                   Play Now
                 </button>
@@ -432,7 +432,7 @@ export default function ProfilePage() {
             <div className="space-y-3">
               {[
                 { action: 'Login', time: 'Just now', icon: '🔐', color: 'border-blue-500/20' },
-                { action: 'Placed bet on Crash', time: '2 hours ago', icon: '🎮', color: 'border-cyan-500/20' },
+                { action: 'Placed bet on Crash', time: '2 hours ago', icon: '🎮', color: 'border-accent-primary/20' },
                 { action: 'Won 2.5x on Crash', time: '2 hours ago', icon: '🏆', color: 'border-green-500/20' },
                 { action: 'Deposit 100 USDT', time: '1 day ago', icon: '💰', color: 'border-yellow-500/20' },
                 { action: 'Account created', time: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A', icon: '✨', color: 'border-purple-500/20' },

@@ -1,4 +1,5 @@
 "use client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -146,7 +147,7 @@ export default function LimboPage() {
 
   const getCounterColor = () => {
     if (animPhase === "idle") return "text-white";
-    if (animPhase === "counting") return "text-cyan-400";
+    if (animPhase === "counting") return "text-accent-primary";
     if (result?.isWin) return "text-green-400";
     return "text-red-500";
   };
@@ -165,7 +166,7 @@ export default function LimboPage() {
       <div className="fixed inset-0 -z-10 opacity-30">
         <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[180px]" />
         <div className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[150px]" />
-        <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[120px]" />
+        <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-accent-primary/5 rounded-full blur-[120px]" />
       </div>
 
       {/* Floating Particles */}
@@ -284,7 +285,7 @@ export default function LimboPage() {
                 </div>
                 <div className="bg-[#0f0a2a]/80 rounded-lg p-3 text-center border border-purple-900/20">
                   <div className="text-xs text-gray-500">Profit on Win</div>
-                  <div className="text-cyan-400 font-bold text-lg">${potentialProfit.toFixed(2)}</div>
+                  <div className="text-accent-primary font-bold text-lg">${potentialProfit.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -430,12 +431,14 @@ export default function LimboPage() {
                         const t = bet.gameData?.targetMultiplier;
                         const r = bet.gameData?.resultMultiplier;
                         return (
+                          <ErrorBoundary gameName="Limbo">
                           <tr key={bet.id} className="border-b border-purple-900/20 hover:bg-white/5 transition-colors">
                             <td className="px-4 py-2 font-mono text-purple-400">{t ? `${parseFloat(t).toFixed(2)}×` : "-"}</td>
                             <td className="px-4 py-2"><span className={`font-mono font-bold ${bet.isWin ? "text-green-400" : "text-red-400"}`}>{r ? `${parseFloat(r).toFixed(2)}×` : "-"}</span></td>
                             <td className="px-4 py-2 text-right font-mono">${parseFloat(bet.betAmount).toFixed(2)}</td>
                             <td className={`px-4 py-2 text-right font-mono font-bold ${profit >= 0 ? "text-green-400" : "text-red-400"}`}>{profit >= 0 ? "+" : ""}${profit.toFixed(2)}</td>
                           </tr>
+                          </ErrorBoundary>
                         );
                       })
                     )}

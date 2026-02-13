@@ -205,7 +205,7 @@ export default function AdminSportsPage() {
           <button
             onClick={handleTriggerFetch}
             disabled={fetchingOdds}
-            className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+            className="bg-accent-primary hover:bg-accent-primary disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
           >
             {fetchingOdds ? (
               <><div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div> Fetching...</>
@@ -271,7 +271,7 @@ export default function AdminSportsPage() {
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
             <p className="text-xs text-gray-400 mb-1">Events</p>
-            <p className="text-xl font-bold text-cyan-400">{stats.totalEvents}</p>
+            <p className="text-xl font-bold text-accent-primary">{stats.totalEvents}</p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
             <p className="text-xs text-gray-400 mb-1">API Calls</p>
@@ -318,7 +318,7 @@ export default function AdminSportsPage() {
             onClick={() => setStatusFilter(f.key)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               statusFilter === f.key
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
                 : 'bg-[#0A0E17] text-gray-400 border border-gray-700/30 hover:border-gray-600/50'
             }`}
           >
@@ -347,7 +347,7 @@ export default function AdminSportsPage() {
               {loading ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12">
-                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-cyan-400 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-accent-primary mx-auto"></div>
                   </td>
                 </tr>
               ) : bets.length === 0 ? (
@@ -368,7 +368,7 @@ export default function AdminSportsPage() {
                       <p className="text-gray-500 text-xs">{bet.event.sportTitle}</p>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-cyan-400 text-sm font-medium">{bet.selectionName}</span>
+                      <span className="text-accent-primary text-sm font-medium">{bet.selectionName}</span>
                     </td>
                     <td className="py-3 px-4 text-right text-white text-sm font-mono">
                       {Number(bet.odds).toFixed(2)}
@@ -417,7 +417,7 @@ export default function AdminSportsPage() {
                   value={settleEventId}
                   onChange={(e) => setSettleEventId(e.target.value)}
                   placeholder="Paste event ID here"
-                  className="w-full bg-[#0A0E17] border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                  className="w-full bg-[#0A0E17] border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm focus:border-accent-primary focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -429,7 +429,7 @@ export default function AdminSportsPage() {
                     onChange={(e) => setSettleHomeScore(e.target.value)}
                     placeholder="0"
                     min="0"
-                    className="w-full bg-[#0A0E17] border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                    className="w-full bg-[#0A0E17] border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm focus:border-accent-primary focus:outline-none"
                   />
                 </div>
                 <div>
@@ -440,7 +440,7 @@ export default function AdminSportsPage() {
                     onChange={(e) => setSettleAwayScore(e.target.value)}
                     placeholder="0"
                     min="0"
-                    className="w-full bg-[#0A0E17] border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                    className="w-full bg-[#0A0E17] border border-gray-600/50 rounded-lg px-3 py-2 text-white text-sm focus:border-accent-primary focus:outline-none"
                   />
                 </div>
               </div>

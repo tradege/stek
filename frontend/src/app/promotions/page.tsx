@@ -9,7 +9,7 @@ const promotions = [
     subtitle: '100% up to $1,000',
     description: 'Double your first deposit! Get a 100% match bonus up to $1,000 USDT on your first deposit. Start your journey with twice the bankroll.',
     icon: '🎉',
-    gradient: 'from-cyan-500 to-blue-600',
+    gradient: 'from-primary to-blue-600',
     terms: 'Min deposit: $10. Wagering: 30x. Max bet: $5. Expires in 30 days.',
     active: true,
   },
@@ -71,7 +71,7 @@ export default function PromotionsPage() {
       <div className="p-4 lg:p-8 max-w-6xl mx-auto space-y-8" data-testid="promotions-page">
         {/* Hero */}
         <div className="relative bg-bg-card border border-white/10 rounded-2xl p-8 lg:p-12 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-cyan-500/5" />
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-accent-primary/5" />
           <div className="relative z-10 text-center">
             <h1 className="text-4xl lg:text-5xl font-bold text-white mb-4">
               🎁 Promotions & Bonuses
@@ -109,7 +109,7 @@ export default function PromotionsPage() {
                     {promo.terms}
                   </p>
                 </div>
-                <button className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold hover:from-cyan-400 hover:to-blue-400 transition-all">
+                <button className="w-full py-3 bg-gradient-to-r from-primary to-blue-500 text-white rounded-xl font-semibold hover:from-primary hover:to-blue-400 transition-all">
                   Claim Now
                 </button>
               </div>

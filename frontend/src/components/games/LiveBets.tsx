@@ -197,7 +197,7 @@ const LiveBets: React.FC = () => {
     const baseClasses = 'transition-all duration-300';
     
     if (bet.isNew) {
-      return `${baseClasses} animate-slideInFromTop bg-cyan-500/20 border-l-2 border-cyan-400`;
+      return `${baseClasses} animate-slideInFromTop bg-accent-primary/20 border-l-2 border-primary`;
     }
     if (bet.isWinFlash) {
       return `${baseClasses} animate-winFlash bg-green-500/30 border-l-2 border-green-400`;
@@ -218,7 +218,7 @@ const LiveBets: React.FC = () => {
   const getAvatarGradient = (username: string) => {
     const gradients = [
       'from-[#1475e1] to-[#1475e1]',
-      'from-cyan-500 to-blue-500',
+      'from-primary to-blue-500',
       'from-green-500 to-emerald-500',
       'from-orange-500 to-red-500',
       'from-yellow-500 to-orange-500',
@@ -238,7 +238,7 @@ const LiveBets: React.FC = () => {
           <span className="text-xs text-gray-500">({bets.length})</span>
         </div>
         <div className="text-xs text-gray-400">
-          Total: <span className="text-cyan-400 font-mono">{formatAmount(totalWagered)}</span>
+          Total: <span className="text-accent-primary font-mono">{formatAmount(totalWagered)}</span>
         </div>
       </div>
 

@@ -120,7 +120,7 @@ export default function GameIframe({ url, gameName, onClose, onError }: GameIfra
       {isLoading && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-16 h-16 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-white text-lg font-semibold">Loading {gameName}...</p>
             <p className="text-gray-400 text-sm mt-2">Please wait</p>
           </div>
@@ -147,7 +147,7 @@ export default function GameIframe({ url, gameName, onClose, onError }: GameIfra
                     iframeRef.current.src = url;
                   }
                 }}
-                className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors"
+                className="px-6 py-3 bg-accent-primary hover:bg-accent-primary text-white font-semibold rounded-lg transition-colors"
               >
                 Try Again
               </button>

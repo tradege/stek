@@ -1,4 +1,5 @@
 "use client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -198,6 +199,7 @@ export default function DicePage() {
   const rollIndicatorPosition = lastResult ? `${lastResult.roll}%` : `${animatedRoll}%`;
 
   return (
+    <ErrorBoundary gameName="Dice">
     <motion.div
       className="min-h-screen text-white relative overflow-hidden"
       animate={screenShake ? { x: [0, -5, 5, -3, 3, 0], y: [0, 3, -3, 2, -2, 0] } : {}}
@@ -207,7 +209,7 @@ export default function DicePage() {
       <div className="fixed inset-0 bg-gradient-to-br from-[#0a0e17] via-[#0f1923] to-[#0d1520] -z-10" />
       <div className="fixed inset-0 -z-10 opacity-30">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-primary/10 rounded-full blur-[120px]" />
       </div>
 
       {/* Floating Particles */}
@@ -215,7 +217,7 @@ export default function DicePage() {
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-1 h-1 bg-cyan-400/20 rounded-full"
+            className="absolute w-1 h-1 bg-accent-primary/20 rounded-full"
             style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
             animate={{ y: [0, -30, 0], opacity: [0.2, 0.6, 0.2] }}
             transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, delay: Math.random() * 3 }}
@@ -229,11 +231,11 @@ export default function DicePage() {
           {/* Game Title */}
           <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/20">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-primary/20">
                 🎲
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Dice</h1>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">Dice</h1>
                 <p className="text-xs text-gray-400">Provably Fair | 4% House Edge</p>
               </div>
             </div>
@@ -249,7 +251,7 @@ export default function DicePage() {
                   type="number"
                   value={betAmount}
                   onChange={(e) => setBetAmount(e.target.value)}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 focus:outline-none transition-all"
+                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 focus:outline-none transition-all"
                   min="0.01"
                   step="0.01"
                   disabled={isRolling}
@@ -310,7 +312,7 @@ export default function DicePage() {
                 type="number"
                 value={target}
                 onChange={(e) => setTarget(Math.min(99.98, Math.max(0.01, parseFloat(e.target.value) || 50)))}
-                className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2.5 text-white font-mono focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 focus:outline-none transition-all"
+                className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2.5 text-white font-mono focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 focus:outline-none transition-all"
                 min="0.01"
                 max="99.98"
                 step="1"
@@ -320,7 +322,7 @@ export default function DicePage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#0f1923]/80 rounded-lg p-3 border border-[#2f4553]/50">
                 <label className="text-xs text-gray-500 mb-1 block">Win Chance</label>
-                <div className="text-cyan-400 font-mono font-bold text-lg">{winChance.toFixed(2)}%</div>
+                <div className="text-accent-primary font-mono font-bold text-lg">{winChance.toFixed(2)}%</div>
               </div>
               <div className="bg-[#0f1923]/80 rounded-lg p-3 border border-[#2f4553]/50">
                 <label className="text-xs text-gray-500 mb-1 block">Multiplier</label>
@@ -338,7 +340,7 @@ export default function DicePage() {
             className={`w-full py-4 rounded-xl font-bold text-lg transition-all relative overflow-hidden ${
               isRolling
                 ? "bg-gray-600 cursor-not-allowed"
-                : "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-cyan-500/30"
+                : "bg-gradient-to-r from-primary to-blue-600 hover:from-primary hover:to-blue-500 shadow-lg shadow-primary/30"
             }`}
           >
             {isRolling ? (
@@ -369,7 +371,7 @@ export default function DicePage() {
                 type="number"
                 value={autoBetCount}
                 onChange={(e) => setAutoBetCount(e.target.value)}
-                className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-cyan-500 focus:outline-none"
+                className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-accent-primary focus:outline-none"
                 min="1"
                 max="1000"
                 disabled={autoBetActive}
@@ -494,7 +496,7 @@ export default function DicePage() {
               </div>
               <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
                 <div className="text-xs text-gray-500 mb-1">Win Chance</div>
-                <div className="text-cyan-400 font-mono font-bold text-lg">{winChance.toFixed(2)}%</div>
+                <div className="text-accent-primary font-mono font-bold text-lg">{winChance.toFixed(2)}%</div>
               </div>
               <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
                 <div className="text-xs text-gray-500 mb-1">Multiplier</div>
@@ -539,7 +541,7 @@ export default function DicePage() {
           {/* Bet History */}
           <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-accent-primary animate-pulse" />
               Recent Bets
             </h3>
             {history.length === 0 ? (
@@ -574,7 +576,7 @@ export default function DicePage() {
                           {bet.gameData?.condition === "UNDER" ? "< " : "> "}{bet.gameData?.target}
                         </td>
                         <td className="py-2.5 text-right text-gray-300 font-mono">${parseFloat(bet.betAmount).toFixed(2)}</td>
-                        <td className="py-2.5 text-right text-cyan-400 font-mono">{parseFloat(bet.multiplier).toFixed(2)}×</td>
+                        <td className="py-2.5 text-right text-accent-primary font-mono">{parseFloat(bet.multiplier).toFixed(2)}×</td>
                         <td className={`py-2.5 text-right font-mono font-bold ${bet.isWin ? "text-green-400" : "text-red-400"}`}>
                           {bet.isWin ? "+" : ""}${parseFloat(bet.profit).toFixed(2)}
                         </td>
@@ -588,5 +590,6 @@ export default function DicePage() {
         </div>
       </div>
     </motion.div>
+    </ErrorBoundary>
   );
 }

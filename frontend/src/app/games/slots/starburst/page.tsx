@@ -16,7 +16,7 @@ export default function StarburstPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-bg-accent-primary flex items-center justify-center p-4 relative overflow-hidden">
       {/* Space/star themed particles */}
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(20)].map((_, i) => (
@@ -36,18 +36,18 @@ export default function StarburstPage() {
       </div>
 
       {/* Rainbow gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0f212e]/20 via-transparent to-cyan-900/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0f212e]/20 via-transparent to-accent-primary/20 pointer-events-none" />
 
       {/* Animated rings - rainbow theme */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-64 h-64 rounded-full border border-[#1475e1]/20 animate-ring-pulse animate-rainbow-border" />
-        <div className="absolute w-80 h-80 rounded-full border border-cyan-500/10 animate-ring-pulse" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute w-80 h-80 rounded-full border border-accent-primary/10 animate-ring-pulse" style={{ animationDelay: '0.5s' }} />
         <div className="absolute w-96 h-96 rounded-full border border-pink-500/5 animate-ring-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className={`max-w-md w-full text-center relative z-10 ${mounted ? 'animate-fade-in-scale' : 'opacity-0'}`}>
         {/* Game icon with float animation */}
-        <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-purple-500 via-pink-500 to-cyan-500 flex items-center justify-center shadow-2xl animate-coming-soon-float animate-rainbow-border">
+        <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-purple-500 via-pink-500 to-primary flex items-center justify-center shadow-2xl animate-coming-soon-float animate-rainbow-border">
           <span className="text-6xl animate-coin-spin">⭐</span>
         </div>
 
@@ -81,7 +81,7 @@ export default function StarburstPage() {
         {/* Notify button with animation */}
         <button
           onClick={handleNotify}
-          className={`w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 text-white font-bold rounded-xl transition-all mb-4 btn-pulse-glow hover-lift ${
+          className={`w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-primary text-white font-bold rounded-xl transition-all mb-4 btn-pulse-glow hover-lift ${
             notifyClicked ? 'animate-win-shake bg-green-500' : 'hover:opacity-90'
           }`}
         >

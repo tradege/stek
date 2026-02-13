@@ -32,7 +32,7 @@ const GAME_COLORS: Record<string, string> = {
   LIMBO: "bg-pink-500/20 text-pink-400",
   PENALTY: "bg-green-500/20 text-green-400",
   OLYMPUS: "bg-amber-500/20 text-amber-400",
-  CARD_RUSH: "bg-cyan-500/20 text-cyan-400",
+  CARD_RUSH: "bg-accent-primary/20 text-accent-primary",
 };
 
 export default function AdminGameHistoryPage() {
@@ -165,7 +165,7 @@ export default function AdminGameHistoryPage() {
             {GAME_TYPES.map(g => (
               <button key={g} onClick={() => setGameFilter(g)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  gameFilter === g ? "bg-accent-primary text-text-inverse" : "bg-card-hover text-text-secondary hover:text-text-primary"
+                  gameFilter === g ? "bg-accent-primary text-text-inverse" : "bg-card-hover text-text-secondary hover:text-text-accent-primary"
                 }`}>
                 {g === "ALL" ? "All Games" : g.replace("_", " ")}
               </button>
@@ -194,7 +194,7 @@ export default function AdminGameHistoryPage() {
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer text-sm text-text-secondary">
               <input type="checkbox" checked={showBots} onChange={e => setShowBots(e.target.checked)}
-                className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-accent-primary" />
+                className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-primary" />
               Show Bots
             </label>
             <select value={limit} onChange={e => { setLimit(parseInt(e.target.value)); }}

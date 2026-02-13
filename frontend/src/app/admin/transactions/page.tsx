@@ -168,7 +168,7 @@ export default function AdminTransactionsPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -216,7 +216,7 @@ export default function AdminTransactionsPage() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 bg-bg-primary rounded-lg border border-white/10 text-white focus:outline-none focus:border-accent-primary"
+              className="px-4 py-2 bg-bg-accent-primary rounded-lg border border-white/10 text-white focus:outline-none focus:border-primary"
             >
               <option value="ALL">All Types</option>
               <option value="DEPOSIT">Deposits</option>
@@ -225,7 +225,7 @@ export default function AdminTransactionsPage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-bg-primary rounded-lg border border-white/10 text-white focus:outline-none focus:border-accent-primary"
+              className="px-4 py-2 bg-bg-accent-primary rounded-lg border border-white/10 text-white focus:outline-none focus:border-primary"
             >
               <option value="ALL">All Status</option>
               <option value="PENDING">Pending</option>
@@ -245,7 +245,7 @@ export default function AdminTransactionsPage() {
         <div className="bg-bg-card rounded-xl border border-white/10 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -410,7 +410,7 @@ export default function AdminTransactionsPage() {
                       onClick={() => setSimulateCurrency(currency)}
                       className={`flex-1 py-2 px-3 rounded-lg font-medium transition-all ${
                         simulateCurrency === currency
-                          ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary'
+                          ? 'bg-accent-primary/20 text-accent-primary border border-primary'
                           : 'bg-white/5 text-text-secondary border border-white/10 hover:border-white/30'
                       }`}
                     >

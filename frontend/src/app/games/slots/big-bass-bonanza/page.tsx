@@ -16,7 +16,7 @@ export default function BigBassBonanzaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-bg-accent-primary flex items-center justify-center p-4 relative overflow-hidden">
       {/* Water/bubble particles */}
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(15)].map((_, i) => (
@@ -38,18 +38,18 @@ export default function BigBassBonanzaPage() {
       </div>
 
       {/* Water gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-blue-900/30 via-transparent to-cyan-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-blue-900/30 via-transparent to-accent-primary/10 pointer-events-none" />
 
       {/* Animated rings - water theme */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-64 h-64 rounded-full border border-blue-500/20 animate-ring-pulse" />
-        <div className="absolute w-80 h-80 rounded-full border border-cyan-500/10 animate-ring-pulse" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute w-80 h-80 rounded-full border border-accent-primary/10 animate-ring-pulse" style={{ animationDelay: '0.5s' }} />
         <div className="absolute w-96 h-96 rounded-full border border-blue-500/5 animate-ring-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className={`max-w-md w-full text-center relative z-10 ${mounted ? 'animate-fade-in-scale' : 'opacity-0'}`}>
         {/* Game icon with float animation */}
-        <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center shadow-2xl animate-coming-soon-float animate-coming-soon-glow">
+        <div className="w-32 h-32 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-blue-500 via-primary to-teal-500 flex items-center justify-center shadow-2xl animate-coming-soon-float animate-coming-soon-glow">
           <span className="text-6xl animate-icon-bounce">🐟</span>
         </div>
 
@@ -83,8 +83,8 @@ export default function BigBassBonanzaPage() {
         {/* Notify button with animation */}
         <button
           onClick={handleNotify}
-          className={`w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl transition-all mb-4 btn-pulse-glow hover-lift ${
-            notifyClicked ? 'animate-win-shake bg-green-500' : 'hover:from-blue-400 hover:to-cyan-400'
+          className={`w-full py-4 bg-gradient-to-r from-blue-500 to-primary text-white font-bold rounded-xl transition-all mb-4 btn-pulse-glow hover-lift ${
+            notifyClicked ? 'animate-win-shake bg-green-500' : 'hover:from-blue-400 hover:to-primary'
           }`}
         >
           {notifyClicked ? '✅ You will be notified!' : '🔔 Notify Me When Available'}

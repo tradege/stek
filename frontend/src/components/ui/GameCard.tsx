@@ -47,7 +47,7 @@ const GameCard: React.FC<GameCardProps> = ({
 
       {/* Glow effect on hover */}
       {isHovered && !isComingSoon && (
-        <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/20 to-transparent animate-fade-in" />
+        <div className="absolute inset-0 bg-gradient-to-t from-accent-primary/20 to-transparent animate-fade-in" />
       )}
 
       <div className="relative p-6 h-48 flex flex-col items-center justify-center">
@@ -105,7 +105,7 @@ const GameCard: React.FC<GameCardProps> = ({
         {/* Play Now overlay with animation */}
         {!isComingSoon && isHovered && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 animate-fade-in">
-            <div className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-white shadow-lg transform hover:scale-105 transition-transform btn-pulse-glow">
+            <div className="px-6 py-3 bg-gradient-to-r from-primary to-blue-500 rounded-xl font-bold text-white shadow-lg transform hover:scale-105 transition-transform btn-pulse-glow">
               Play Now
             </div>
           </div>
@@ -123,7 +123,7 @@ const GameCard: React.FC<GameCardProps> = ({
 
       {/* Bottom shine effect */}
       {isHovered && !isComingSoon && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-fade-in" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-fade-in" />
       )}
     </>
   );
@@ -134,7 +134,7 @@ const GameCard: React.FC<GameCardProps> = ({
       <Link 
         href={link}
         data-testid={`game-card-${testId}`}
-        className={`block relative group overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} border border-white/10 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 hover-lift ${isComingSoon ? "opacity-80" : ""}`}
+        className={`block relative group overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} border border-white/10 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-primary/20 hover-lift ${isComingSoon ? "opacity-80" : ""}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >

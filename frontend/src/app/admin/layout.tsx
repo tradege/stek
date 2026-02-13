@@ -62,7 +62,7 @@ export default function AdminLayout({
   const roleConfig = roleBadgeConfig[user.role] || roleBadgeConfig.ADMIN;
 
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary">
+    <div className="min-h-screen bg-bg-main text-text-accent-primary">
       {/* Admin Sidebar - with mobile support */}
       <AdminSidebar
         isOpen={isSidebarOpen}

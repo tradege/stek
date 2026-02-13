@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { getWithdrawalLimit } from "../users/vip.config";
 
 @Injectable()
 export class CashierService {
@@ -152,6 +153,32 @@ export class CashierService {
       throw new BadRequestException(
         `Minimum withdrawal is ${minWithdraw[currency]} ${currency}`,
       );
+    }
+
+    // VIP-based daily withdrawal limit
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { vipLevel: true },
+    });
+    const dailyLimit = getWithdrawalLimit(user?.vipLevel || 0);
+    if (dailyLimit !== Infinity) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayWithdrawals = await this.prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: "WITHDRAWAL",
+          status: { in: ["PENDING", "CONFIRMED"] },
+          createdAt: { gte: today },
+        },
+        _sum: { amount: true },
+      });
+      const totalToday = Number(todayWithdrawals._sum.amount || 0) + amount;
+      if (totalToday > dailyLimit) {
+        throw new BadRequestException(
+          `Daily withdrawal limit for your VIP level is \$${dailyLimit.toLocaleString()}. You have already withdrawn \$${Number(todayWithdrawals._sum.amount || 0).toLocaleString()} today.`
+        );
+      }
     }
 
     const result = await this.prisma.$transaction(async (tx) => {

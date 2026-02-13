@@ -9,11 +9,12 @@ import AuthGuard from '@/components/ui/AuthGuard';
 
 // Rank definitions with icons and colors
 const RANKS = [
-  { name: 'Iron', icon: '🔩', color: '#6B7280', tier1Rate: '5%', tier2Rate: '2%', tier3Rate: '1%', minVolume: 0 },
-  { name: 'Bronze', icon: '🥉', color: '#CD7F32', tier1Rate: '7%', tier2Rate: '3%', tier3Rate: '1.5%', minVolume: 1000 },
-  { name: 'Silver', icon: '🥈', color: '#C0C0C0', tier1Rate: '8%', tier2Rate: '4%', tier3Rate: '2%', minVolume: 5000 },
-  { name: 'Gold', icon: '🥇', color: '#FFD700', tier1Rate: '10%', tier2Rate: '5%', tier3Rate: '2.5%', minVolume: 25000 },
-  { name: 'Diamond', icon: '💎', color: '#00F0FF', tier1Rate: '12%', tier2Rate: '5%', tier3Rate: '2.5%', minVolume: 100000 },
+  { name: 'Bronze', icon: '🥉', color: '#CD7F32', tier1Rate: '5%', tier2Rate: '2%', tier3Rate: '1%', minVolume: 0 },
+  { name: 'Silver', icon: '🥈', color: '#C0C0C0', tier1Rate: '7%', tier2Rate: '3%', tier3Rate: '1.5%', minVolume: 1000 },
+  { name: 'Gold', icon: '🥇', color: '#FFD700', tier1Rate: '10%', tier2Rate: '4%', tier3Rate: '2%', minVolume: 10000 },
+  { name: 'Platinum', icon: '💎', color: '#E5E4E2', tier1Rate: '12%', tier2Rate: '5%', tier3Rate: '2.5%', minVolume: 50000 },
+  { name: 'Diamond', icon: '👑', color: '#00F0FF', tier1Rate: '15%', tier2Rate: '6%', tier3Rate: '3%', minVolume: 250000 },
+  { name: 'Iron', icon: '🏆', color: '#FF4500', tier1Rate: '20%', tier2Rate: '8%', tier3Rate: '4%', minVolume: 1000000 },
 ];
 
 interface AffiliateStats {

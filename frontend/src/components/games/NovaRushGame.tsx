@@ -1156,13 +1156,13 @@ const NovaRushGame: React.FC = () => {
   const getButtonConfig = (slot: 1 | 2 = 1) => {
     const bs = slot === 1 ? betStatus : betStatus2;
     const pw = slot === 1 ? potentialWin : potentialWin2;
-    const slotColor = slot === 1 ? 'from-cyan-500 to-blue-600' : 'from-purple-500 to-pink-600';
-    const slotHover = slot === 1 ? 'hover:from-cyan-400 hover:to-blue-500' : 'hover:from-purple-400 hover:to-pink-500';
+    const slotColor = slot === 1 ? 'from-primary to-blue-600' : 'from-purple-500 to-pink-600';
+    const slotHover = slot === 1 ? 'hover:from-primary hover:to-blue-500' : 'hover:from-purple-400 hover:to-pink-500';
     const slotLabel = slot === 1 ? 'BET 1' : 'BET 2';
     
     if (!isConnected) return { text: 'CONNECTING...', disabled: true, className: 'bg-gray-600' };
     if (gameState === 'WAITING' || gameState === 'STARTING') {
-      if (bs === 'PLACED') return { text: `${slotLabel} PLACED ✓`, disabled: true, className: slot === 1 ? 'bg-cyan-600' : 'bg-purple-600' };
+      if (bs === 'PLACED') return { text: `${slotLabel} PLACED ✓`, disabled: true, className: slot === 1 ? 'bg-accent-primary' : 'bg-purple-600' };
       return { text: `LAUNCH ${slotLabel}`, disabled: false, className: `bg-gradient-to-r ${slotColor} ${slotHover}` };
     }
     if (gameState === 'RUNNING') {
@@ -1189,8 +1189,8 @@ const NovaRushGame: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-4 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-xl">🚀</div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Nova Rush</h2>
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center text-xl">🚀</div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">Nova Rush</h2>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={toggleGameSound} className={`p-2 rounded-lg transition-all ${isSoundActive ? 'bg-[#2f4553] text-[#00F0FF] border border-[#2f4553]' : 'bg-[#2f4553] text-gray-500 border border-[#2f4553]'}`}>
@@ -1230,15 +1230,15 @@ const NovaRushGame: React.FC = () => {
       {/* Dual Bet Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* === BET 1 Panel === */}
-        <div className="space-y-3 p-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5">
-          <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Bet 1</div>
+        <div className="space-y-3 p-3 rounded-xl border border-accent-primary/20 bg-accent-primary/5">
+          <div className="text-xs font-bold text-accent-primary uppercase tracking-wider">Bet 1</div>
           {/* Bet Amount */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">BET AMOUNT</label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50" min="0.1" step="0.1" />
+                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50" min="0.1" step="0.1" />
               </div>
               <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">2x</button>
               <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">½</button>
@@ -1248,7 +1248,7 @@ const NovaRushGame: React.FC = () => {
           <div>
             <label className="block text-xs text-gray-400 mb-1">AUTO EJECT AT</label>
             <div className="relative">
-              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50" min="1.01" step="0.01" />
+              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50" min="1.01" step="0.01" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">x</span>
             </div>
           </div>

@@ -91,7 +91,7 @@ export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdmi
           {/* Header */}
           <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center">
                 <Globe className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -110,7 +110,7 @@ export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdmi
           {/* Mode Badge */}
           <div className="px-4 py-3 border-b border-white/10">
             <div className="flex rounded-lg overflow-hidden bg-white/5">
-              <div className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium bg-gradient-to-r from-cyan-600 to-cyan-500 text-white">
+              <div className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium bg-gradient-to-r from-primary to-primary text-white">
                 <Shield className="w-4 h-4" />
                 Super Admin
               </div>
@@ -137,7 +137,7 @@ export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdmi
                       onClick={handleNavClick}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                         isActive
-                          ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(0,240,255,0.15)]'
+                          ? 'bg-accent-primary/20 text-accent-primary shadow-[0_0_10px_rgba(0,240,255,0.15)]'
                           : 'text-text-secondary hover:text-white hover:bg-white/5'
                       }`}
                     >
@@ -148,7 +148,7 @@ export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdmi
                           className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${
                             item.badge === 'NEW'
                               ? 'bg-green-500/20 text-green-400'
-                              : 'bg-cyan-500/20 text-cyan-400'
+                              : 'bg-accent-primary/20 text-primary'
                           }`}
                         >
                           {item.badge}
@@ -194,9 +194,9 @@ export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdmi
 
           {/* Bottom Banner */}
           <div className="p-4 border-t border-white/10">
-            <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 text-center">
+            <div className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
               <div className="text-2xl mb-2">🌐</div>
-              <p className="text-sm font-semibold text-cyan-400">White Label</p>
+              <p className="text-sm font-semibold text-accent-primary">White Label</p>
               <p className="text-xs text-text-secondary mt-1">B2B Platform Control</p>
             </div>
           </div>

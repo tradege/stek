@@ -109,7 +109,7 @@ export default function AdminWithdrawalsPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>
   );
 
@@ -168,7 +168,7 @@ export default function AdminWithdrawalsPage() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filterStatus === s
                 ? s === "PENDING" ? "bg-yellow-500 text-black" : "bg-accent-primary text-text-inverse"
-                : "bg-card-hover text-text-secondary hover:text-text-primary"
+                : "bg-card-hover text-text-secondary hover:text-text-accent-primary"
             }`}>
             {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
             {s === "PENDING" && pendingCount > 0 ? ` (${pendingCount})` : ""}

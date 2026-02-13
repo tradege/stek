@@ -1,3 +1,4 @@
+import { BonusModule } from './bonus/bonus.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -32,6 +33,7 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
 @Module({
   imports: [
+    BonusModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

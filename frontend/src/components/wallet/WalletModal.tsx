@@ -185,7 +185,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
             onClick={() => { setActiveTab('deposit'); setMessage(null); }}
             className={`flex-1 py-4 text-center font-medium transition-colors ${
               activeTab === 'deposit'
-                ? 'text-accent-primary border-b-2 border-accent-primary'
+                ? 'text-accent-primary border-b-2 border-primary'
                 : 'text-text-secondary hover:text-white'
             }`}
           >
@@ -196,7 +196,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
             onClick={() => { setActiveTab('withdraw'); setMessage(null); }}
             className={`flex-1 py-4 text-center font-medium transition-colors ${
               activeTab === 'withdraw'
-                ? 'text-accent-primary border-b-2 border-accent-primary'
+                ? 'text-accent-primary border-b-2 border-primary'
                 : 'text-text-secondary hover:text-white'
             }`}
           >
@@ -217,7 +217,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                   onClick={() => setSelectedCurrency(currency)}
                   className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
                     selectedCurrency === currency
-                      ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary'
+                      ? 'bg-accent-primary/20 text-accent-primary border border-primary'
                       : 'bg-white/5 text-text-secondary border border-white/10 hover:border-white/30'
                   }`}
                 >
@@ -332,7 +332,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                 data-testid="deposit-submit-btn"
                 onClick={handleDeposit}
                 disabled={isLoading || !txHash || !depositAmount}
-                className="w-full py-4 bg-accent-primary text-black font-bold rounded-lg hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-glow-cyan"
+                className="w-full py-4 bg-accent-primary text-black font-bold rounded-lg hover:bg-accent-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-glow"
               >
                 {isLoading ? 'Submitting...' : 'I Have Sent The Funds'}
               </button>

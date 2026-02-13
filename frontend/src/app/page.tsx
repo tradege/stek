@@ -121,13 +121,13 @@ export default function Home() {
     <MainLayout>
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900 via-blue-900 to-cyan-900 border border-white/10">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900 via-blue-900 to-primary border border-white/10">
           {/* Animated Background */}
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(120,0,255,0.3),transparent_50%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(0,200,255,0.3),transparent_50%)]" />
             <div className="absolute top-0 left-0 w-full h-full opacity-30">
-              <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+              <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-accent-primary rounded-full animate-pulse" />
               <div className="absolute top-1/3 right-1/3 w-3 h-3 bg-purple-400 rounded-full animate-bounce" />
               <div className="absolute bottom-1/4 left-1/3 w-2 h-2 bg-yellow-400 rounded-full animate-ping" />
               <div className="absolute top-1/2 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -140,10 +140,10 @@ export default function Home() {
               <span className="text-sm font-bold text-white">WELCOME BONUS</span>
             </div>
             <h1 className="text-4xl md:text-6xl font-black text-white mb-4">
-              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">{branding.brandName}</span>
+              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">{branding.brandName}</span>
             </h1>
             <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 mb-6">
-              Get 200% Bonus on First Deposit!
+              Get 100% Bonus on First Deposit!
             </p>
             <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
               Experience the thrill of crypto gaming with provably fair games, instant withdrawals, and the best odds in the industry.
@@ -151,7 +151,7 @@ export default function Home() {
             <div className="flex flex-wrap gap-4 justify-center">
               <Link
                 href="/games/crash"
-                className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-400 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+                className="px-8 py-4 bg-gradient-to-r from-primary to-blue-500 text-white font-bold rounded-xl hover:from-primary hover:to-blue-400 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50"
               >
                 Play Now
               </Link>
@@ -194,7 +194,7 @@ export default function Home() {
               onClick={() => setActiveTab('casino')}
               className={`px-8 py-3 rounded-lg font-bold transition-all ${
                 activeTab === 'casino'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-primary to-blue-500 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -222,7 +222,7 @@ export default function Home() {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-blue-500 rounded-full" />
+                  <span className="w-1 h-6 bg-gradient-to-b from-primary to-blue-500 rounded-full" />
                   In-House Games
                   <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full font-medium">Provably Fair</span>
                 </h2>
@@ -258,7 +258,7 @@ export default function Home() {
                       <h3 className="text-white font-bold">{game.name}</h3>
                       <p className="text-gray-400 text-xs mt-0.5">{game.desc}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded font-mono">Edge: {game.edge}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-accent-primary/20 text-accent-primary rounded font-mono">Edge: {game.edge}</span>
                       </div>
                     </div>
                   </Link>
@@ -270,7 +270,7 @@ export default function Home() {
             <section>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-500 rounded-xl flex items-center justify-center">
                     <span className="text-xl">🎰</span>
                   </div>
                   <div>
@@ -306,7 +306,7 @@ export default function Home() {
         {/* Animated Stats Section */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <AnimatedCounter target={platformStats.totalWagered || 50000} prefix="$" suffix="+" color="text-cyan-400" />
+            <AnimatedCounter target={platformStats.totalWagered || 50000} prefix="$" suffix="+" color="text-accent-primary" />
             <p className="text-sm text-gray-400">Total Wagered</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">

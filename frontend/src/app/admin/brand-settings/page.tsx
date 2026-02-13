@@ -128,7 +128,7 @@ export default function BrandSettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
       </div>
     );
   }
@@ -155,11 +155,11 @@ export default function BrandSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Palette className="w-7 h-7 text-cyan-400" />
+            <Palette className="w-7 h-7 text-accent-primary" />
             Brand Settings
           </h1>
           <p className="text-text-secondary mt-1">
-            Customize the look and feel of <span className="text-cyan-400 font-semibold">{settings.brandName}</span>
+            Customize the look and feel of <span className="text-accent-primary font-semibold">{settings.brandName}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export default function BrandSettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges}
-            className="flex items-center gap-2 px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium"
+            className="flex items-center gap-2 px-6 py-2.5 bg-accent-primary hover:bg-accent-primary disabled:opacity-50 text-white rounded-lg transition-colors font-medium"
           >
             {saving ? (
               <>
@@ -209,7 +209,7 @@ export default function BrandSettingsPage() {
       {/* Brand Info (read-only) */}
       <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Globe className="w-5 h-5 text-cyan-400" />
+          <Globe className="w-5 h-5 text-accent-primary" />
           Brand Information
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -219,7 +219,7 @@ export default function BrandSettingsPage() {
           </div>
           <div className="bg-white/5 rounded-lg p-3">
             <span className="text-xs text-text-secondary block mb-1">Domain</span>
-            <span className="text-cyan-400 font-medium">{settings.domain}</span>
+            <span className="text-accent-primary font-medium">{settings.domain}</span>
           </div>
           <div className="bg-white/5 rounded-lg p-3">
             <span className="text-xs text-text-secondary block mb-1">Jurisdiction</span>
@@ -231,7 +231,7 @@ export default function BrandSettingsPage() {
       {/* Color Settings */}
       <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-          <Palette className="w-5 h-5 text-cyan-400" />
+          <Palette className="w-5 h-5 text-accent-primary" />
           Color Scheme
         </h2>
 
@@ -251,7 +251,7 @@ export default function BrandSettingsPage() {
                     type="text"
                     value={(settings as any)[field.key] || ''}
                     onChange={(e) => updateField(field.key, e.target.value)}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white font-mono text-sm focus:border-cyan-500 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white font-mono text-sm focus:border-accent-primary focus:outline-none transition-colors"
                   />
                   <p className="text-xs text-text-secondary mt-1">{field.desc}</p>
                 </div>
@@ -317,7 +317,7 @@ export default function BrandSettingsPage() {
       {/* Image Assets */}
       <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-          <Image className="w-5 h-5 text-cyan-400" />
+          <Image className="w-5 h-5 text-accent-primary" />
           Brand Assets
         </h2>
 
@@ -335,7 +335,7 @@ export default function BrandSettingsPage() {
                 value={(settings as any)[field.key] || ''}
                 onChange={(e) => updateField(field.key, e.target.value)}
                 placeholder={field.placeholder}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-text-secondary focus:border-cyan-500 focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-text-secondary focus:border-accent-primary focus:outline-none transition-colors"
               />
               {(settings as any)[field.key] && (
                 <div className="mt-2 rounded-lg overflow-hidden border border-white/10 h-20 bg-white/5">
