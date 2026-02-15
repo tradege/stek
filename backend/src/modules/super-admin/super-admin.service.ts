@@ -34,7 +34,7 @@ export class SuperAdminService {
     const [realPlayerCount, realBetsAgg] = await Promise.all([
       this.prisma.user.count({ where: { role: 'USER', isBot: false } }),
       this.prisma.bet.aggregate({
-        where: { user: { isBot: false } },
+        where: { user: { isBot: false, role: 'USER' } },
         _sum: { betAmount: true, payout: true },
         _count: true,
       }),
@@ -112,11 +112,11 @@ export class SuperAdminService {
       tenants.map(async (tenant) => {
         const [betsAgg, realPlayerCount] = await Promise.all([
           this.prisma.bet.aggregate({
-            where: { siteId: tenant.id, user: { isBot: false } },
+            where: { siteId: tenant.id, user: { isBot: false, role: 'USER' } },
             _sum: { betAmount: true, payout: true, profit: true },
             _count: true,
           }),
-          this.prisma.user.count({ where: { siteId: tenant.id, isBot: false } }),
+          this.prisma.user.count({ where: { siteId: tenant.id, isBot: false, role: 'USER' } }),
         ]);
 
         const wagered = Number(betsAgg._sum.betAmount || 0);
@@ -169,11 +169,11 @@ export class SuperAdminService {
 
     // Get financial stats (excluding bots)
     const betsAgg = await this.prisma.bet.aggregate({
-      where: { siteId: id, user: { isBot: false } },
+      where: { siteId: id, user: { isBot: false, role: 'USER' } },
       _sum: { betAmount: true, payout: true },
       _count: true,
     });
-    const realPlayerCount = await this.prisma.user.count({ where: { siteId: id, isBot: false } });
+    const realPlayerCount = await this.prisma.user.count({ where: { siteId: id, isBot: false, role: 'USER' } });
 
     // Get recent bets
     const recentBets = await this.prisma.bet.findMany({
