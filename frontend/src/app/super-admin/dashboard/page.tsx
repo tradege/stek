@@ -7,20 +7,33 @@ import {
   TrendingUp,
   DollarSign,
   Activity,
-  ArrowUp,
-  ArrowDown,
   Globe,
-  Zap,
+  Bot,
+  UserCheck,
+  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
 import config from '@/config/api';
 import Link from 'next/link';
 
 const API_URL = config.apiUrl;
 
+interface PlayerStats {
+  count: number;
+  bets: number;
+  wagered: number;
+  payout: number;
+  ggr: number;
+}
+
 interface DashboardStats {
   totalBrands: number;
   activeBrands: number;
   inactiveBrands: number;
+  realPlayers: PlayerStats;
+  bots: PlayerStats;
+  // Legacy
   totalPlayers: number;
   totalBets: number;
   totalWagered: number;
@@ -85,6 +98,10 @@ export default function SuperAdminDashboard() {
     return `$${v.toFixed(2)}`;
   };
 
+  const formatNumber = (val: number | null | undefined) => {
+    return (Number(val) || 0).toLocaleString();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -93,46 +110,8 @@ export default function SuperAdminDashboard() {
     );
   }
 
-  const statCards = stats
-    ? [
-        {
-          label: 'Total Brands',
-          value: stats.totalBrands.toString(),
-          sub: `${stats.activeBrands} active`,
-          icon: <Building2 className="w-6 h-6" />,
-          color: 'text-cyan-400',
-          bgColor: 'bg-cyan-500/10',
-          borderColor: 'border-cyan-500/20',
-        },
-        {
-          label: 'Total Players',
-          value: (stats.totalPlayers || 0).toLocaleString(),
-          sub: 'across all brands',
-          icon: <Users className="w-6 h-6" />,
-          color: 'text-cyan-400',
-          bgColor: 'bg-cyan-500/10',
-          borderColor: 'border-cyan-500/20',
-        },
-        {
-          label: 'Total Wagered',
-          value: formatCurrency(stats.totalWagered),
-          sub: `${(stats.totalBets || 0).toLocaleString()} bets`,
-          icon: <Activity className="w-6 h-6" />,
-          color: 'text-blue-400',
-          bgColor: 'bg-blue-500/10',
-          borderColor: 'border-blue-500/20',
-        },
-        {
-          label: 'Total GGR',
-          value: formatCurrency(stats.totalGGR),
-          sub: stats.totalGGR >= 0 ? 'Profit' : 'Loss',
-          icon: <TrendingUp className="w-6 h-6" />,
-          color: stats.totalGGR >= 0 ? 'text-green-400' : 'text-red-400',
-          bgColor: stats.totalGGR >= 0 ? 'bg-green-500/10' : 'bg-red-500/10',
-          borderColor: stats.totalGGR >= 0 ? 'border-green-500/20' : 'border-red-500/20',
-        },
-      ]
-    : [];
+  const real = stats?.realPlayers || { count: 0, bets: 0, wagered: 0, payout: 0, ggr: 0 };
+  const bot = stats?.bots || { count: 0, bets: 0, wagered: 0, payout: 0, ggr: 0 };
 
   return (
     <div className="space-y-6">
@@ -140,7 +119,7 @@ export default function SuperAdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Platform Overview</h1>
-          <p className="text-text-secondary mt-1">Monitor all brands and revenue streams</p>
+          <p className="text-text-secondary mt-1">Monitor all brands, players, and bot activity</p>
         </div>
         <Link
           href="/super-admin/tenants/create"
@@ -151,29 +130,134 @@ export default function SuperAdminDashboard() {
         </Link>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card, i) => (
-          <div
-            key={i}
-            className={`${card.bgColor} border ${card.borderColor} rounded-xl p-5 transition-all hover:scale-[1.02]`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className={`${card.color}`}>{card.icon}</span>
-              <span className="text-xs text-text-secondary">{card.sub}</span>
-            </div>
-            <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
-            <p className="text-sm text-text-secondary mt-1">{card.label}</p>
+      {/* Brand Overview - compact row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4 flex items-center gap-4">
+          <div className="p-3 bg-cyan-500/20 rounded-lg">
+            <Building2 className="w-5 h-5 text-cyan-400" />
           </div>
-        ))}
+          <div>
+            <p className="text-2xl font-bold text-cyan-400">{stats?.totalBrands || 0}</p>
+            <p className="text-xs text-text-secondary">Total Brands ({stats?.activeBrands || 0} active)</p>
+          </div>
+        </div>
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center gap-4">
+          <div className="p-3 bg-green-500/20 rounded-lg">
+            <UserCheck className="w-5 h-5 text-green-400" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-green-400">{formatNumber(real.count)}</p>
+            <p className="text-xs text-text-secondary">Real Players</p>
+          </div>
+        </div>
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 flex items-center gap-4">
+          <div className="p-3 bg-purple-500/20 rounded-lg">
+            <Bot className="w-5 h-5 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-purple-400">{formatNumber(bot.count)}</p>
+            <p className="text-xs text-text-secondary">Active Bots</p>
+          </div>
+        </div>
       </div>
 
-      {/* Brands Table */}
+      {/* ===== SECTION 1: REAL PLAYERS ===== */}
+      <div className="bg-bg-card border border-green-500/20 rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-green-500/20 bg-green-500/5">
+          <div className="flex items-center gap-3">
+            <UserCheck className="w-5 h-5 text-green-400" />
+            <div>
+              <h2 className="text-lg font-semibold text-white">Real Players</h2>
+              <p className="text-xs text-text-secondary">Actual registered users — real money, real bets</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-white/5">
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Players</p>
+            <p className="text-xl font-bold text-green-400">{formatNumber(real.count)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Total Bets</p>
+            <p className="text-xl font-bold text-white">{formatNumber(real.bets)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Total Wagered</p>
+            <p className="text-xl font-bold text-blue-400">{formatCurrency(real.wagered)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Total Payouts</p>
+            <p className="text-xl font-bold text-yellow-400">{formatCurrency(real.payout)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">GGR (Profit)</p>
+            <div className="flex items-center gap-2">
+              <p className={`text-xl font-bold ${real.ggr >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatCurrency(real.ggr)}
+              </p>
+              {real.ggr >= 0 ? (
+                <ArrowUpRight className="w-4 h-4 text-green-400" />
+              ) : (
+                <ArrowDownRight className="w-4 h-4 text-red-400" />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== SECTION 2: BOTS ===== */}
+      <div className="bg-bg-card border border-purple-500/20 rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-purple-500/20 bg-purple-500/5">
+          <div className="flex items-center gap-3">
+            <Bot className="w-5 h-5 text-purple-400" />
+            <div>
+              <h2 className="text-lg font-semibold text-white">Bot Activity</h2>
+              <p className="text-xs text-text-secondary">Artificial activity — bots create atmosphere, not counted in revenue</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-white/5">
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Bots</p>
+            <p className="text-xl font-bold text-purple-400">{formatNumber(bot.count)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Total Bets</p>
+            <p className="text-xl font-bold text-white">{formatNumber(bot.bets)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Total Wagered</p>
+            <p className="text-xl font-bold text-purple-300">{formatCurrency(bot.wagered)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Total Payouts</p>
+            <p className="text-xl font-bold text-purple-300">{formatCurrency(bot.payout)}</p>
+          </div>
+          <div className="bg-bg-card p-5">
+            <p className="text-xs text-text-secondary mb-1">Bot P&L</p>
+            <div className="flex items-center gap-2">
+              <p className={`text-xl font-bold ${bot.ggr >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatCurrency(bot.ggr)}
+              </p>
+              {bot.ggr >= 0 ? (
+                <ArrowUpRight className="w-4 h-4 text-green-400" />
+              ) : (
+                <ArrowDownRight className="w-4 h-4 text-red-400" />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== SECTION 3: WHITE LABELS ===== */}
       <div className="bg-bg-card border border-white/10 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">All Brands</h2>
-            <p className="text-sm text-text-secondary">{tenants.length} brands registered</p>
+          <div className="flex items-center gap-3">
+            <Globe className="w-5 h-5 text-cyan-400" />
+            <div>
+              <h2 className="text-lg font-semibold text-white">White Label Brands</h2>
+              <p className="text-sm text-text-secondary">{tenants.length} brands registered — real players only</p>
+            </div>
           </div>
           <Link
             href="/super-admin/tenants"

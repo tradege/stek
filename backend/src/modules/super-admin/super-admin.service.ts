@@ -24,35 +24,68 @@ export class SuperAdminService {
   // ============================================
 
   async getDashboardStats() {
-    const [
-      totalBrands,
-      activeBrands,
-      totalPlayers,
-      totalBets,
-      totalWagered,
-      totalPayout,
-    ] = await Promise.all([
+    // --- Brand counts ---
+    const [totalBrands, activeBrands] = await Promise.all([
       this.prisma.siteConfiguration.count(),
       this.prisma.siteConfiguration.count({ where: { active: true } }),
-      this.prisma.user.count({ where: { role: 'USER', isBot: false } }),
-      this.prisma.bet.count({ where: { user: { isBot: false } } }),
-      this.prisma.bet.aggregate({ where: { user: { isBot: false } }, _sum: { betAmount: true } }),
-      this.prisma.bet.aggregate({ where: { user: { isBot: false } }, _sum: { payout: true } }),
     ]);
 
-    const wagered = Number(totalWagered._sum.betAmount || 0);
-    const payout = Number(totalPayout._sum.payout || 0);
-    const ggr = wagered - payout;
+    // --- Real Players Stats (isBot: false) ---
+    const [realPlayerCount, realBetsAgg] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'USER', isBot: false } }),
+      this.prisma.bet.aggregate({
+        where: { user: { isBot: false } },
+        _sum: { betAmount: true, payout: true },
+        _count: true,
+      }),
+    ]);
+    const realWagered = Number(realBetsAgg._sum.betAmount || 0);
+    const realPayout = Number(realBetsAgg._sum.payout || 0);
+    const realGGR = realWagered - realPayout;
+
+    // --- Bot Stats (isBot: true) ---
+    const [botCount, botBetsAgg] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'USER', isBot: true } }),
+      this.prisma.bet.aggregate({
+        where: { user: { isBot: true } },
+        _sum: { betAmount: true, payout: true },
+        _count: true,
+      }),
+    ]);
+    const botWagered = Number(botBetsAgg._sum.betAmount || 0);
+    const botPayout = Number(botBetsAgg._sum.payout || 0);
+    const botGGR = botWagered - botPayout;
 
     return {
+      // Brand overview
       totalBrands,
       activeBrands,
       inactiveBrands: totalBrands - activeBrands,
-      totalPlayers,
-      totalBets: totalBets,
-      totalWagered: wagered,
-      totalPayout: payout,
-      totalGGR: ggr,
+
+      // Real players (what matters)
+      realPlayers: {
+        count: realPlayerCount,
+        bets: realBetsAgg._count,
+        wagered: realWagered,
+        payout: realPayout,
+        ggr: realGGR,
+      },
+
+      // Bots (artificial activity)
+      bots: {
+        count: botCount,
+        bets: botBetsAgg._count,
+        wagered: botWagered,
+        payout: botPayout,
+        ggr: botGGR,
+      },
+
+      // Legacy fields for backward compat
+      totalPlayers: realPlayerCount,
+      totalBets: realBetsAgg._count,
+      totalWagered: realWagered,
+      totalPayout: realPayout,
+      totalGGR: realGGR,
     };
   }
 
