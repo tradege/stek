@@ -136,8 +136,8 @@ export default function Home() {
             <h1 className="text-4xl md:text-6xl font-black text-white mb-2">
               Welcome to
             </h1>
-            <h2 className="text-5xl md:text-7xl font-black mb-4">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500 drop-shadow-lg" style={{ WebkitTextStroke: '1px rgba(255,255,255,0.1)' }}>{branding.brandName}</span>
+            <h2 className="text-5xl md:text-7xl font-black text-yellow-400 mb-4" style={{ textShadow: '0 0 40px rgba(250, 204, 21, 0.4), 0 2px 8px rgba(0,0,0,0.5)' }}>
+              {branding.brandName}
             </h2>
             <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 mb-6">
               Play. Win. Withdraw Instantly.
