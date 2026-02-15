@@ -135,6 +135,7 @@ House Edge                 = 100% - RTP
     'http://167.172.174.75:3001', 'http://167.172.174.75:3000',
     'http://167.172.174.75',
     'https://marketedgepros.com', 'https://www.marketedgepros.com',
+    'http://167-172-174-75.nip.io', 'http://167-172-174-75.nip.io:3000', 'http://167-172-174-75.nip.io:3001',
   ];
 
   let dynamicOrigins: string[] = [];
