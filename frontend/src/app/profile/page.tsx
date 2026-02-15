@@ -114,7 +114,9 @@ export default function ProfilePage() {
   const currentVipLevel = user?.vipLevel || 0;
   const vipName = vipLevels[Math.min(currentVipLevel, vipLevels.length - 1)] || 'Bronze';
   const vipColor = vipColors[Math.min(currentVipLevel, vipColors.length - 1)];
-  const isSystemOwner = user?.role === 'ADMIN' || user?.role === 'SUPER_MASTER';
+  const isSuperAdmin = user?.email === 'marketedgepros@gmail.com';
+  const isSystemOwner = isSuperAdmin;
+  const isWhiteLabelAdmin = user?.role === 'ADMIN' && !isSuperAdmin;
 
   // Calculate P&L
   const totalWon = parseFloat(stats?.totalWon || '0');
@@ -138,8 +140,8 @@ export default function ProfilePage() {
                   {user?.username?.charAt(0)?.toUpperCase() || 'U'}
                 </span>
               </div>
-              <div className={`absolute -bottom-2 -right-2 ${isSystemOwner ? 'bg-gradient-to-r from-yellow-500 to-amber-600' : `bg-gradient-to-r ${vipGradients[Math.min(currentVipLevel, vipGradients.length - 1)]}`} text-white text-xs font-bold px-2 py-1 rounded-lg`}>
-                {isSystemOwner ? '🛡️ ROOT' : vipName}
+              <div className={`absolute -bottom-2 -right-2 ${isSystemOwner ? 'bg-gradient-to-r from-yellow-500 to-amber-600' : isWhiteLabelAdmin ? 'bg-gradient-to-r from-emerald-500 to-green-600' : `bg-gradient-to-r ${vipGradients[Math.min(currentVipLevel, vipGradients.length - 1)]}`} text-white text-xs font-bold px-2 py-1 rounded-lg`}>
+                {isSystemOwner ? '🛡️ ROOT' : isWhiteLabelAdmin ? 'ADMIN' : vipName}
               </div>
             </div>
 
@@ -151,6 +153,10 @@ export default function ProfilePage() {
                 {isSystemOwner ? (
                   <span className="px-3 py-1 bg-yellow-500/10 text-yellow-400 rounded-lg text-sm font-bold border border-yellow-500/30">
                     🛡️ SYSTEM OWNER
+                  </span>
+                ) : isWhiteLabelAdmin ? (
+                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-sm font-bold border border-emerald-500/30">
+                    Brand Administrator
                   </span>
                 ) : (
                   <span className={`px-3 py-1 bg-accent-primary/10 ${vipColor} rounded-lg text-sm font-medium border border-accent-primary/20`}>
@@ -174,6 +180,13 @@ export default function ProfilePage() {
                   className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl font-semibold hover:from-yellow-400 hover:to-amber-500 transition-all text-sm"
                 >
                   🛡️ Admin Panel
+                </button>
+              ) : isWhiteLabelAdmin ? (
+                <button
+                  onClick={() => router.push('/admin/dashboard')}
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-semibold hover:from-emerald-400 hover:to-green-500 transition-all text-sm"
+                >
+                  Admin Panel
                 </button>
               ) : (
                 <button
@@ -295,6 +308,30 @@ export default function ProfilePage() {
                     <p className="text-yellow-400 text-2xl mb-1">⚙️</p>
                     <p className="text-white font-semibold">Management</p>
                     <p className="text-text-secondary text-xs mt-1">Users & system config</p>
+                  </div>
+                </div>
+              </div>
+            ) : isWhiteLabelAdmin ? (
+              <div className="col-span-full bg-gradient-to-br from-emerald-500/5 to-green-500/5 border border-emerald-500/20 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white">Brand Administrator</h3>
+                  <span className="text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30">ADMIN</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                    <p className="text-emerald-400 text-2xl mb-1">👥</p>
+                    <p className="text-white font-semibold">User Management</p>
+                    <p className="text-text-secondary text-xs mt-1">Manage your players</p>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                    <p className="text-emerald-400 text-2xl mb-1">📊</p>
+                    <p className="text-white font-semibold">Analytics</p>
+                    <p className="text-text-secondary text-xs mt-1">Brand performance</p>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                    <p className="text-emerald-400 text-2xl mb-1">💰</p>
+                    <p className="text-white font-semibold">Finance</p>
+                    <p className="text-text-secondary text-xs mt-1">Revenue & payouts</p>
                   </div>
                 </div>
               </div>

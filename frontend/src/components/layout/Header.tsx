@@ -55,7 +55,7 @@ const formatCompact = (num: number): string => {
 
 // Role badge configuration
 const roleBadgeConfig: Record<string, { text: string; color: string }> = {
-  ADMIN: { text: '🛡️ ROOT', color: 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 border-yellow-500/30' },
+  ADMIN: { text: 'ADMIN', color: 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-400 border-emerald-500/30' },
   SUPER_MASTER: { text: 'SUPER', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
   MASTER: { text: 'MASTER', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
   AGENT: { text: 'AGENT', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
@@ -119,8 +119,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
   }, []);
 
   const userRole = user?.role || 'USER';
-  const roleBadge = roleBadgeConfig[userRole] || roleBadgeConfig.USER;
-  const isSystemOwner = userRole === 'ADMIN' || userRole === 'SUPER_MASTER';
+  const isSuperAdmin = user?.email === 'marketedgepros@gmail.com';
+  const isSystemOwner = isSuperAdmin;
+  const defaultBadge = roleBadgeConfig[userRole] || roleBadgeConfig.USER;
+  // Override badge: ROOT only for super admin, ADMIN for white label admins
+  const roleBadge = isSuperAdmin 
+    ? { text: '🛡️ ROOT', color: 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 border-yellow-500/30' }
+    : defaultBadge;
 
   return (
     <header data-testid="header" className="sticky top-0 z-30 bg-bg-card/95 backdrop-blur-sm border-b border-white/10 px-4 py-3">
