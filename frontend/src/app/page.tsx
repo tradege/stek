@@ -62,7 +62,7 @@ function AnimatedCounter({ target, prefix = '', suffix = '', color }: { target: 
 // Recent wins — fetched from real API data (no mock data)
 
 export default function Home() {
-  const { branding } = useBranding();
+  const { branding, isLoading: brandingLoading } = useBranding();
   const [isLoading, setIsLoading] = useState(true);
   const [platformStats, setPlatformStats] = useState({
     totalWagered: 0,
@@ -137,7 +137,11 @@ export default function Home() {
               Welcome to
             </h1>
             <h2 className="text-5xl md:text-7xl font-black text-yellow-400 mb-4" style={{ textShadow: '0 0 40px rgba(250, 204, 21, 0.4), 0 2px 8px rgba(0,0,0,0.5)' }}>
-              {branding.brandName}
+              {brandingLoading ? (
+                <span className="inline-block w-64 h-16 bg-white/10 rounded-lg animate-pulse" />
+              ) : (
+                branding.brandName
+              )}
             </h2>
             <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 mb-6">
               Play. Win. Withdraw Instantly.

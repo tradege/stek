@@ -305,7 +305,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const panelConfig = rolePanelConfig[userRole];
   const isSuperAdmin = user?.email === 'marketedgepros@gmail.com';
   const isSystemOwner = isSuperAdmin;
-  const { branding } = useBranding();
+  const { branding, isLoading: brandingLoading } = useBranding();
 
   return (
     <aside data-testid="sidebar" className="h-full flex flex-col bg-bg-card">
@@ -313,10 +313,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
       <div className="p-4 lg:p-6 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-accent-primary flex items-center justify-center shadow-glow-cyan">
-            <span className="text-xl font-bold text-black">S</span>
+            <span className="text-xl font-bold text-black">{brandingLoading ? '...' : (branding?.brandName?.[0] || 'S')}</span>
           </div>
           <div>
-            <h1 data-testid="logo-text" className="text-xl font-bold text-white">{branding?.brandName || 'Casino'}</h1>
+            <h1 data-testid="logo-text" className="text-xl font-bold text-white">{brandingLoading ? <span className="inline-block w-24 h-5 bg-white/10 rounded animate-pulse" /> : (branding?.brandName || 'Casino')}</h1>
             <p className="text-xs text-text-secondary">Crypto Casino</p>
           </div>
         </div>
