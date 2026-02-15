@@ -136,6 +136,7 @@ House Edge                 = 100% - RTP
     'http://167.172.174.75',
     'https://marketedgepros.com', 'https://www.marketedgepros.com',
     'http://167-172-174-75.nip.io', 'http://167-172-174-75.nip.io:3000', 'http://167-172-174-75.nip.io:3001',
+    'http://stakepro.167-172-174-75.sslip.io', 'http://lucky.167-172-174-75.sslip.io', 'http://ben.167-172-174-75.sslip.io',
   ];
 
   let dynamicOrigins: string[] = [];
