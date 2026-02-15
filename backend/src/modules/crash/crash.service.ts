@@ -6,6 +6,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { getGameConfig } from '../../common/helpers/game-tenant.helper';
 import { GameType } from '@prisma/client';
 import { GameConfigService } from './game-config.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+import { VipService } from '../vip/vip.service';
 
 
 /**
@@ -123,6 +125,8 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gameConfig: GameConfigService,
+    private readonly commissionProcessor: CommissionProcessorService,
+    private readonly vipService: VipService,
   ) {
     this.masterServerSeed = crypto.randomBytes(32).toString('hex');
   }
@@ -885,6 +889,52 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * ============================================
+   * POST-BET PROCESSING HOOK
+   * ============================================
+   * Called after every bet is settled (win or loss).
+   * Triggers: Stats Update, VIP Level Check, Rakeback, Affiliate Commission.
+   * All operations are fire-and-forget to not block the game loop.
+   */
+  private async postBetProcessing(
+    userId: string,
+    betId: string,
+    betAmount: number,
+    payout: number,
+    gameType: GameType,
+    siteId: string,
+    gameData?: Record<string, any>,
+  ): Promise<void> {
+    try {
+      // 1. Update user stats (totalWagered + totalBets)
+      await this.vipService.updateUserStats(userId, betAmount);
+
+      // 2. Check VIP level up
+      const levelResult = await this.vipService.checkLevelUp(userId);
+      if (levelResult.leveledUp) {
+        this.logger.log(`🎉 User ${userId} leveled up to ${levelResult.tierName}!`);
+      }
+
+      // 3. Process rakeback (betAmount × houseEdge × VIP rate)
+      const houseEdge = this.gameConfig.houseEdge;
+      await this.vipService.processRakeback(userId, betAmount, houseEdge);
+
+      // 4. Trigger affiliate commission (RevShare based on net loss)
+      await this.commissionProcessor.processCommission(
+        betId,
+        userId,
+        betAmount,
+        payout,
+        gameType,
+        siteId,
+        gameData,
+      );
+    } catch (error) {
+      this.logger.error(`Post-bet processing error for ${userId}: ${error.message}`);
+    }
+  }
+
   private async saveBetToDatabase(
     userId: string,
     bet: CrashBet,
@@ -892,12 +942,16 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     isWin: boolean,
     siteId: string = 'default-site-001'
   ): Promise<void> {
+    const betAmount = bet.amount.toNumber();
+    const payout = isWin ? bet.amount.mul(bet.cashedOutAt || 0).toNumber() : 0;
+    const gameType = skinToGameType(bet.skin);
+
     try {
       await this.prisma.bet.create({
         data: {
           id: bet.id,
           userId: userId,
-          gameType: skinToGameType(bet.skin),
+          gameType: gameType,
           currency: 'USDT',
           siteId: siteId,
           betAmount: bet.amount,
@@ -920,6 +974,23 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
         },
       });
       this.logger.debug(`📊 Bet saved to database: ${bet.id}`);
+
+      // === FIRE POST-BET HOOKS (non-blocking) ===
+      // Skip bots — only process real users
+      if (!bet.id.startsWith('bot_')) {
+        this.postBetProcessing(
+          userId,
+          bet.id,
+          betAmount,
+          payout,
+          gameType,
+          siteId,
+          {
+            autoCashoutAt: bet.autoCashoutAt?.toFixed(2),
+            crashPoint: crashPoint.toFixed(2),
+          },
+        ).catch(err => this.logger.error(`Post-bet hook failed: ${err.message}`));
+      }
     } catch (error) {
       this.logger.error(`Failed to save bet to database: ${error.message}`);
     }

@@ -2,7 +2,8 @@
  * ============================================
  * CRASH MODULE
  * ============================================
- * Main module for the Crash game
+ * Main module for the Crash game.
+ * Now imports AffiliateModule and VipModule for post-bet processing.
  */
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
@@ -10,10 +11,14 @@ import { CrashService } from './crash.service';
 import { CrashGateway } from './crash.gateway';
 import { GameConfigService } from './game-config.service';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { AffiliateModule } from '../affiliate/affiliate.module';
+import { VipModule } from '../vip/vip.module';
 
 @Module({
   imports: [
     PrismaModule,
+    AffiliateModule,
+    VipModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key',
       signOptions: { expiresIn: '7d' },

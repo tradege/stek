@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CashierModule } from './modules/wallet/cashier.module';
 import { BotModule } from './modules/bot/bot.module';
 import { AffiliateModule } from './modules/affiliate/affiliate.module';
+import { VipModule } from './modules/vip/vip.module';
 import { IntegrationModule } from './integration/integration.module';
 import { CrashModule } from './modules/crash/crash.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -56,6 +57,7 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
     OlympusModule,
     BotModule,
     AffiliateModule,
+    VipModule,
     IntegrationModule,
     GamesModule,
     UsersModule,

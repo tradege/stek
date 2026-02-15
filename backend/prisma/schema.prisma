@@ -142,9 +142,11 @@ model User {
   lastLoginIp String?
 
   // VIP System
-  vipLevel     Int     @default(0) // 0-10 VIP levels
-  totalWagered Decimal @default(0) @db.Decimal(18, 8) // Total amount wagered for VIP
-  xp           Int     @default(0) // Experience points for gamification
+  vipLevel          Int     @default(0) // 0-10 VIP levels
+  totalWagered      Decimal @default(0) @db.Decimal(18, 8) // Total amount wagered for VIP
+  totalBets         Int     @default(0) // Total number of bets placed
+  claimableRakeback Decimal @default(0) @db.Decimal(18, 8) // Accumulated rakeback available to claim
+  xp                Int     @default(0) // Experience points for gamification
 
   // Timestamps
   createdAt DateTime @default(now())
