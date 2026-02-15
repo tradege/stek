@@ -42,7 +42,7 @@ export interface BrandConfig {
 // Default brand config (fallback if no brand is resolved)
 const DEFAULT_BRAND: BrandConfig = {
   id: 'default',
-  brandName: 'StakePro',
+  brandName: '',
   domain: 'localhost',
   logoUrl: null,
   faviconUrl: null,
@@ -197,11 +197,11 @@ export function BrandingProvider({ children }: BrandingProviderProps) {
           injectCSSVariables(data);
           cacheBrand(data); // Cache for next visit
         } else {
-          // No brand found for this domain, use defaults
-          const defaultWithDomain = { ...DEFAULT_BRAND, domain: currentDomain };
-          setBranding(defaultWithDomain);
-          injectCSSVariables(defaultWithDomain);
-          cacheBrand(defaultWithDomain);
+          // No brand found for this domain — this is the main StakePro site
+          const mainSiteBrand = { ...DEFAULT_BRAND, brandName: 'StakePro', domain: currentDomain };
+          setBranding(mainSiteBrand);
+          injectCSSVariables(mainSiteBrand);
+          cacheBrand(mainSiteBrand);
         }
       } else {
         // API error — if we have cache, keep using it; otherwise use defaults
