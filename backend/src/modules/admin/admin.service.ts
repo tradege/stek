@@ -3,10 +3,20 @@ import { invalidateSiteCache } from '../../common/helpers/game-tenant.helper';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserStatus } from '@prisma/client';
 
+const SUPER_ADMIN_EMAIL = 'marketedgepros@gmail.com';
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   constructor(private prisma: PrismaService) {}
+
+  // Helper: standard filter to exclude bots and super admin from financial stats
+  private realUserFilter() {
+    return { isBot: false, email: { not: SUPER_ADMIN_EMAIL } };
+  }
+  private realUserBetFilter() {
+    return { user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } };
+  }
 
   // Helper: build siteId filter
   private siteFilter(siteId?: string) {
@@ -19,8 +29,8 @@ export class AdminService {
     const sf = this.siteFilter(siteId);
 
     const [totalUsers, activeUsers, pendingApprovalUsers, pendingTransactions] = await Promise.all([
-      this.prisma.user.count({ where: { ...sf, isBot: false, role: 'USER' } }),
-      this.prisma.user.count({ where: { status: 'ACTIVE', ...sf, isBot: false, role: 'USER' } }),
+      this.prisma.user.count({ where: { ...sf, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
+      this.prisma.user.count({ where: { status: 'ACTIVE', ...sf, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
       this.prisma.user.count({ where: { status: 'PENDING_APPROVAL', ...sf } }),
       this.prisma.transaction.count({ where: { status: 'PENDING', ...sf } }),
     ]);
@@ -28,7 +38,7 @@ export class AdminService {
     const transactions = await this.prisma.transaction.groupBy({
       by: ['type'],
       _sum: { amount: true },
-      where: { status: 'CONFIRMED', ...sf, user: { isBot: false, role: 'USER' }, type: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
+      where: { status: 'CONFIRMED', ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, type: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
     });
 
     const totalDeposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
@@ -37,7 +47,7 @@ export class AdminService {
     const bets = await this.prisma.bet.aggregate({
       _sum: { betAmount: true, payout: true, profit: true },
       _count: true,
-      where: { ...sf, user: { isBot: false, role: 'USER' } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     const totalWagered = Number(bets._sum.betAmount || 0);
@@ -70,7 +80,7 @@ export class AdminService {
     const perGameBets = await this.prisma.bet.groupBy({
       by: ['gameType'],
       _sum: { betAmount: true, payout: true },
-      where: { ...sf, user: { isBot: false, role: 'USER' } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
     let providerFees = 0;
     for (const g of perGameBets) {
@@ -83,7 +93,7 @@ export class AdminService {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const activeUsersLast24h = await this.prisma.bet.groupBy({
       by: ['userId'],
-      where: { createdAt: { gte: oneDayAgo }, ...sf, user: { isBot: false, role: 'USER' } },
+      where: { createdAt: { gte: oneDayAgo }, ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     // activeSessions = active users in last 24h
@@ -91,7 +101,7 @@ export class AdminService {
 
     // Highest single win (payout) for homepage stats
     const highestWinBet = await this.prisma.bet.findFirst({
-      where: { ...sf, user: { isBot: false, role: 'USER' }, payout: { gt: 0 } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, payout: { gt: 0 } },
       orderBy: { payout: 'desc' },
       select: { payout: true },
     });
@@ -99,7 +109,7 @@ export class AdminService {
 
     // Recent real wins for homepage ticker (non-bot, profitable bets)
     const recentWinBets = await this.prisma.bet.findMany({
-      where: { ...sf, user: { isBot: false, role: 'USER' }, payout: { gt: 0 }, profit: { gt: 0 } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, payout: { gt: 0 }, profit: { gt: 0 } },
       orderBy: { createdAt: 'desc' },
       take: 12,
       select: {
@@ -157,7 +167,7 @@ export class AdminService {
     const bets = await this.prisma.bet.aggregate({
       _sum: { betAmount: true, payout: true },
       _count: true,
-      where: { ...sf, user: { isBot: false, role: 'USER' } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     const totalWagered = Number(bets._sum.betAmount || 0);
@@ -166,18 +176,18 @@ export class AdminService {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const activeUsersLast24h = await this.prisma.bet.groupBy({
       by: ['userId'],
-      where: { createdAt: { gte: oneDayAgo }, ...sf, user: { isBot: false, role: 'USER' } },
+      where: { createdAt: { gte: oneDayAgo }, ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     const highestWinBet = await this.prisma.bet.findFirst({
-      where: { ...sf, user: { isBot: false, role: 'USER' }, payout: { gt: 0 } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, payout: { gt: 0 } },
       orderBy: { payout: 'desc' },
       select: { payout: true },
     });
     const highestWin = Number(highestWinBet?.payout || 0);
 
     const recentWinBets = await this.prisma.bet.findMany({
-      where: { ...sf, user: { isBot: false, role: 'USER' }, payout: { gt: 0 }, profit: { gt: 0 } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, payout: { gt: 0 }, profit: { gt: 0 } },
       orderBy: { createdAt: 'desc' },
       take: 12,
       select: {
@@ -224,7 +234,7 @@ export class AdminService {
     const bets = await this.prisma.bet.aggregate({
       _sum: { betAmount: true, payout: true, profit: true },
       _count: true,
-      where: { ...sf, user: { isBot: false, role: 'USER' } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     const totalBets = Number(bets._sum.betAmount || 0);
@@ -274,7 +284,7 @@ export class AdminService {
       by: ['gameType'],
       _sum: { betAmount: true, payout: true },
       _count: true,
-      where: { ...sf, user: { isBot: false, role: 'USER' } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     let totalProviderFee = 0;
@@ -325,7 +335,7 @@ export class AdminService {
       by: ['type'],
       _sum: { amount: true },
       _count: true,
-      where: { status: 'CONFIRMED', ...sf, user: { isBot: false, role: 'USER' }, type: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
+      where: { status: 'CONFIRMED', ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, type: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
     });
 
     const deposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
@@ -488,10 +498,10 @@ export class AdminService {
     today.setHours(0, 0, 0, 0);
 
     const [allTimeBets, todayBets, userCount, activeCount] = await Promise.all([
-      this.prisma.bet.aggregate({ _sum: { betAmount: true, payout: true }, _count: true, where: { ...sf, user: { isBot: false, role: 'USER' } } }),
-      this.prisma.bet.aggregate({ _sum: { betAmount: true, payout: true }, _count: true, where: { createdAt: { gte: today }, ...sf, user: { isBot: false, role: 'USER' } } }),
-      this.prisma.user.count({ where: { ...sf, isBot: false, role: 'USER' } }),
-      this.prisma.user.count({ where: { status: 'ACTIVE', ...sf, isBot: false, role: 'USER' } }),
+      this.prisma.bet.aggregate({ _sum: { betAmount: true, payout: true }, _count: true, where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } } }),
+      this.prisma.bet.aggregate({ _sum: { betAmount: true, payout: true }, _count: true, where: { createdAt: { gte: today }, ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } } }),
+      this.prisma.user.count({ where: { ...sf, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
+      this.prisma.user.count({ where: { status: 'ACTIVE', ...sf, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
     ]);
 
     const allBets = Number(allTimeBets._sum.betAmount || 0);
@@ -503,7 +513,7 @@ export class AdminService {
       by: ['gameType'],
       _sum: { betAmount: true, payout: true },
       _count: true,
-      where: { ...sf, user: { isBot: false, role: 'USER' } },
+      where: { ...sf, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
     });
 
     return {
@@ -545,8 +555,8 @@ export class AdminService {
 
     for (const site of sites) {
       const [userCount, betAgg] = await Promise.all([
-        this.prisma.user.count({ where: { siteId: site.id, isBot: false, role: 'USER' } }),
-        this.prisma.bet.aggregate({ _sum: { betAmount: true, payout: true }, _count: true, where: { siteId: site.id, user: { isBot: false, role: 'USER' } } }),
+        this.prisma.user.count({ where: { siteId: site.id, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
+        this.prisma.bet.aggregate({ _sum: { betAmount: true, payout: true }, _count: true, where: { siteId: site.id, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } } }),
       ]);
 
       results.push({
@@ -726,11 +736,11 @@ export class AdminService {
   async getRealStats(siteId?: string) {
     const sf = this.siteFilter(siteId);
     const [totalRealUsers, activeRealUsers, realDeposits, realWithdrawals, realBets, botStats] = await Promise.all([
-      this.prisma.user.count({ where: { isBot: false, role: 'USER', ...sf } }),
-      this.prisma.user.count({ where: { isBot: false, role: 'USER', lastLoginAt: { gte: new Date(Date.now() - 86400000) }, ...sf } }),
-      this.prisma.transaction.aggregate({ where: { type: 'DEPOSIT', status: 'CONFIRMED', user: { isBot: false, role: 'USER' }, ...sf }, _sum: { amount: true } }),
-      this.prisma.transaction.aggregate({ where: { type: 'WITHDRAWAL', status: 'CONFIRMED', user: { isBot: false, role: 'USER' }, ...sf }, _sum: { amount: true } }),
-      this.prisma.bet.aggregate({ where: { user: { isBot: false, role: 'USER' }, ...sf }, _sum: { betAmount: true, profit: true }, _count: true }),
+      this.prisma.user.count({ where: { isBot: false, email: { not: SUPER_ADMIN_EMAIL }, ...sf } }),
+      this.prisma.user.count({ where: { isBot: false, email: { not: SUPER_ADMIN_EMAIL }, lastLoginAt: { gte: new Date(Date.now() - 86400000) }, ...sf } }),
+      this.prisma.transaction.aggregate({ where: { type: 'DEPOSIT', status: 'CONFIRMED', user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, ...sf }, _sum: { amount: true } }),
+      this.prisma.transaction.aggregate({ where: { type: 'WITHDRAWAL', status: 'CONFIRMED', user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, ...sf }, _sum: { amount: true } }),
+      this.prisma.bet.aggregate({ where: { user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } }, ...sf }, _sum: { betAmount: true, profit: true }, _count: true }),
       this.getBotStats(siteId),
     ]);
 

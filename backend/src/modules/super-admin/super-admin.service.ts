@@ -2,6 +2,8 @@ import * as bcrypt from "bcrypt";
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const SUPER_ADMIN_EMAIL = 'marketedgepros@gmail.com';
+
 
 @Injectable()
 export class SuperAdminService {
@@ -32,9 +34,9 @@ export class SuperAdminService {
 
     // --- Real Players Stats (isBot: false) ---
     const [realPlayerCount, realBetsAgg] = await Promise.all([
-      this.prisma.user.count({ where: { role: 'USER', isBot: false } }),
+      this.prisma.user.count({ where: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
       this.prisma.bet.aggregate({
-        where: { user: { isBot: false, role: 'USER' } },
+        where: { user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
         _sum: { betAmount: true, payout: true },
         _count: true,
       }),
@@ -112,11 +114,11 @@ export class SuperAdminService {
       tenants.map(async (tenant) => {
         const [betsAgg, realPlayerCount] = await Promise.all([
           this.prisma.bet.aggregate({
-            where: { siteId: tenant.id, user: { isBot: false, role: 'USER' } },
+            where: { siteId: tenant.id, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
             _sum: { betAmount: true, payout: true, profit: true },
             _count: true,
           }),
-          this.prisma.user.count({ where: { siteId: tenant.id, isBot: false, role: 'USER' } }),
+          this.prisma.user.count({ where: { siteId: tenant.id, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
         ]);
 
         const wagered = Number(betsAgg._sum.betAmount || 0);
@@ -169,11 +171,11 @@ export class SuperAdminService {
 
     // Get financial stats (excluding bots)
     const betsAgg = await this.prisma.bet.aggregate({
-      where: { siteId: id, user: { isBot: false, role: 'USER' } },
+      where: { siteId: id, user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
       _sum: { betAmount: true, payout: true },
       _count: true,
     });
-    const realPlayerCount = await this.prisma.user.count({ where: { siteId: id, isBot: false, role: 'USER' } });
+    const realPlayerCount = await this.prisma.user.count({ where: { siteId: id, isBot: false, email: { not: SUPER_ADMIN_EMAIL } } });
 
     // Get recent bets
     const recentBets = await this.prisma.bet.findMany({
