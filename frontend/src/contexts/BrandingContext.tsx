@@ -6,6 +6,9 @@
  * current domain, and injects CSS variables + brand assets
  * dynamically into the page.
  *
+ * Uses localStorage caching so the correct brand name shows
+ * instantly on repeat visits (no flash of wrong name).
+ *
  * Usage:
  *   const { branding, isLoading } = useBranding();
  *   // branding.brandName, branding.logoUrl, etc.
@@ -56,6 +59,41 @@ const DEFAULT_BRAND: BrandConfig = {
   locale: 'en',
   supportEmail: 'support@stakepro.com',
 };
+
+const CACHE_KEY = 'stek_brand_cache';
+
+/**
+ * Try to load cached brand from localStorage for the current domain.
+ * Returns the cached brand if found, otherwise null.
+ */
+function getCachedBrand(): BrandConfig | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached);
+    // Only use cache if it matches the current domain
+    const currentDomain = window.location.hostname;
+    if (parsed && parsed.domain === currentDomain && parsed.brandName) {
+      return parsed as BrandConfig;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save brand config to localStorage for instant loading next time.
+ */
+function cacheBrand(brand: BrandConfig) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(brand));
+  } catch {
+    // Silently fail if localStorage is full or unavailable
+  }
+}
 
 interface BrandingContextType {
   branding: BrandConfig;
@@ -121,13 +159,15 @@ interface BrandingProviderProps {
 }
 
 export function BrandingProvider({ children }: BrandingProviderProps) {
-  const [branding, setBranding] = useState<BrandConfig>(DEFAULT_BRAND);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize from cache if available — this prevents the flash
+  const cached = getCachedBrand();
+  const [branding, setBranding] = useState<BrandConfig>(cached || DEFAULT_BRAND);
+  const [isLoading, setIsLoading] = useState(!cached); // Not loading if we have cache
   const [error, setError] = useState<string | null>(null);
 
   const fetchBranding = async () => {
     try {
-      setIsLoading(true);
+      if (!cached) setIsLoading(true);
       setError(null);
 
       // Get current domain
@@ -151,26 +191,41 @@ export function BrandingProvider({ children }: BrandingProviderProps) {
           if (!data.supportEmail && data.domain) {
             data.supportEmail = `support@${data.domain}`;
           }
+          // Store the domain we actually fetched for (for cache matching)
+          data.domain = currentDomain;
           setBranding(data);
           injectCSSVariables(data);
+          cacheBrand(data); // Cache for next visit
         } else {
           // No brand found for this domain, use defaults
-          injectCSSVariables(DEFAULT_BRAND);
+          const defaultWithDomain = { ...DEFAULT_BRAND, domain: currentDomain };
+          setBranding(defaultWithDomain);
+          injectCSSVariables(defaultWithDomain);
+          cacheBrand(defaultWithDomain);
         }
       } else {
-        // API error, use defaults
-        injectCSSVariables(DEFAULT_BRAND);
+        // API error — if we have cache, keep using it; otherwise use defaults
+        if (!cached) {
+          injectCSSVariables(DEFAULT_BRAND);
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch branding config, using defaults:', err);
       setError('Failed to load brand configuration');
-      injectCSSVariables(DEFAULT_BRAND);
+      if (!cached) {
+        injectCSSVariables(DEFAULT_BRAND);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // If we have cache, inject CSS immediately
+    if (cached) {
+      injectCSSVariables(cached);
+    }
+    // Always fetch fresh data (updates cache silently)
     fetchBranding();
   }, []);
 

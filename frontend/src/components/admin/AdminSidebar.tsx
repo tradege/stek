@@ -129,7 +129,7 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ isOpen, onClose, onOpen }: AdminSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { branding, isLoading: brandingLoading } = useBranding();
+  const { branding } = useBranding();
   const isSuperAdmin = user?.email === "marketedgepros@gmail.com";
 
   const handleNavClick = () => {
@@ -166,7 +166,7 @@ export default function AdminSidebar({ isOpen, onClose, onOpen }: AdminSidebarPr
               </div>
               <div>
                 <h1 data-testid="admin-logo-text" className="text-xl font-bold text-white">
-                  {brandingLoading ? <span className="inline-block w-24 h-5 bg-white/10 rounded animate-pulse" /> : (branding?.brandName || 'Casino')}
+                  {branding?.brandName || 'Casino'}
                 </h1>
                 <p className="text-xs text-text-secondary">Admin Panel</p>
               </div>
