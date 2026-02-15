@@ -44,7 +44,19 @@ export class AdminService {
     const totalPayouts = Number(bets._sum.payout || 0);
     const totalBets = bets._count;
     const totalGGR = totalWagered - totalPayouts;
-    const providerFeeRate = 0.08;
+
+    // Fetch provider fee rate from site config (default 8% if not set)
+    let providerFeeRate = 0.08;
+    if (siteId) {
+      const siteConfig = await this.prisma.siteConfiguration.findUnique({
+        where: { id: siteId },
+        select: { houseEdgeConfig: true },
+      });
+      const hec = siteConfig?.houseEdgeConfig as any;
+      if (hec?.ggrFee) {
+        providerFeeRate = Number(hec.ggrFee) / 100;
+      }
+    }
     const providerFees = totalGGR > 0 ? totalGGR * providerFeeRate : 0;
     const netProfit = totalGGR - providerFees;
 
@@ -56,6 +68,45 @@ export class AdminService {
 
     // activeSessions = active users in last 24h
     const activeSessions = activeUsersLast24h.length;
+
+    // Highest single win (payout) for homepage stats
+    const highestWinBet = await this.prisma.bet.findFirst({
+      where: { ...sf, user: { isBot: false }, payout: { gt: 0 } },
+      orderBy: { payout: 'desc' },
+      select: { payout: true },
+    });
+    const highestWin = Number(highestWinBet?.payout || 0);
+
+    // Recent real wins for homepage ticker (non-bot, profitable bets)
+    const recentWinBets = await this.prisma.bet.findMany({
+      where: { ...sf, user: { isBot: false }, payout: { gt: 0 }, profit: { gt: 0 } },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: {
+        user: { select: { username: true } },
+        gameType: true,
+        multiplier: true,
+        payout: true,
+      },
+    });
+    const gameColors: Record<string, string> = {
+      CRASH: 'text-red-400', DICE: 'text-green-400', MINES: 'text-yellow-400',
+      PLINKO: 'text-blue-400', OLYMPUS: 'text-purple-400', CARD_RUSH: 'text-orange-400',
+      LIMBO: 'text-emerald-400', PENALTY: 'text-teal-400',
+    };
+    const recentWins = recentWinBets.map(b => {
+      const username = b.user?.username || 'Anonymous';
+      const masked = username.length > 3
+        ? username.substring(0, 2) + '***' + username.substring(username.length - 2)
+        : username.substring(0, 1) + '***';
+      return {
+        user: masked,
+        game: (b.gameType || 'Casino').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        multiplier: Number(b.multiplier || 1),
+        amount: Number(b.payout || 0),
+        color: gameColors[b.gameType || ''] || 'text-gray-400',
+      };
+    });
 
     return {
       totalUsers,
@@ -72,7 +123,76 @@ export class AdminService {
       providerFees,
       netProfit,
       houseProfit: totalGGR,
+      highestWin,
+      recentWins,
       stats: { wagered: totalWagered, payouts: totalPayouts },
+    };
+  }
+
+  // ============ PUBLIC PLATFORM STATS (safe for homepage, no auth required) ============
+
+  async getPublicStats(siteId?: string) {
+    const sf = this.siteFilter(siteId);
+
+    const bets = await this.prisma.bet.aggregate({
+      _sum: { betAmount: true, payout: true },
+      _count: true,
+      where: { ...sf, user: { isBot: false } },
+    });
+
+    const totalWagered = Number(bets._sum.betAmount || 0);
+    const totalBets = bets._count;
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const activeUsersLast24h = await this.prisma.bet.groupBy({
+      by: ['userId'],
+      where: { createdAt: { gte: oneDayAgo }, ...sf, user: { isBot: false } },
+    });
+
+    const highestWinBet = await this.prisma.bet.findFirst({
+      where: { ...sf, user: { isBot: false }, payout: { gt: 0 } },
+      orderBy: { payout: 'desc' },
+      select: { payout: true },
+    });
+    const highestWin = Number(highestWinBet?.payout || 0);
+
+    const recentWinBets = await this.prisma.bet.findMany({
+      where: { ...sf, user: { isBot: false }, payout: { gt: 0 }, profit: { gt: 0 } },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: {
+        user: { select: { username: true } },
+        gameType: true,
+        multiplier: true,
+        payout: true,
+      },
+    });
+    const gameColorsPublic: Record<string, string> = {
+      CRASH: 'text-red-400', DICE: 'text-green-400', MINES: 'text-yellow-400',
+      PLINKO: 'text-blue-400', OLYMPUS: 'text-purple-400', CARD_RUSH: 'text-orange-400',
+      LIMBO: 'text-emerald-400', PENALTY: 'text-teal-400',
+    };
+    const recentWins = recentWinBets.map(b => {
+      const username = b.user?.username || 'Anonymous';
+      const masked = username.length > 3
+        ? username.substring(0, 2) + '***' + username.substring(username.length - 2)
+        : username.substring(0, 1) + '***';
+      return {
+        user: masked,
+        game: (b.gameType || 'Casino').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        multiplier: Number(b.multiplier || 1),
+        amount: Number(b.payout || 0),
+        color: gameColorsPublic[b.gameType || ''] || 'text-gray-400',
+      };
+    });
+
+    // Only return safe-to-share metrics (no deposits, withdrawals, GGR, etc.)
+    return {
+      totalBets,
+      totalWagered,
+      activeUsers: activeUsersLast24h.length,
+      highestWin,
+      recentWins,
     };
   }
 
@@ -91,7 +211,20 @@ export class AdminService {
     const totalWins = Number(bets._sum.payout || 0);
     const betCount = bets._count;
     const ggr = totalBets - totalWins;
-    const providerFee = ggr > 0 ? ggr * 0.08 : 0;
+
+    // Fetch provider fee rate from site config (default 8% if not set)
+    let feeRate = 0.08;
+    if (siteId) {
+      const siteConfig = await this.prisma.siteConfiguration.findUnique({
+        where: { id: siteId },
+        select: { houseEdgeConfig: true },
+      });
+      const hec = siteConfig?.houseEdgeConfig as any;
+      if (hec?.ggrFee) {
+        feeRate = Number(hec.ggrFee) / 100;
+      }
+    }
+    const providerFee = ggr > 0 ? ggr * feeRate : 0;
     const netProfit = ggr - providerFee;
     const houseEdge = totalBets > 0 ? ((ggr / totalBets) * 100).toFixed(2) : '0';
     const rtp = totalBets > 0 ? ((totalWins / totalBets) * 100).toFixed(2) : '0';

@@ -316,7 +316,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             <span className="text-xl font-bold text-black">S</span>
           </div>
           <div>
-            <h1 data-testid="logo-text" className="text-xl font-bold text-white">{branding?.brandName || 'StakePro'}</h1>
+            <h1 data-testid="logo-text" className="text-xl font-bold text-white">{branding?.brandName || 'Casino'}</h1>
             <p className="text-xs text-text-secondary">Crypto Casino</p>
           </div>
         </div>

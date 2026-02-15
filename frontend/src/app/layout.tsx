@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'StakePro - Crypto Casino',
+  title: 'Crypto Casino',
   description: 'The ultimate crypto casino experience with provably fair games',
   keywords: ['crypto', 'casino', 'crash', 'bitcoin', 'gambling'],
 };

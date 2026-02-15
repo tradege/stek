@@ -3,9 +3,12 @@
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 
 export default function ResponsibleGamingPage() {
   const { user } = useAuth();
+  const { branding } = useBranding();
+  const brandName = branding.brandName || 'the Platform';
   const [depositLimit, setDepositLimit] = useState('');
   const [lossLimit, setLossLimit] = useState('');
   const [wagerLimit, setWagerLimit] = useState('');
@@ -22,7 +25,7 @@ export default function ResponsibleGamingPage() {
             🛡️ Responsible Gaming
           </h1>
           <p className="text-text-secondary text-lg max-w-2xl mx-auto">
-            At StakePro, we are committed to providing a safe and enjoyable gaming experience.
+            At {brandName}, we are committed to providing a safe and enjoyable gaming experience.
             We encourage all players to gamble responsibly.
           </p>
         </div>
@@ -114,7 +117,7 @@ export default function ResponsibleGamingPage() {
         <div className="bg-bg-card border border-red-500/20 rounded-2xl p-6 lg:p-8">
           <h2 className="text-2xl font-bold text-white mb-4">🚫 Self-Exclusion</h2>
           <p className="text-text-secondary mb-4">
-            If you feel that gambling is becoming a problem, you can choose to self-exclude from StakePro.
+            If you feel that gambling is becoming a problem, you can choose to self-exclude from {brandName}.
             During the exclusion period, you will not be able to access your account or place any bets.
           </p>
           <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 mb-4">

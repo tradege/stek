@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X, Maximize2, Minimize2, AlertCircle } from 'lucide-react';
+import { useBranding } from '@/contexts/BrandingContext';
 
 interface GameIframeProps {
   url: string;
@@ -11,6 +12,7 @@ interface GameIframeProps {
 }
 
 export default function GameIframe({ url, gameName, onClose, onError }: GameIframeProps) {
+  const { branding } = useBranding();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -185,7 +187,7 @@ export default function GameIframe({ url, gameName, onClose, onError }: GameIfra
               Press <kbd className="px-2 py-1 bg-white/20 rounded text-white">ESC</kbd> to exit fullscreen
             </p>
             <p className="text-white/60 text-sm">
-              StakePro • Crypto Casino
+              {branding.brandName || 'Casino'} • Crypto Casino
             </p>
           </div>
         </div>

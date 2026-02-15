@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
+import { useBranding } from '@/contexts/BrandingContext';
 
 export default function SupportPage() {
+  const { branding } = useBranding();
+  const email = branding.supportEmail || 'support@platform.com';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -46,12 +50,12 @@ export default function SupportPage() {
                       <div className="text-gray-400 text-sm">Fastest response - under 5 minutes</div>
                     </div>
                   </a>
-                  <a href="mailto:support@stakepro.com"
+                  <a href={`mailto:${email}`}
                     className="flex items-center gap-3 p-3 bg-[#0A0E17] rounded-xl hover:bg-[#141824] transition-colors">
                     <span className="text-2xl">📧</span>
                     <div>
                       <div className="text-white font-medium">Email</div>
-                      <div className="text-gray-400 text-sm">support@stakepro.com</div>
+                      <div className="text-gray-400 text-sm">{email}</div>
                     </div>
                   </a>
                   <div className="flex items-center gap-3 p-3 bg-[#0A0E17] rounded-xl">

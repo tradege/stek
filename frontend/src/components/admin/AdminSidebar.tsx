@@ -166,7 +166,7 @@ export default function AdminSidebar({ isOpen, onClose, onOpen }: AdminSidebarPr
               </div>
               <div>
                 <h1 data-testid="admin-logo-text" className="text-xl font-bold text-white">
-                  {branding?.brandName || 'StakePro'}
+                  {branding?.brandName || 'Casino'}
                 </h1>
                 <p className="text-xs text-text-secondary">Admin Panel</p>
               </div>

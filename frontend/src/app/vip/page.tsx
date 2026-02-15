@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import config from '@/config/api';
+
+const API_URL = config.apiUrl;
 
 const vipTiers = [
   {
@@ -75,8 +78,28 @@ const vipTiers = [
 
 export default function VIPPage() {
   const { user } = useAuth();
-  const currentLevel = user?.vipLevel || 0;
+  const [vipStatus, setVipStatus] = useState<any>(null);
+  const currentLevel = vipStatus?.vipLevel ?? user?.vipLevel ?? 0;
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchVipStatus = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        const res = await fetch(`${API_URL}/api/v1/vip/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setVipStatus(data);
+        }
+      } catch (e) {
+        // Fallback to user context data
+      }
+    };
+    if (user) fetchVipStatus();
+  }, [user]);
 
   return (
     <MainLayout>

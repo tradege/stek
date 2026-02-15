@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { useRouter } from 'next/navigation';
 import {
   Settings, Globe, Shield, Bell, Palette,
@@ -29,12 +30,13 @@ interface SiteSettings {
 
 export default function AdminSettings() {
   const { user } = useAuth();
+  const { branding } = useBranding();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'system'>('general');
   const [settings, setSettings] = useState<SiteSettings>({
-    siteName: 'StakePro',
-    siteUrl: '',
-    supportEmail: 'support@stakepro.com',
+    siteName: branding.brandName || 'Casino',
+    siteUrl: branding.domain || '',
+    supportEmail: branding.supportEmail || 'support@platform.com',
     maintenanceMode: false,
     registrationEnabled: true,
     emailVerificationRequired: false,

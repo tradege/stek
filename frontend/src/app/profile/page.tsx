@@ -57,7 +57,7 @@ export default function ProfilePage() {
             totalWon: '0.00',
             totalLost: '0.00',
             winRate: '0.00',
-            favoriteGame: 'Crash',
+            favoriteGame: 'N/A',
           });
         }
       };
@@ -88,8 +88,7 @@ export default function ProfilePage() {
             })));
           }
         } catch (e) {
-          // Fallback mock data
-          setBetHistory([]);
+            setBetHistory([]);
         } finally {
           setBetsLoading(false);
         }
@@ -108,7 +107,7 @@ export default function ProfilePage() {
     );
   }
 
-  const vipLevels = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master'];
+  const vipLevels = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Iron'];
   const vipColors = ['text-amber-600', 'text-gray-400', 'text-yellow-400', 'text-primary', 'text-purple-400', 'text-red-400'];
   const vipGradients = ['from-amber-700 to-amber-900', 'from-gray-400 to-gray-600', 'from-yellow-400 to-yellow-600', 'from-primary to-primary', 'from-purple-400 to-purple-600', 'from-red-400 to-red-600'];
   const currentVipLevel = user?.vipLevel || 0;

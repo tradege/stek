@@ -33,6 +33,7 @@ export interface BrandConfig {
   loginBgUrl: string | null;
   gameAssets: Record<string, { bg?: string; icon?: string }> | null;
   locale: string;
+  supportEmail: string;
 }
 
 // Default brand config (fallback if no brand is resolved)
@@ -53,6 +54,7 @@ const DEFAULT_BRAND: BrandConfig = {
   loginBgUrl: null,
   gameAssets: null,
   locale: 'en',
+  supportEmail: 'support@stakepro.com',
 };
 
 interface BrandingContextType {
@@ -145,6 +147,10 @@ export function BrandingProvider({ children }: BrandingProviderProps) {
       if (response.ok) {
         const data = await response.json();
         if (data && data.id) {
+          // Derive supportEmail from domain if not provided
+          if (!data.supportEmail && data.domain) {
+            data.supportEmail = `support@${data.domain}`;
+          }
           setBranding(data);
           injectCSSVariables(data);
         } else {

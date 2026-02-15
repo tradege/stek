@@ -8,22 +8,15 @@ import config from '@/config/api';
 // DYNAMIC GAME REGISTRY - Add new games here and they appear everywhere
 // ============================================================
 const GAME_REGISTRY: Record<string, { icon: string; emoji: string; color: string; gradient: string; label: string }> = {
-  CRASH:        { icon: '📈', emoji: '📈', color: '#F59E0B', gradient: 'from-yellow-500/20 to-orange-500/20', label: 'Crash' },
-  DICE:         { icon: '🎲', emoji: '🎲', color: '#3B82F6', gradient: 'from-blue-500/20 to-indigo-500/20', label: 'Dice' },
-  MINES:        { icon: '💣', emoji: '💣', color: '#EF4444', gradient: 'from-red-500/20 to-pink-500/20', label: 'Mines' },
-  PLINKO:       { icon: '🔮', emoji: '🔮', color: '#8B5CF6', gradient: 'from-purple-500/20 to-violet-500/20', label: 'Plinko' },
-  OLYMPUS:      { icon: '⚡', emoji: '⚡', color: '#F97316', gradient: 'from-orange-500/20 to-amber-500/20', label: 'Olympus' },
-  DRAGON_BLAZE: { icon: '🐉', emoji: '🐉', color: '#DC2626', gradient: 'from-red-600/20 to-orange-600/20', label: 'Dragon Blaze' },
-  NOVA_RUSH:    { icon: '🚀', emoji: '🚀', color: '#06B6D4', gradient: 'from-accent-primary/20 to-blue-500/20', label: 'Nova Rush' },
-  LIMBO:        { icon: '🎯', emoji: '🎯', color: '#10B981', gradient: 'from-emerald-500/20 to-green-500/20', label: 'Limbo' },
-  KENO:         { icon: '🎰', emoji: '🎰', color: '#EC4899', gradient: 'from-pink-500/20 to-rose-500/20', label: 'Keno' },
-  WHEEL:        { icon: '🎡', emoji: '🎡', color: '#14B8A6', gradient: 'from-teal-500/20 to-emerald-500/20', label: 'Wheel' },
-  BLACKJACK:    { icon: '🃏', emoji: '🃏', color: '#1D4ED8', gradient: 'from-blue-700/20 to-blue-500/20', label: 'Blackjack' },
-  CARD_RUSH:    { icon: '🃏', emoji: '🃏', color: '#F59E0B', gradient: 'from-yellow-500/20 to-orange-500/20', label: 'Card Rush' },
+  CRASH:            { icon: '📈', emoji: '📈', color: '#F59E0B', gradient: 'from-yellow-500/20 to-orange-500/20', label: 'Crash' },
+  DICE:             { icon: '🎲', emoji: '🎲', color: '#3B82F6', gradient: 'from-blue-500/20 to-indigo-500/20', label: 'Dice' },
+  MINES:            { icon: '💣', emoji: '💣', color: '#EF4444', gradient: 'from-red-500/20 to-pink-500/20', label: 'Mines' },
+  PLINKO:           { icon: '🔮', emoji: '🔮', color: '#8B5CF6', gradient: 'from-purple-500/20 to-violet-500/20', label: 'Plinko' },
+  OLYMPUS:          { icon: '⚡', emoji: '⚡', color: '#F97316', gradient: 'from-orange-500/20 to-amber-500/20', label: 'Olympus' },
+  LIMBO:            { icon: '🎯', emoji: '🎯', color: '#10B981', gradient: 'from-emerald-500/20 to-green-500/20', label: 'Limbo' },
+  CARD_RUSH:        { icon: '🃏', emoji: '🃏', color: '#F59E0B', gradient: 'from-yellow-500/20 to-orange-500/20', label: 'Card Rush' },
   PENALTY_SHOOTOUT: { icon: '⚽', emoji: '⚽', color: '#22C55E', gradient: 'from-green-500/20 to-emerald-500/20', label: 'Penalty Shootout' },
-  ROULETTE:     { icon: '🎰', emoji: '🎰', color: '#B91C1C', gradient: 'from-red-700/20 to-red-500/20', label: 'Roulette' },
-  BACCARAT:     { icon: '🂡', emoji: '🂡', color: '#7C3AED', gradient: 'from-violet-600/20 to-purple-500/20', label: 'Baccarat' },
-  EXTERNAL:     { icon: '🎮', emoji: '🎮', color: '#6B7280', gradient: 'from-gray-500/20 to-gray-600/20', label: 'External' },
+  // Dragon Blaze and Nova Rush use CRASH engine, their bets are recorded as CRASH
 };
 
 // Fallback for any unknown game type

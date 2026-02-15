@@ -59,17 +59,7 @@ function AnimatedCounter({ target, prefix = '', suffix = '', color }: { target: 
   );
 }
 
-// Recent wins ticker
-const mockRecentWins = [
-  { user: 'Cr***to', game: 'Crash', multiplier: 12.5, amount: 125.00, color: 'text-red-400' },
-  { user: 'Lu***ky', game: 'Plinko', multiplier: 26.0, amount: 260.00, color: 'text-blue-400' },
-  { user: 'Bi***er', game: 'Dice', multiplier: 9.8, amount: 98.00, color: 'text-green-400' },
-  { user: 'Di***nd', game: 'Mines', multiplier: 4.2, amount: 42.00, color: 'text-yellow-400' },
-  { user: 'Wh***le', game: 'Crash', multiplier: 45.3, amount: 453.00, color: 'text-red-400' },
-  { user: 'St***er', game: 'Plinko', multiplier: 8.1, amount: 81.00, color: 'text-blue-400' },
-  { user: 'Go***en', game: 'Dice', multiplier: 2.0, amount: 20.00, color: 'text-green-400' },
-  { user: 'Ac***nt', game: 'Mines', multiplier: 15.7, amount: 157.00, color: 'text-yellow-400' },
-];
+// Recent wins — fetched from real API data (no mock data)
 
 export default function Home() {
   const { branding } = useBranding();
@@ -81,24 +71,28 @@ export default function Home() {
     activePlayers: 0,
   });
 
-  const [recentWins, setRecentWins] = useState(mockRecentWins);
+  const [recentWins, setRecentWins] = useState<{user: string; game: string; multiplier: number; amount: number; color: string}[]>([]);
   const [tickerOffset, setTickerOffset] = useState(0);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${API_URL}/admin/stats`);
+        const response = await fetch(`${API_URL}/api/v1/platform/stats`);
         if (response.ok) {
           const data = await response.json();
           setPlatformStats({
-            totalWagered: data.totalDeposits || 0,
+            totalWagered: data.totalWagered || 0,
             gamesPlayed: data.totalBets || 0,
-            highestWin: 156.32,
+            highestWin: data.highestWin || 0,
             activePlayers: data.activeUsers || 0,
           });
+          // Use real recent wins from backend
+          if (data.recentWins && data.recentWins.length > 0) {
+            setRecentWins(data.recentWins);
+          }
         }
       } catch (err) {
-        // 'Failed to fetch platform stats:', err);
+        // Failed to fetch platform stats
       }
     };
     fetchStats();
@@ -165,27 +159,29 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Live Recent Wins Ticker */}
-        <div className="bg-bg-card border border-white/10 rounded-xl overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span className="text-sm font-bold text-green-400">LIVE WINS</span>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <div className="flex gap-6 animate-marquee">
-                {[...recentWins, ...recentWins].map((win, i) => (
-                  <div key={i} className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-gray-400 text-sm">{win.user}</span>
-                    <span className={`text-xs font-medium ${win.color}`}>{win.game}</span>
-                    <span className="text-white font-bold text-sm">{win.multiplier}x</span>
-                    <span className="text-green-400 font-mono text-sm">${Number(win.amount).toFixed(2)}</span>
-                  </div>
-                ))}
+        {/* Live Recent Wins Ticker — real data from API */}
+        {recentWins.length > 0 && (
+          <div className="bg-bg-card border border-white/10 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-sm font-bold text-green-400">LIVE WINS</span>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="flex gap-6 animate-marquee">
+                  {[...recentWins, ...recentWins].map((win, i) => (
+                    <div key={i} className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-gray-400 text-sm">{win.user}</span>
+                      <span className={`text-xs font-medium ${win.color}`}>{win.game}</span>
+                      <span className="text-white font-bold text-sm">{win.multiplier}x</span>
+                      <span className="text-green-400 font-mono text-sm">${Number(win.amount).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Casino / Sports Toggle */}
         <div className="flex justify-center">
@@ -360,7 +356,7 @@ export default function Home() {
             <h3 className="text-2xl font-bold text-white mb-2">Join Our Community</h3>
             <p className="text-gray-400 mb-6 max-w-lg mx-auto">Connect with other players, get exclusive promotions, and stay updated on new features.</p>
             <a
-              href="https://discord.gg/stakepro"
+              href="#"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 px-8 py-4 bg-[#5865F2] text-white font-bold rounded-xl hover:bg-[#4752C4] transition-all shadow-lg"

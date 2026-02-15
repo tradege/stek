@@ -34,10 +34,10 @@ export class SuperAdminService {
     ] = await Promise.all([
       this.prisma.siteConfiguration.count(),
       this.prisma.siteConfiguration.count({ where: { active: true } }),
-      this.prisma.user.count({ where: { role: 'USER' } }),
-      this.prisma.bet.count(),
-      this.prisma.bet.aggregate({ _sum: { betAmount: true } }),
-      this.prisma.bet.aggregate({ _sum: { payout: true } }),
+      this.prisma.user.count({ where: { role: 'USER', isBot: false } }),
+      this.prisma.bet.count({ where: { user: { isBot: false } } }),
+      this.prisma.bet.aggregate({ where: { user: { isBot: false } }, _sum: { betAmount: true } }),
+      this.prisma.bet.aggregate({ where: { user: { isBot: false } }, _sum: { payout: true } }),
     ]);
 
     const wagered = Number(totalWagered._sum.betAmount || 0);
@@ -74,13 +74,17 @@ export class SuperAdminService {
       },
     });
 
-    // Enrich with financial data
+    // Enrich with financial data (excluding bots)
     const enriched = await Promise.all(
       tenants.map(async (tenant) => {
-        const betsAgg = await this.prisma.bet.aggregate({
-          where: { siteId: tenant.id },
-          _sum: { betAmount: true, payout: true, profit: true },
-        });
+        const [betsAgg, realPlayerCount] = await Promise.all([
+          this.prisma.bet.aggregate({
+            where: { siteId: tenant.id, user: { isBot: false } },
+            _sum: { betAmount: true, payout: true, profit: true },
+            _count: true,
+          }),
+          this.prisma.user.count({ where: { siteId: tenant.id, isBot: false } }),
+        ]);
 
         const wagered = Number(betsAgg._sum.betAmount || 0);
         const payout = Number(betsAgg._sum.payout || 0);
@@ -95,8 +99,8 @@ export class SuperAdminService {
         return {
           ...tenant,
           stats: {
-            totalPlayers: tenant._count.users,
-            totalBets: tenant._count.bets,
+            totalPlayers: realPlayerCount,
+            totalBets: betsAgg._count,
             totalTransactions: tenant._count.transactions,
             totalWagered: wagered,
             totalPayout: payout,
@@ -130,11 +134,13 @@ export class SuperAdminService {
       throw new NotFoundException(`Tenant ${id} not found`);
     }
 
-    // Get financial stats
+    // Get financial stats (excluding bots)
     const betsAgg = await this.prisma.bet.aggregate({
-      where: { siteId: id },
+      where: { siteId: id, user: { isBot: false } },
       _sum: { betAmount: true, payout: true },
+      _count: true,
     });
+    const realPlayerCount = await this.prisma.user.count({ where: { siteId: id, isBot: false } });
 
     // Get recent bets
     const recentBets = await this.prisma.bet.findMany({
@@ -160,8 +166,8 @@ export class SuperAdminService {
       ...tenant,
       owner,
       stats: {
-        totalPlayers: tenant._count.users,
-        totalBets: tenant._count.bets,
+        totalPlayers: realPlayerCount,
+        totalBets: betsAgg._count,
         totalWagered: wagered,
         totalPayout: payout,
         ggr: wagered - payout,

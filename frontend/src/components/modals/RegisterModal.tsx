@@ -4,11 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModal } from '@/contexts/ModalContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import Modal from '@/components/modals/Modal';
 
 const RegisterModal: React.FC = () => {
   const { register, isLoading } = useAuth();
   const { isRegisterOpen, closeRegister, switchToLogin } = useModal();
+  const { branding } = useBranding();
 
   const [formData, setFormData] = useState({
     username: '',
@@ -82,7 +84,7 @@ const RegisterModal: React.FC = () => {
             {registrationSuccess ? 'Registration Successful' : 'Create Account'}
           </h2>
           <p className="text-text-secondary mt-1">
-            {registrationSuccess ? '' : 'Join StakePro today'}
+            {registrationSuccess ? '' : `Join ${branding.brandName || 'us'} today`}
           </p>
         </div>
 

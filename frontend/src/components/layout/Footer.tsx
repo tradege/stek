@@ -1,12 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useBranding } from '@/contexts/BrandingContext';
 
 /**
  * Footer - Professional footer with legal links, social media, and license info
  * Matches the Electric Obsidian design system
+ * Uses dynamic branding from BrandingContext
  */
 const Footer: React.FC = () => {
+  const { branding } = useBranding();
+  const brandName = branding.brandName || 'Casino';
+
   return (
     <footer data-testid="footer" className="bg-bg-card border-t border-white/10 mt-auto">
       {/* Main Footer Content */}
@@ -16,9 +21,9 @@ const Footer: React.FC = () => {
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-lg bg-accent-primary flex items-center justify-center">
-                <span className="text-lg font-bold text-black">S</span>
+                <span className="text-lg font-bold text-black">{brandName.charAt(0)}</span>
               </div>
-              <span className="text-lg font-bold text-white">StakePro</span>
+              <span className="text-lg font-bold text-white">{brandName}</span>
             </div>
             <p className="text-text-secondary text-sm leading-relaxed">
               The premier crypto casino platform. Play responsibly and enjoy our provably fair games.
@@ -66,11 +71,7 @@ const Footer: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <p className="text-text-secondary text-xs">
-              &copy; {new Date().getFullYear()} StakePro. All rights reserved.
-            </p>
-            <span className="text-text-secondary text-xs hidden sm:inline">|</span>
-            <p className="text-text-secondary text-xs hidden sm:inline">
-              Licensed under Curacao eGaming
+              &copy; {new Date().getFullYear()} {brandName}. All rights reserved.
             </p>
           </div>
 
@@ -78,7 +79,7 @@ const Footer: React.FC = () => {
           <div className="flex items-center gap-3">
             {/* Discord */}
             <a
-              href="https://discord.gg/stakepro"
+              href="#"
               target="_blank"
               rel="noopener noreferrer"
               data-testid="footer-discord"
@@ -91,7 +92,7 @@ const Footer: React.FC = () => {
             </a>
             {/* Telegram */}
             <a
-              href="https://t.me/stakepro"
+              href="#"
               target="_blank"
               rel="noopener noreferrer"
               data-testid="footer-telegram"
@@ -104,7 +105,7 @@ const Footer: React.FC = () => {
             </a>
             {/* Twitter/X */}
             <a
-              href="https://twitter.com/stakepro"
+              href="#"
               target="_blank"
               rel="noopener noreferrer"
               data-testid="footer-twitter"
