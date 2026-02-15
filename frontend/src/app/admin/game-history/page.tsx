@@ -22,7 +22,7 @@ interface GameBet {
 
 const API_URL = config.apiUrl;
 
-const GAME_TYPES = ["ALL", "CRASH", "MINES", "PLINKO", "DICE", "LIMBO", "PENALTY", "OLYMPUS", "CARD_RUSH"];
+const GAME_TYPES = ["ALL", "CRASH", "MINES", "PLINKO", "DICE", "LIMBO", "PENALTY_SHOOTOUT", "OLYMPUS", "CARD_RUSH", "NOVA_RUSH", "DRAGON_BLAZE", "KENO", "BLACKJACK"];
 
 const GAME_COLORS: Record<string, string> = {
   CRASH: "bg-red-500/20 text-red-400",
@@ -30,9 +30,13 @@ const GAME_COLORS: Record<string, string> = {
   PLINKO: "bg-blue-500/20 text-blue-400",
   DICE: "bg-purple-500/20 text-purple-400",
   LIMBO: "bg-pink-500/20 text-pink-400",
-  PENALTY: "bg-green-500/20 text-green-400",
+  PENALTY_SHOOTOUT: "bg-green-500/20 text-green-400",
   OLYMPUS: "bg-amber-500/20 text-amber-400",
   CARD_RUSH: "bg-accent-primary/20 text-accent-primary",
+  NOVA_RUSH: "bg-orange-500/20 text-orange-400",
+  DRAGON_BLAZE: "bg-red-600/20 text-red-500",
+  KENO: "bg-indigo-500/20 text-indigo-400",
+  BLACKJACK: "bg-emerald-500/20 text-emerald-400",
 };
 
 export default function AdminGameHistoryPage() {

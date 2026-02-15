@@ -302,19 +302,19 @@ export default function Home() {
         {/* Animated Stats Section */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <AnimatedCounter target={platformStats.totalWagered || 50000} prefix="$" suffix="+" color="text-accent-primary" />
+            <AnimatedCounter target={platformStats.totalWagered} prefix="$" suffix="+" color="text-accent-primary" />
             <p className="text-sm text-gray-400">Total Wagered</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <AnimatedCounter target={platformStats.gamesPlayed || 10000} suffix="+" color="text-green-400" />
+            <AnimatedCounter target={platformStats.gamesPlayed} suffix="+" color="text-green-400" />
             <p className="text-sm text-gray-400">Games Played</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <AnimatedCounter target={platformStats.highestWin || 156} suffix="x" color="text-yellow-400" />
+            <AnimatedCounter target={platformStats.highestWin} prefix="$" color="text-yellow-400" />
             <p className="text-sm text-gray-400">Highest Win</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-6 text-center">
-            <AnimatedCounter target={platformStats.activePlayers || 500} suffix="+" color="text-purple-400" />
+            <AnimatedCounter target={platformStats.activePlayers} suffix="+" color="text-purple-400" />
             <p className="text-sm text-gray-400">Active Players</p>
           </div>
         </section>
