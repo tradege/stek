@@ -28,7 +28,7 @@ export class AdminService {
     const transactions = await this.prisma.transaction.groupBy({
       by: ['type'],
       _sum: { amount: true },
-      where: { status: 'CONFIRMED', ...sf, isBot: false },
+      where: { status: 'CONFIRMED', ...sf, user: { isBot: false }, type: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
     });
 
     const totalDeposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
@@ -325,7 +325,7 @@ export class AdminService {
       by: ['type'],
       _sum: { amount: true },
       _count: true,
-      where: { status: 'CONFIRMED', ...sf, isBot: false },
+      where: { status: 'CONFIRMED', ...sf, user: { isBot: false }, type: { in: ['DEPOSIT', 'WITHDRAWAL'] } },
     });
 
     const deposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
