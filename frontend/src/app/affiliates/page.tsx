@@ -19,12 +19,12 @@ const RANK_META: Record<string, { icon: string; color: string }> = {
 
 // Default fallback ranks (used if API fails)
 const RANKS = [
-  { name: 'Bronze', icon: '🥉', color: '#CD7F32', tier1Rate: '5%', tier2Rate: '2%', tier3Rate: '1%', minPlayers: 0 },
-  { name: 'Silver', icon: '🥈', color: '#C0C0C0', tier1Rate: '7%', tier2Rate: '3%', tier3Rate: '1.5%', minPlayers: 5 },
-  { name: 'Gold', icon: '🥇', color: '#FFD700', tier1Rate: '10%', tier2Rate: '4%', tier3Rate: '2%', minPlayers: 15 },
-  { name: 'Platinum', icon: '💎', color: '#E5E4E2', tier1Rate: '12%', tier2Rate: '5%', tier3Rate: '2.5%', minPlayers: 30 },
-  { name: 'Diamond', icon: '👑', color: '#00F0FF', tier1Rate: '15%', tier2Rate: '6%', tier3Rate: '3%', minPlayers: 50 },
-  { name: 'Iron', icon: '🏆', color: '#FF4500', tier1Rate: '20%', tier2Rate: '8%', tier3Rate: '4%', minPlayers: 100 },
+  { name: 'Bronze', icon: '🥉', color: '#CD7F32', tier1Rate: '5%', tier2Rate: '2%', tier3Rate: '1%', minPlayers: 5 },
+  { name: 'Silver', icon: '🥈', color: '#C0C0C0', tier1Rate: '7%', tier2Rate: '3%', tier3Rate: '1.5%', minPlayers: 7 },
+  { name: 'Gold', icon: '🥇', color: '#FFD700', tier1Rate: '10%', tier2Rate: '4%', tier3Rate: '2%', minPlayers: 10 },
+  { name: 'Platinum', icon: '💎', color: '#E5E4E2', tier1Rate: '12%', tier2Rate: '5%', tier3Rate: '2.5%', minPlayers: 15 },
+  { name: 'Diamond', icon: '👑', color: '#00F0FF', tier1Rate: '15%', tier2Rate: '6%', tier3Rate: '3%', minPlayers: 20 },
+  { name: 'Iron', icon: '🏆', color: '#FF4500', tier1Rate: '20%', tier2Rate: '8%', tier3Rate: '4%', minPlayers: 25 },
 ];
 
 interface AffiliateStats {
@@ -319,6 +319,36 @@ const API_URL = config.apiUrl;
           <p className="text-[#94A3B8] text-lg">
             {isSystemOwner ? 'Global network overview & management' : 'Build your empire. Earn unlimited commissions.'}
           </p>
+        </div>
+
+        {/* How It Works - Explanation Section */}
+        <div className="bg-gradient-to-br from-[#131B2C] to-[#0F1520] rounded-2xl p-6 border border-[#1E293B]">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <span>📖</span> How It Works
+          </h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-[#0A0E17]/50 rounded-xl p-5 border border-[#1E293B]">
+              <div className="text-3xl mb-3">👥</div>
+              <h3 className="text-lg font-bold text-[#00F0FF] mb-2">Bring Players</h3>
+              <p className="text-[#94A3B8] text-sm">
+                Invite players using your referral link. You need at least <span className="text-white font-bold">5 active players</span> to start earning commissions and unlock the Bronze rank.
+              </p>
+            </div>
+            <div className="bg-[#0A0E17]/50 rounded-xl p-5 border border-[#1E293B]">
+              <div className="text-3xl mb-3">📉</div>
+              <h3 className="text-lg font-bold text-[#F97316] mb-2">Earn From Losses Only</h3>
+              <p className="text-[#94A3B8] text-sm">
+                Your commission is calculated <span className="text-white font-bold">only from your players' net losses</span> (Bets minus Payouts). If a player wins, no commission is generated for that session.
+              </p>
+            </div>
+            <div className="bg-[#0A0E17]/50 rounded-xl p-5 border border-[#1E293B]">
+              <div className="text-3xl mb-3">📈</div>
+              <h3 className="text-lg font-bold text-[#A855F7] mb-2">Rank Up for Higher Rates</h3>
+              <p className="text-[#94A3B8] text-sm">
+                The more players you refer, the higher your rank and commission rate. Rates change dynamically based on the number of active players in your network.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Section A: The Rank Card */}
@@ -724,8 +754,9 @@ const API_URL = config.apiUrl;
             <p className="text-[#94A3B8] mb-6 text-lg max-w-2xl mx-auto">
               Earn up to <span className="text-[#00F0FF] font-bold">{maxTier1Rate}</span> on Tier 1,{' '}
               <span className="text-[#A855F7] font-bold">{maxTier2Rate}</span> on Tier 2, and{' '}
-              <span className="text-[#F97316] font-bold">{maxTier3Rate}</span> on Tier 3 referrals!
-              Commission is based on player losses. The more players you refer, the higher your rate!
+              <span className="text-[#F97316] font-bold">{maxTier3Rate}</span> on Tier 3 referrals!{' '}
+              Commission is earned <span className="text-yellow-400 font-bold">only from player losses</span>.{' '}
+              Start with <span className="text-white font-bold">5 players</span> to unlock Bronze rank — the more players you bring, the higher your rate!
             </p>
             <button
               onClick={handleCopyLink}
