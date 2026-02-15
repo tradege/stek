@@ -4,6 +4,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import config from '@/config/api';
 
+interface UserStats {
+  totalBets: number;
+  totalWagered: number;
+  totalPayout: number;
+  profit: number;
+  deposits: number;
+  withdrawals: number;
+}
+
 interface User {
   id: string;
   username: string;
@@ -12,7 +21,10 @@ interface User {
   role: "USER" | "ADMIN" | "VIP";
   createdAt: string;
   lastLoginAt: string | null;
+  isBot: boolean;
+  vipLevel: number;
   wallets: { balance: string; currency: string }[];
+  stats: UserStats;
 }
 
 interface UserDetail {
@@ -35,6 +47,9 @@ interface BetRecord {
 }
 
 const API_URL = config.apiUrl;
+
+type SortField = 'username' | 'balance' | 'wagered' | 'profit' | 'deposits' | 'bets' | 'created' | 'vip';
+type SortDir = 'asc' | 'desc';
 
 // ============================================
 // USER DETAIL MODAL COMPONENT
@@ -67,7 +82,7 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
 
   const fetchBets = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/users/${userId}/bets?limit=10`, {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/bets?limit=20`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setBets(await res.json());
@@ -103,6 +118,12 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleString("en-US", {
     year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   }) : "Never";
+
+  const fmtCurrency = (v: number) => {
+    if (Math.abs(v) >= 1_000_000) return '$' + (v / 1_000_000).toFixed(2) + 'M';
+    if (Math.abs(v) >= 1_000) return '$' + (v / 1_000).toFixed(2) + 'K';
+    return '$' + v.toFixed(2);
+  };
 
   if (loading) return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={onClose}>
@@ -150,23 +171,46 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
           {/* INFO TAB */}
           {activeTab === "info" && (
             <div className="space-y-4">
-              {/* Quick Stats */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Quick Stats - 6 cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="bg-white/5 rounded-lg p-3 text-center">
                   <div className="text-xs text-text-secondary">Balance</div>
-                  <div className="text-lg font-bold text-success-primary">
+                  <div className="text-lg font-bold text-green-400">
                     ${detail.wallets[0] ? parseFloat(detail.wallets[0].balance).toFixed(2) : "0.00"}
                   </div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3 text-center">
                   <div className="text-xs text-text-secondary">Total Bets</div>
-                  <div className="text-lg font-bold">{detail.stats.totalBets}</div>
+                  <div className="text-lg font-bold text-white">{detail.stats.totalBets.toLocaleString()}</div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3 text-center">
-                  <div className="text-xs text-text-secondary">P&L</div>
-                  <div className={`text-lg font-bold ${detail.stats.totalProfit >= 0 ? 'text-success-primary' : 'text-danger-primary'}`}>
-                    ${detail.stats.totalProfit.toFixed(2)}
+                  <div className="text-xs text-text-secondary">P&L (Player)</div>
+                  <div className={`text-lg font-bold ${detail.stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {detail.stats.totalProfit >= 0 ? '+' : ''}{fmtCurrency(detail.stats.totalProfit)}
                   </div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Total Wagered</div>
+                  <div className="text-lg font-bold text-blue-400">{fmtCurrency(detail.stats.totalWagered)}</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Deposits</div>
+                  <div className="text-lg font-bold text-emerald-400">{fmtCurrency(detail.stats.deposits)}</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Withdrawals</div>
+                  <div className="text-lg font-bold text-orange-400">{fmtCurrency(detail.stats.withdrawals)}</div>
+                </div>
+              </div>
+
+              {/* House Profit indicator */}
+              <div className={`rounded-lg p-4 border ${detail.stats.totalProfit <= 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-text-secondary">House Profit from this player</span>
+                  <span className={`text-xl font-bold ${detail.stats.totalProfit <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {fmtCurrency(Math.abs(detail.stats.totalProfit))}
+                    <span className="text-xs ml-1">{detail.stats.totalProfit <= 0 ? '(profit)' : '(loss)'}</span>
+                  </span>
                 </div>
               </div>
 
@@ -187,9 +231,6 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
                     ["Registered", formatDate(detail.createdAt)],
                     ["Site ID", detail.siteId || "Default"],
                     ["Is Bot", detail.isBot ? "Yes" : "No"],
-                    ["Total Wagered", `$${detail.stats.totalWagered.toFixed(2)}`],
-                    ["Total Deposits", `$${detail.stats.deposits.toFixed(2)}`],
-                    ["Total Withdrawals", `$${detail.stats.withdrawals.toFixed(2)}`],
                   ].map(([label, value]) => (
                     <tr key={label} className="hover:bg-white/5">
                       <td className="py-2 text-text-secondary font-medium w-40">{label}</td>
@@ -212,6 +253,17 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
                 <p className="text-xs text-text-secondary mt-1">{detail.wallets[0]?.currency || "USDT"}</p>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 text-center">
+                  <p className="text-xs text-text-secondary">Total Deposits</p>
+                  <p className="text-xl font-bold text-emerald-400">{fmtCurrency(detail.stats.deposits)}</p>
+                </div>
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 text-center">
+                  <p className="text-xs text-text-secondary">Total Withdrawals</p>
+                  <p className="text-xl font-bold text-orange-400">{fmtCurrency(detail.stats.withdrawals)}</p>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">
@@ -221,13 +273,13 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
                     <button onClick={() => setAdjustAmount(prev => {
                       const v = parseFloat(prev) || 0;
                       return Math.abs(v).toString();
-                    })} className="px-3 py-2 rounded-lg bg-success-primary/20 text-success-primary text-sm font-medium hover:bg-success-primary/30">
+                    })} className="px-3 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30">
                       + Credit
                     </button>
                     <button onClick={() => setAdjustAmount(prev => {
                       const v = parseFloat(prev) || 0;
                       return (-Math.abs(v)).toString();
-                    })} className="px-3 py-2 rounded-lg bg-danger-primary/20 text-danger-primary text-sm font-medium hover:bg-danger-primary/30">
+                    })} className="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/30">
                       - Debit
                     </button>
                     <input type="number" value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)}
@@ -259,7 +311,7 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
                 ))}
                 {[-10, -50, -100].map(amt => (
                   <button key={amt} onClick={() => setAdjustAmount(amt.toString())}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-danger-primary/10 text-danger-primary hover:bg-danger-primary/20 transition-colors">
+                    className="px-3 py-1.5 text-xs rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
                     -${Math.abs(amt)}
                   </button>
                 ))}
@@ -300,7 +352,7 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
                           <td className="py-2 text-right text-white">${parseFloat(b.betAmount).toFixed(2)}</td>
                           <td className="py-2 text-right text-text-secondary">{parseFloat(b.multiplier).toFixed(2)}x</td>
                           <td className="py-2 text-right text-white">${parseFloat(b.payout).toFixed(2)}</td>
-                          <td className={`py-2 text-right font-medium ${parseFloat(b.profit) >= 0 ? 'text-success-primary' : 'text-danger-primary'}`}>
+                          <td className={`py-2 text-right font-medium ${parseFloat(b.profit) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {parseFloat(b.profit) >= 0 ? '+' : ''}${parseFloat(b.profit).toFixed(2)}
                           </td>
                           <td className="py-2 text-right text-text-secondary text-xs">
@@ -332,6 +384,11 @@ export default function AdminUsersPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [showBots, setShowBots] = useState(false);
+
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('created');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -406,11 +463,30 @@ export default function AdminUsersPage() {
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
-  const filteredUsers = users.filter(u => {
-    const matchSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = filterStatus === "ALL" || u.status === filterStatus;
-    return matchSearch && matchStatus;
-  });
+  const getBalance = (u: User) => u.wallets?.[0] ? parseFloat(u.wallets[0].balance) : 0;
+
+  const filteredUsers = users
+    .filter(u => {
+      const matchSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = filterStatus === "ALL" || u.status === filterStatus;
+      const matchBot = showBots ? true : !u.isBot;
+      return matchSearch && matchStatus && matchBot;
+    })
+    .sort((a, b) => {
+      let va: number, vb: number;
+      switch (sortField) {
+        case 'username': return sortDir === 'asc' ? a.username.localeCompare(b.username) : b.username.localeCompare(a.username);
+        case 'balance': va = getBalance(a); vb = getBalance(b); break;
+        case 'wagered': va = a.stats?.totalWagered || 0; vb = b.stats?.totalWagered || 0; break;
+        case 'profit': va = a.stats?.profit || 0; vb = b.stats?.profit || 0; break;
+        case 'deposits': va = a.stats?.deposits || 0; vb = b.stats?.deposits || 0; break;
+        case 'bets': va = a.stats?.totalBets || 0; vb = b.stats?.totalBets || 0; break;
+        case 'vip': va = a.vipLevel || 0; vb = b.vipLevel || 0; break;
+        case 'created': va = new Date(a.createdAt).getTime(); vb = new Date(b.createdAt).getTime(); break;
+        default: return 0;
+      }
+      return sortDir === 'asc' ? va - vb : vb - va;
+    });
 
   const selectableUsers = filteredUsers.filter(u => u.role !== "ADMIN");
   const isAllSelected = selectableUsers.length > 0 && selectableUsers.every(u => selectedIds.has(u.id));
@@ -425,20 +501,49 @@ export default function AdminUsersPage() {
   const hasBannable = selectedUsers.some(u => u.status === "ACTIVE" && u.role !== "ADMIN");
   const hasBanned = selectedUsers.some(u => u.status === "BANNED");
   const pendingCount = users.filter(u => u.status === "PENDING_APPROVAL").length;
+  const realUsers = users.filter(u => !u.isBot);
+  const totalRealWagered = realUsers.reduce((s, u) => s + (u.stats?.totalWagered || 0), 0);
+  const totalRealProfit = realUsers.reduce((s, u) => s + (u.stats?.profit || 0), 0);
+  const totalRealDeposits = realUsers.reduce((s, u) => s + (u.stats?.deposits || 0), 0);
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const fmt = (d: string) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+
+  const fmtCurrency = (v: number) => {
+    if (Math.abs(v) >= 1_000_000) return '$' + (v / 1_000_000).toFixed(2) + 'M';
+    if (Math.abs(v) >= 1_000) return '$' + (v / 1_000).toFixed(2) + 'K';
+    return '$' + v.toFixed(2);
+  };
 
   const statusBadge = (s: string) => {
     const map: Record<string, { cls: string; text: string }> = {
-      ACTIVE: { cls: "bg-success-muted text-success-primary", text: "Active" },
-      BANNED: { cls: "bg-danger-muted text-danger-primary", text: "Banned" },
-      SUSPENDED: { cls: "bg-warning-muted text-warning-primary", text: "Suspended" },
-      PENDING_APPROVAL: { cls: "bg-yellow-500/20 text-[#1475e1] animate-pulse", text: "⏳ Pending" },
-      PENDING_VERIFICATION: { cls: "bg-blue-500/20 text-blue-400", text: "📧 Verify" },
+      ACTIVE: { cls: "bg-green-500/20 text-green-400", text: "Active" },
+      BANNED: { cls: "bg-red-500/20 text-red-400", text: "Banned" },
+      SUSPENDED: { cls: "bg-yellow-500/20 text-yellow-400", text: "Suspended" },
+      PENDING_APPROVAL: { cls: "bg-yellow-500/20 text-blue-400 animate-pulse", text: "Pending" },
+      PENDING_VERIFICATION: { cls: "bg-blue-500/20 text-blue-400", text: "Verify" },
     };
-    const m = map[s] || { cls: "bg-card-hover text-text-secondary", text: s };
-    return <span className={`px-2 py-1 text-xs rounded-full ${m.cls}`}>{m.text}</span>;
+    const m = map[s] || { cls: "bg-white/10 text-text-secondary", text: s };
+    return <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${m.cls}`}>{m.text}</span>;
   };
+
+  const SortHeader = ({ field, label, align = 'left' }: { field: SortField; label: string; align?: string }) => (
+    <th
+      className={`py-3 px-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-white transition-colors select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
+      onClick={() => {
+        if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortField(field); setSortDir('desc'); }
+      }}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortField === field && (
+          <svg className={`w-3 h-3 transition-transform ${sortDir === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+          </svg>
+        )}
+      </span>
+    </th>
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -457,9 +562,9 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">User Management</h1>
-          <p className="text-text-secondary">Manage all registered users</p>
+          <p className="text-text-secondary">Manage all registered users and view financial data</p>
         </div>
-        <button onClick={fetchUsers} className="btn-secondary px-4 py-2 flex items-center gap-2">
+        <button onClick={fetchUsers} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-text-secondary hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -470,63 +575,80 @@ export default function AdminUsersPage() {
       {/* Pending Alert */}
       {pendingCount > 0 && (
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center"><span className="text-2xl">⏳</span></div>
+          <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center"><span className="text-2xl">&#9203;</span></div>
           <div className="flex-1">
             <h3 className="font-semibold text-yellow-400">{pendingCount} User{pendingCount > 1 ? 's' : ''} Awaiting Approval</h3>
             <p className="text-sm text-text-secondary">New registrations require your approval.</p>
           </div>
-          <button onClick={() => setFilterStatus("PENDING_APPROVAL")} className="btn-primary px-4 py-2 bg-yellow-500 hover:bg-yellow-600">View Pending</button>
+          <button onClick={() => setFilterStatus("PENDING_APPROVAL")} className="px-4 py-2 bg-yellow-500 text-black font-medium rounded-lg hover:bg-yellow-600">View Pending</button>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {[
-          { label: "Total Users", value: users.length, color: "" },
-          { label: "Active", value: users.filter(u => u.status === "ACTIVE").length, color: "text-success-primary" },
-          { label: "Pending", value: pendingCount, color: "text-yellow-400" },
-          { label: "Banned", value: users.filter(u => u.status === "BANNED").length, color: "text-danger-primary" },
-          { label: "VIP", value: users.filter(u => u.role === "VIP").length, color: "text-accent-secondary" },
-        ].map(s => (
-          <div key={s.label} className="card p-4">
-            <div className="text-text-secondary text-sm">{s.label}</div>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+          <div className="text-text-secondary text-xs mb-1">Real Players</div>
+          <div className="text-2xl font-bold text-white">{realUsers.filter(u => u.role !== 'ADMIN').length}</div>
+        </div>
+        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+          <div className="text-text-secondary text-xs mb-1">Active</div>
+          <div className="text-2xl font-bold text-green-400">{realUsers.filter(u => u.status === "ACTIVE").length}</div>
+        </div>
+        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+          <div className="text-text-secondary text-xs mb-1">Total Wagered</div>
+          <div className="text-2xl font-bold text-blue-400">{fmtCurrency(totalRealWagered)}</div>
+        </div>
+        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+          <div className="text-text-secondary text-xs mb-1">Total Deposits</div>
+          <div className="text-2xl font-bold text-emerald-400">{fmtCurrency(totalRealDeposits)}</div>
+        </div>
+        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+          <div className="text-text-secondary text-xs mb-1">House Profit</div>
+          <div className={`text-2xl font-bold ${totalRealProfit <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {fmtCurrency(Math.abs(totalRealProfit))}
           </div>
-        ))}
+        </div>
+        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+          <div className="text-text-secondary text-xs mb-1">Pending</div>
+          <div className="text-2xl font-bold text-yellow-400">{pendingCount}</div>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="card p-4">
+      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <input type="text" placeholder="Search by username or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-              className="input w-full pl-10" />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-2 pl-10 text-white focus:border-[#1475e1] focus:outline-none" />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {["ALL", "PENDING_APPROVAL", "ACTIVE", "BANNED", "SUSPENDED"].map(s => (
+          <div className="flex gap-2 flex-wrap items-center">
+            {["ALL", "PENDING_APPROVAL", "ACTIVE", "BANNED"].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filterStatus === s
-                    ? s === "PENDING_APPROVAL" ? "bg-yellow-500 text-black" : "bg-accent-primary text-text-inverse"
-                    : "bg-card-hover text-text-secondary hover:text-text-accent-primary"
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filterStatus === s ? "bg-[#1475e1] text-white" : "bg-[#0f212e] text-text-secondary hover:text-white"
                 }`}>
-                {s === "PENDING_APPROVAL" ? "⏳ Pending" : s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+                {s === "PENDING_APPROVAL" ? "Pending" : s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
               </button>
             ))}
+            <label className="flex items-center gap-2 ml-2 cursor-pointer">
+              <input type="checkbox" checked={showBots} onChange={e => setShowBots(e.target.checked)}
+                className="w-4 h-4 rounded border-white/30 bg-transparent text-purple-500 focus:ring-purple-500" />
+              <span className="text-sm text-purple-400">Show Bots</span>
+            </label>
           </div>
         </div>
       </div>
 
       {/* Bulk Actions Bar */}
       {selectedIds.size > 0 && (
-        <div className="card p-4 border border-accent-primary/50 bg-accent-primary/5">
+        <div className="bg-[#1a2c38] border border-[#1475e1]/50 rounded-lg p-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
-                <span className="text-lg font-bold text-accent-primary">{selectedIds.size}</span>
+              <div className="w-10 h-10 rounded-full bg-[#1475e1]/20 flex items-center justify-center">
+                <span className="text-lg font-bold text-[#1475e1]">{selectedIds.size}</span>
               </div>
               <div>
                 <p className="font-semibold text-white">{selectedIds.size} user{selectedIds.size > 1 ? 's' : ''} selected</p>
@@ -535,23 +657,23 @@ export default function AdminUsersPage() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {hasPending && <button onClick={() => handleBulkAction("approve")} disabled={bulkProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-success-primary text-white hover:bg-success-primary/80 disabled:opacity-50">Approve Selected</button>}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">Approve Selected</button>}
               {hasBannable && <button onClick={() => handleBulkAction("ban")} disabled={bulkProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-danger-primary text-white hover:bg-danger-primary/80 disabled:opacity-50">Ban Selected</button>}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50">Ban Selected</button>}
               {hasBanned && <button onClick={() => handleBulkAction("unban")} disabled={bulkProcessing}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">Unban Selected</button>}
               <button onClick={() => setSelectedIds(new Set())} disabled={bulkProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-card-hover text-text-secondary hover:text-white disabled:opacity-50">Clear</button>
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 text-text-secondary hover:text-white disabled:opacity-50">Clear</button>
             </div>
           </div>
           {bulkProcessing && (
             <div className="mt-3">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-text-secondary">Processing {bulkProgress.action}... {bulkProgress.current}/{bulkProgress.total}</span>
-                <span className="text-accent-primary font-medium">{Math.round((bulkProgress.current / bulkProgress.total) * 100)}%</span>
+                <span className="text-[#1475e1] font-medium">{Math.round((bulkProgress.current / bulkProgress.total) * 100)}%</span>
               </div>
-              <div className="w-full bg-card-hover rounded-full h-2 overflow-hidden">
-                <div className="bg-accent-primary h-2 rounded-full transition-all duration-300" style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }} />
+              <div className="w-full bg-[#0f212e] rounded-full h-2 overflow-hidden">
+                <div className="bg-[#1475e1] h-2 rounded-full transition-all duration-300" style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }} />
               </div>
             </div>
           )}
@@ -559,84 +681,86 @@ export default function AdminUsersPage() {
       )}
 
       {/* Users Table */}
-      <div className="card overflow-hidden">
+      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-card-hover">
+            <thead className="bg-[#0f212e]">
               <tr>
-                <th className="px-4 py-3 text-left w-12">
+                <th className="px-3 py-3 text-left w-10">
                   <input type="checkbox" checked={isAllSelected}
                     ref={el => { if (el) el.indeterminate = isSomeSelected && !isAllSelected; }}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-primary cursor-pointer" />
+                    className="w-4 h-4 rounded border-white/30 bg-transparent text-[#1475e1] focus:ring-[#1475e1] cursor-pointer" />
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">User</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">Role</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">Balance</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-text-secondary">Joined</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-text-secondary">Actions</th>
+                <SortHeader field="username" label="User" />
+                <th className="py-3 px-3 text-left text-sm font-medium text-text-secondary">Status</th>
+                <SortHeader field="balance" label="Balance" align="right" />
+                <SortHeader field="wagered" label="Wagered" align="right" />
+                <SortHeader field="profit" label="P&L (House)" align="right" />
+                <SortHeader field="deposits" label="Deposits" align="right" />
+                <SortHeader field="bets" label="Bets" align="right" />
+                <SortHeader field="vip" label="VIP" align="right" />
+                <SortHeader field="created" label="Joined" />
+                <th className="py-3 px-3 text-right text-sm font-medium text-text-secondary">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-card-border">
+            <tbody className="divide-y divide-[#2f4553]/50">
               {filteredUsers.map(u => {
                 const sel = selectedIds.has(u.id);
+                const balance = getBalance(u);
+                const houseProfit = -(u.stats?.profit || 0); // Negate: player loss = house profit
                 return (
-                  <tr key={u.id} className={`hover:bg-card-hover transition-colors ${u.status === "PENDING_APPROVAL" ? "bg-yellow-500/5" : ""} ${sel ? "bg-accent-primary/10" : ""}`}>
-                    <td className="px-4 py-3">
+                  <tr key={u.id} className={`hover:bg-[#0f212e]/50 transition-colors ${u.isBot ? 'opacity-60' : ''} ${u.status === "PENDING_APPROVAL" ? "bg-yellow-500/5" : ""} ${sel ? "bg-[#1475e1]/10" : ""}`}>
+                    <td className="px-3 py-3">
                       {u.role !== "ADMIN" ? (
                         <input type="checkbox" checked={sel} onChange={() => toggleSelect(u.id)}
-                          className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-primary cursor-pointer" />
+                          className="w-4 h-4 rounded border-white/30 bg-transparent text-[#1475e1] focus:ring-[#1475e1] cursor-pointer" />
                       ) : <div className="w-4 h-4" />}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{u.username}</div>
-                      <div className="text-sm text-text-secondary">{u.email}</div>
+                    <td className="px-3 py-3">
+                      <button onClick={() => setDetailUserId(u.id)} className="text-left hover:text-[#1475e1] transition-colors">
+                        <div className="font-medium text-white">{u.username} {u.isBot && <span className="text-purple-400 text-xs">(BOT)</span>}</div>
+                        <div className="text-xs text-text-secondary">{u.email}</div>
+                      </button>
                     </td>
-                    <td className="px-4 py-3">{statusBadge(u.status)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        u.role === "ADMIN" ? "bg-accent-primary/20 text-accent-primary" :
-                        u.role === "VIP" ? "bg-accent-secondary/20 text-accent-secondary" :
-                        "bg-card-hover text-text-secondary"
-                      }`}>{u.role}</span>
+                    <td className="px-3 py-3">{statusBadge(u.status)}</td>
+                    <td className="px-3 py-3 text-right font-medium text-white">${balance.toFixed(2)}</td>
+                    <td className="px-3 py-3 text-right text-blue-400 font-medium">{fmtCurrency(u.stats?.totalWagered || 0)}</td>
+                    <td className={`px-3 py-3 text-right font-medium ${houseProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {houseProfit >= 0 ? '+' : ''}{fmtCurrency(houseProfit)}
                     </td>
-                    <td className="px-4 py-3">{u.wallets?.[0] ? `$${parseFloat(u.wallets[0].balance).toFixed(2)}` : "$0.00"}</td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{fmt(u.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Edit Button - Always visible */}
+                    <td className="px-3 py-3 text-right text-emerald-400">{fmtCurrency(u.stats?.deposits || 0)}</td>
+                    <td className="px-3 py-3 text-right text-text-secondary">{(u.stats?.totalBets || 0).toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right">
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                        u.vipLevel >= 4 ? 'bg-yellow-500/20 text-yellow-400' :
+                        u.vipLevel >= 2 ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-white/10 text-text-secondary'
+                      }`}>Lv.{u.vipLevel || 0}</span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-text-secondary">{fmt(u.createdAt)}</td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setDetailUserId(u.id)}
-                          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-accent-primary/20 text-accent-primary hover:bg-accent-primary/30 flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          Edit
+                          className="px-2 py-1 text-xs font-medium rounded bg-[#1475e1]/20 text-[#1475e1] hover:bg-[#1475e1]/30">
+                          View
                         </button>
-
-                        {/* Status Actions */}
                         {u.status === "PENDING_APPROVAL" && (
-                          <>
-                            <button onClick={() => handleAction(u.id, "approve")} disabled={processingId === u.id}
-                              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-primary text-white hover:bg-success-primary/80 disabled:opacity-50 flex items-center gap-1">
-                              {processingId === u.id ? <span className="animate-spin">⟳</span> : <>✓ Approve</>}
-                            </button>
-                            <button onClick={() => handleAction(u.id, "verify")} disabled={processingId === u.id}
-                              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 flex items-center gap-1">
-                              📧 Verify
-                            </button>
-                          </>
+                          <button onClick={() => handleAction(u.id, "approve")} disabled={processingId === u.id}
+                            className="px-2 py-1 text-xs font-medium rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50">
+                            {processingId === u.id ? "..." : "Approve"}
+                          </button>
                         )}
                         {u.role !== "ADMIN" && u.status !== "PENDING_APPROVAL" && (
                           u.status === "BANNED" ? (
                             <button onClick={() => handleAction(u.id, "unban")} disabled={processingId === u.id}
-                              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-success-muted text-success-primary hover:bg-success-primary hover:text-white disabled:opacity-50">
+                              className="px-2 py-1 text-xs font-medium rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50">
                               {processingId === u.id ? "..." : "Unban"}
                             </button>
                           ) : (
                             <button onClick={() => handleAction(u.id, "ban")} disabled={processingId === u.id}
-                              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-danger-muted text-danger-primary hover:bg-danger-primary hover:text-white disabled:opacity-50">
-                              {processingId === u.id ? "..." : "⊘ Ban"}
+                              className="px-2 py-1 text-xs font-medium rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50">
+                              {processingId === u.id ? "..." : "Ban"}
                             </button>
                           )
                         )}
@@ -651,6 +775,9 @@ export default function AdminUsersPage() {
         {filteredUsers.length === 0 && (
           <div className="p-8 text-center text-text-secondary">No users found matching your criteria</div>
         )}
+        <div className="px-4 py-3 bg-[#0f212e] border-t border-[#2f4553] text-sm text-text-secondary">
+          Showing {filteredUsers.length} of {users.length} users {!showBots && `(${users.filter(u => u.isBot).length} bots hidden)`}
+        </div>
       </div>
     </div>
   );

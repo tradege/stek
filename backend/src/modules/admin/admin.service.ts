@@ -602,7 +602,7 @@ export class AdminService {
 
   // ============ USERS ============
 
-  async getAllUsers(siteId?: string, limit = 100) {
+  async getAllUsers(siteId?: string, limit = 200) {
     const sf = this.siteFilter(siteId);
     const users = await this.prisma.user.findMany({
       where: { ...sf },
@@ -611,14 +611,52 @@ export class AdminService {
       select: {
         id: true, username: true, email: true, status: true, role: true,
         createdAt: true, lastLoginAt: true, isBot: true, siteId: true,
+        vipLevel: true, totalWagered: true,
         wallets: { select: { balance: true, currency: true } },
       },
     });
 
-    return users.map((u) => ({
-      ...u,
-      wallets: u.wallets.map((w) => ({ balance: w.balance.toString(), currency: w.currency })),
-    }));
+    // Batch fetch bet stats for all users in one query
+    const userIds = users.map(u => u.id);
+    const betStats = await this.prisma.bet.groupBy({
+      by: ['userId'],
+      where: { userId: { in: userIds } },
+      _sum: { betAmount: true, payout: true, profit: true },
+      _count: true,
+    });
+    const betMap = new Map(betStats.map(b => [b.userId, b]));
+
+    // Batch fetch transaction stats for all users
+    const txStats = await this.prisma.transaction.groupBy({
+      by: ['userId', 'type'],
+      where: { userId: { in: userIds }, status: 'CONFIRMED' },
+      _sum: { amount: true },
+    });
+    const txMap = new Map<string, { deposits: number; withdrawals: number }>();
+    for (const tx of txStats) {
+      if (!txMap.has(tx.userId)) txMap.set(tx.userId, { deposits: 0, withdrawals: 0 });
+      const entry = txMap.get(tx.userId)!;
+      if (tx.type === 'DEPOSIT') entry.deposits = Number(tx._sum.amount || 0);
+      if (tx.type === 'WITHDRAWAL') entry.withdrawals = Number(tx._sum.amount || 0);
+    }
+
+    return users.map((u) => {
+      const bs = betMap.get(u.id);
+      const ts = txMap.get(u.id);
+      return {
+        ...u,
+        totalWagered: Number(u.totalWagered || 0),
+        wallets: u.wallets.map((w) => ({ balance: w.balance.toString(), currency: w.currency })),
+        stats: {
+          totalBets: bs?._count || 0,
+          totalWagered: Number(bs?._sum.betAmount || 0),
+          totalPayout: Number(bs?._sum.payout || 0),
+          profit: Number(bs?._sum.profit || 0),
+          deposits: ts?.deposits || 0,
+          withdrawals: ts?.withdrawals || 0,
+        },
+      };
+    });
   }
 
   async getPendingUsers(siteId?: string) {
