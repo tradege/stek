@@ -45,19 +45,39 @@ export class AdminService {
     const totalBets = bets._count;
     const totalGGR = totalWagered - totalPayouts;
 
-    // Fetch provider fee rate from site config (default 8% if not set)
-    let providerFeeRate = 0.08;
-    if (siteId) {
-      const siteConfig = await this.prisma.siteConfiguration.findUnique({
-        where: { id: siteId },
-        select: { houseEdgeConfig: true },
-      });
-      const hec = siteConfig?.houseEdgeConfig as any;
-      if (hec?.ggrFee) {
-        providerFeeRate = Number(hec.ggrFee) / 100;
+    // Per-provider fee calculation: each provider has its own fee % applied only to its games
+    const allProviders = await this.prisma.gameProvider.findMany({
+      where: { isActive: true },
+      include: { games: { select: { slug: true } } },
+    });
+    const slugToGT: Record<string, string> = {
+      'crash': 'CRASH', 'plinko': 'PLINKO', 'dice': 'DICE', 'mines': 'MINES',
+      'limbo': 'LIMBO', 'card-rush': 'CARD_RUSH', 'nova-rush': 'NOVA_RUSH',
+      'dragon-blaze': 'DRAGON_BLAZE', 'penalty': 'PENALTY_SHOOTOUT',
+      'book-of-dead': 'EXTERNAL', 'sweet-bonanza': 'EXTERNAL',
+      'gates-of-olympus': 'OLYMPUS', 'starburst': 'EXTERNAL',
+      'big-bass-bonanza': 'EXTERNAL',
+      'blackjack-live': 'BLACKJACK', 'roulette-live': 'ROULETTE', 'baccarat-live': 'BACCARAT',
+    };
+    const gtToFee: Record<string, number> = {};
+    for (const prov of allProviders) {
+      for (const game of prov.games) {
+        const gt = slugToGT[game.slug];
+        if (gt) gtToFee[gt] = prov.feePercentage / 100;
       }
     }
-    const providerFees = totalGGR > 0 ? totalGGR * providerFeeRate : 0;
+    // Calculate total provider fees from per-game GGR
+    const perGameBets = await this.prisma.bet.groupBy({
+      by: ['gameType'],
+      _sum: { betAmount: true, payout: true },
+      where: { ...sf, user: { isBot: false } },
+    });
+    let providerFees = 0;
+    for (const g of perGameBets) {
+      const gameGgr = Number(g._sum.betAmount || 0) - Number(g._sum.payout || 0);
+      const fee = gtToFee[g.gameType] || 0;
+      if (gameGgr > 0 && fee > 0) providerFees += gameGgr * fee;
+    }
     const netProfit = totalGGR - providerFees;
 
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -211,25 +231,45 @@ export class AdminService {
     const totalWins = Number(bets._sum.payout || 0);
     const betCount = bets._count;
     const ggr = totalBets - totalWins;
-
-    // Fetch provider fee rate from site config (default 8% if not set)
-    let feeRate = 0.08;
-    if (siteId) {
-      const siteConfig = await this.prisma.siteConfiguration.findUnique({
-        where: { id: siteId },
-        select: { houseEdgeConfig: true },
-      });
-      const hec = siteConfig?.houseEdgeConfig as any;
-      if (hec?.ggrFee) {
-        feeRate = Number(hec.ggrFee) / 100;
-      }
-    }
-    const providerFee = ggr > 0 ? ggr * feeRate : 0;
-    const netProfit = ggr - providerFee;
     const houseEdge = totalBets > 0 ? ((ggr / totalBets) * 100).toFixed(2) : '0';
     const rtp = totalBets > 0 ? ((totalWins / totalBets) * 100).toFixed(2) : '0';
 
-    // Per-game breakdown
+    // ---- Per-provider fee calculation ----
+    // Fetch all providers with their fee percentages
+    const providers = await this.prisma.gameProvider.findMany({
+      where: { isActive: true },
+      include: { games: { select: { slug: true, name: true, category: true } } },
+    });
+
+    // Build a mapping: GameType enum -> provider slug -> feePercentage
+    // The Game catalog links games to providers via slug
+    const gameTypeToProviderSlug: Record<string, string> = {};
+    const slugToGameType: Record<string, string> = {
+      'crash': 'CRASH', 'plinko': 'PLINKO', 'dice': 'DICE', 'mines': 'MINES',
+      'limbo': 'LIMBO', 'card-rush': 'CARD_RUSH', 'nova-rush': 'NOVA_RUSH',
+      'dragon-blaze': 'DRAGON_BLAZE', 'penalty': 'PENALTY_SHOOTOUT',
+      'book-of-dead': 'EXTERNAL', 'sweet-bonanza': 'EXTERNAL',
+      'gates-of-olympus': 'OLYMPUS', 'starburst': 'EXTERNAL',
+      'big-bass-bonanza': 'EXTERNAL',
+      'blackjack-live': 'BLACKJACK', 'roulette-live': 'ROULETTE', 'baccarat-live': 'BACCARAT',
+    };
+
+    // Map each game to its provider
+    for (const provider of providers) {
+      for (const game of provider.games) {
+        const gameType = slugToGameType[game.slug];
+        if (gameType) {
+          gameTypeToProviderSlug[gameType] = provider.slug;
+        }
+      }
+    }
+
+    const providerFeeMap: Record<string, number> = {};
+    for (const p of providers) {
+      providerFeeMap[p.slug] = p.feePercentage / 100; // e.g., 8 -> 0.08
+    }
+
+    // Per-game breakdown with provider fee
     const gameBreakdown = await this.prisma.bet.groupBy({
       by: ['gameType'],
       _sum: { betAmount: true, payout: true },
@@ -237,16 +277,48 @@ export class AdminService {
       where: { ...sf, user: { isBot: false } },
     });
 
-    const games = gameBreakdown.map(g => ({
-      game: g.gameType,
-      bets: Number(g._sum.betAmount || 0),
-      wins: Number(g._sum.payout || 0),
-      ggr: Number(g._sum.betAmount || 0) - Number(g._sum.payout || 0),
-      count: g._count,
-      rtp: Number(g._sum.betAmount || 0) > 0
-        ? ((Number(g._sum.payout || 0) / Number(g._sum.betAmount || 0)) * 100).toFixed(2)
-        : '0',
-    }));
+    let totalProviderFee = 0;
+    const providerBreakdown: Record<string, { name: string; feePercent: number; ggr: number; fee: number; games: string[] }> = {};
+
+    // Initialize provider breakdown
+    for (const p of providers) {
+      providerBreakdown[p.slug] = { name: p.name, feePercent: p.feePercentage, ggr: 0, fee: 0, games: [] };
+    }
+
+    const games = gameBreakdown.map(g => {
+      const gameBets = Number(g._sum.betAmount || 0);
+      const gameWins = Number(g._sum.payout || 0);
+      const gameGgr = gameBets - gameWins;
+
+      // Find the provider for this game type
+      const providerSlug = gameTypeToProviderSlug[g.gameType] || 'internal';
+      const feeRate = providerFeeMap[providerSlug] || 0;
+      const gameFee = gameGgr > 0 ? gameGgr * feeRate : 0;
+      totalProviderFee += gameFee;
+
+      // Accumulate into provider breakdown
+      if (providerBreakdown[providerSlug]) {
+        providerBreakdown[providerSlug].ggr += gameGgr;
+        providerBreakdown[providerSlug].fee += gameFee;
+        if (!providerBreakdown[providerSlug].games.includes(g.gameType)) {
+          providerBreakdown[providerSlug].games.push(g.gameType);
+        }
+      }
+
+      return {
+        game: g.gameType,
+        bets: gameBets,
+        wins: gameWins,
+        ggr: gameGgr,
+        count: g._count,
+        rtp: gameBets > 0 ? ((gameWins / gameBets) * 100).toFixed(2) : '0',
+        provider: providerSlug,
+        feePercent: feeRate * 100,
+        fee: gameFee,
+      };
+    });
+
+    const netProfit = ggr - totalProviderFee;
 
     // Transaction stats
     const transactions = await this.prisma.transaction.groupBy({
@@ -264,7 +336,7 @@ export class AdminService {
       totalWins,
       betCount,
       ggr,
-      providerFee,
+      providerFee: totalProviderFee,
       netProfit,
       houseEdge,
       rtp,
@@ -272,6 +344,7 @@ export class AdminService {
       withdrawals,
       netDeposits: deposits - withdrawals,
       gameBreakdown: games,
+      providerBreakdown: Object.values(providerBreakdown).filter(p => p.ggr !== 0 || p.fee !== 0),
     };
   }
 

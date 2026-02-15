@@ -229,14 +229,14 @@ export default function AdminDashboard() {
                 <CreditCard className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Provider Fees (8%)</p>
+                <p className="text-gray-400 text-sm">Provider Fees</p>
                 <h3 className="text-2xl font-bold text-red-400">
                   ${stats.providerFees.toLocaleString()}
                 </h3>
               </div>
             </div>
             <div className="text-sm text-gray-500">
-              8% of GGR paid to game providers
+              Per-provider fees on external games
             </div>
           </div>
 
