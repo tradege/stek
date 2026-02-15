@@ -40,6 +40,9 @@ model SiteConfiguration {
   // House edge configuration per brand
   houseEdgeConfig Json? // { "crash": 0.04, "dice": 0.02, "mines": 0.03 }
 
+  // Affiliate commission configuration (dynamic tiers)
+  affiliateConfig Json? // { model: "REVENUE_SHARE", tiers: { bronze: { minPlayers: 0, tier1Rate: 0.05, ... } } }
+
   // Locale & regulation
   locale       String  @default("en")     // Default language
   jurisdiction String? // e.g., "curacao", "malta"
@@ -133,6 +136,7 @@ model User {
 
   // Bot flag - for separating real users from simulated bots
   isBot       Boolean   @default(false)
+  affiliateCarryover Decimal? @default(0) @db.Decimal(18, 8) // Negative carryover for RevShare
   tokenVersion Int       @default(0) // Incremented on password change to invalidate all tokens
   lastLoginAt DateTime?
   lastLoginIp String?

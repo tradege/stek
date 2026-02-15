@@ -195,6 +195,22 @@ export class AdminController {
     return this.adminService.rejectWithdrawal(id, req.user.id, body.reason);
   }
 
+  // ============ AFFILIATE SETTINGS ============
+
+  @Get('affiliate/config')
+  @ApiOperation({ summary: 'Get affiliate commission configuration' })
+  async getAffiliateConfig(@Req() req: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.getAffiliateConfig(siteId);
+  }
+
+  @Put('affiliate/config')
+  @ApiOperation({ summary: 'Update affiliate commission configuration' })
+  async updateAffiliateConfig(@Req() req: any, @Body() body: any, @Query('siteId') querySiteId?: string) {
+    const siteId = querySiteId || req.tenant?.siteId || req.user?.siteId;
+    return this.adminService.updateAffiliateConfig(siteId, body);
+  }
+
   // ============ GLOBAL GAME HISTORY ============
 
   @Get('game-history')

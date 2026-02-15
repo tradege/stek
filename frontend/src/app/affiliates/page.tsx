@@ -7,14 +7,24 @@ import Link from 'next/link';
 import config from '@/config/api';
 import AuthGuard from '@/components/ui/AuthGuard';
 
-// Rank definitions with icons and colors
+// Rank display metadata
+const RANK_META: Record<string, { icon: string; color: string }> = {
+  bronze:   { icon: '🥉', color: '#CD7F32' },
+  silver:   { icon: '🥈', color: '#C0C0C0' },
+  gold:     { icon: '🥇', color: '#FFD700' },
+  platinum: { icon: '💎', color: '#E5E4E2' },
+  diamond:  { icon: '👑', color: '#00F0FF' },
+  iron:     { icon: '🏆', color: '#FF4500' },
+};
+
+// Default fallback ranks (used if API fails)
 const RANKS = [
-  { name: 'Bronze', icon: '🥉', color: '#CD7F32', tier1Rate: '5%', tier2Rate: '2%', tier3Rate: '1%', minVolume: 0 },
-  { name: 'Silver', icon: '🥈', color: '#C0C0C0', tier1Rate: '7%', tier2Rate: '3%', tier3Rate: '1.5%', minVolume: 1000 },
-  { name: 'Gold', icon: '🥇', color: '#FFD700', tier1Rate: '10%', tier2Rate: '4%', tier3Rate: '2%', minVolume: 10000 },
-  { name: 'Platinum', icon: '💎', color: '#E5E4E2', tier1Rate: '12%', tier2Rate: '5%', tier3Rate: '2.5%', minVolume: 50000 },
-  { name: 'Diamond', icon: '👑', color: '#00F0FF', tier1Rate: '15%', tier2Rate: '6%', tier3Rate: '3%', minVolume: 250000 },
-  { name: 'Iron', icon: '🏆', color: '#FF4500', tier1Rate: '20%', tier2Rate: '8%', tier3Rate: '4%', minVolume: 1000000 },
+  { name: 'Bronze', icon: '🥉', color: '#CD7F32', tier1Rate: '5%', tier2Rate: '2%', tier3Rate: '1%', minPlayers: 0 },
+  { name: 'Silver', icon: '🥈', color: '#C0C0C0', tier1Rate: '7%', tier2Rate: '3%', tier3Rate: '1.5%', minPlayers: 5 },
+  { name: 'Gold', icon: '🥇', color: '#FFD700', tier1Rate: '10%', tier2Rate: '4%', tier3Rate: '2%', minPlayers: 15 },
+  { name: 'Platinum', icon: '💎', color: '#E5E4E2', tier1Rate: '12%', tier2Rate: '5%', tier3Rate: '2.5%', minPlayers: 30 },
+  { name: 'Diamond', icon: '👑', color: '#00F0FF', tier1Rate: '15%', tier2Rate: '6%', tier3Rate: '3%', minPlayers: 50 },
+  { name: 'Iron', icon: '🏆', color: '#FF4500', tier1Rate: '20%', tier2Rate: '8%', tier3Rate: '4%', minPlayers: 100 },
 ];
 
 interface AffiliateStats {
@@ -78,6 +88,10 @@ export default function AffiliatesPage() {
   const { user, token, isLoading: authLoading } = useAuth();
   const isSystemOwner = user?.role === 'ADMIN' || user?.role === 'SUPER_MASTER';
   const [stats, setStats] = useState<AffiliateStats | null>(null);
+  const [dynamicRanks, setDynamicRanks] = useState(RANKS);
+  const [maxTier1Rate, setMaxTier1Rate] = useState('20%');
+  const [maxTier2Rate, setMaxTier2Rate] = useState('8%');
+  const [maxTier3Rate, setMaxTier3Rate] = useState('4%');
   const [network, setNetwork] = useState<{ tiers: NetworkTier[]; totalUsers: number; totalEarnings: number } | null>(null);
   const [history, setHistory] = useState<CommissionHistory | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -126,6 +140,45 @@ const API_URL = config.apiUrl;
       setLoading(false);
     }
   }, [token, API_URL]);
+
+  // Fetch dynamic affiliate config from API
+  const fetchAffiliateConfig = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/affiliate/config`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data?.tiers) {
+          const tiers = data.data.tiers;
+          const mapped = Object.entries(tiers).map(([key, val]: [string, any]) => {
+            const meta = RANK_META[key] || { icon: '📊', color: '#94A3B8' };
+            return {
+              name: key.charAt(0).toUpperCase() + key.slice(1),
+              icon: meta.icon,
+              color: meta.color,
+              tier1Rate: `${(val.tier1Rate * 100).toFixed(0)}%`,
+              tier2Rate: `${(val.tier2Rate * 100).toFixed(0)}%`,
+              tier3Rate: `${(val.tier3Rate * 100).toFixed(0)}%`,
+              minPlayers: val.minPlayers || 0,
+            };
+          });
+          setDynamicRanks(mapped);
+          // Find max rates for CTA
+          const maxT1 = Math.max(...Object.values(tiers).map((t: any) => t.tier1Rate || 0));
+          const maxT2 = Math.max(...Object.values(tiers).map((t: any) => t.tier2Rate || 0));
+          const maxT3 = Math.max(...Object.values(tiers).map((t: any) => t.tier3Rate || 0));
+          setMaxTier1Rate(`${(maxT1 * 100).toFixed(0)}%`);
+          setMaxTier2Rate(`${(maxT2 * 100).toFixed(0)}%`);
+          setMaxTier3Rate(`${(maxT3 * 100).toFixed(0)}%`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch affiliate config:', err);
+    }
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchAffiliateConfig();
+  }, [fetchAffiliateConfig]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -669,10 +722,10 @@ const API_URL = config.apiUrl;
           <div className="relative z-10">
             <h2 className="text-3xl font-bold mb-3">🚀 Grow Your Empire</h2>
             <p className="text-[#94A3B8] mb-6 text-lg max-w-2xl mx-auto">
-              Earn up to <span className="text-[#00F0FF] font-bold">12%</span> on Tier 1,{' '}
-              <span className="text-[#A855F7] font-bold">5%</span> on Tier 2, and{' '}
-              <span className="text-[#F97316] font-bold">2.5%</span> on Tier 3 referrals!
-              Unlimited earning potential.
+              Earn up to <span className="text-[#00F0FF] font-bold">{maxTier1Rate}</span> on Tier 1,{' '}
+              <span className="text-[#A855F7] font-bold">{maxTier2Rate}</span> on Tier 2, and{' '}
+              <span className="text-[#F97316] font-bold">{maxTier3Rate}</span> on Tier 3 referrals!
+              Commission is based on player losses. The more players you refer, the higher your rate!
             </p>
             <button
               onClick={handleCopyLink}

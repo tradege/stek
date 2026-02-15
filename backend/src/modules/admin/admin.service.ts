@@ -740,4 +740,67 @@ export class AdminService {
       createdAt: b.createdAt,
     }));
   }
+
+  // ============ AFFILIATE CONFIGURATION ============
+
+  private readonly DEFAULT_AFFILIATE_CONFIG = {
+    model: 'REVENUE_SHARE',
+    tiers: {
+      bronze:   { minPlayers: 0,   tier1Rate: 0.05, tier2Rate: 0.02, tier3Rate: 0.01 },
+      silver:   { minPlayers: 5,   tier1Rate: 0.07, tier2Rate: 0.03, tier3Rate: 0.015 },
+      gold:     { minPlayers: 15,  tier1Rate: 0.10, tier2Rate: 0.04, tier3Rate: 0.02 },
+      platinum: { minPlayers: 30,  tier1Rate: 0.12, tier2Rate: 0.05, tier3Rate: 0.025 },
+      diamond:  { minPlayers: 50,  tier1Rate: 0.15, tier2Rate: 0.06, tier3Rate: 0.03 },
+      iron:     { minPlayers: 100, tier1Rate: 0.20, tier2Rate: 0.08, tier3Rate: 0.04 },
+    },
+  };
+
+  async getAffiliateConfig(siteId?: string) {
+    const site = siteId
+      ? await this.prisma.siteConfiguration.findUnique({ where: { id: siteId } })
+      : await this.prisma.siteConfiguration.findFirst({ where: { active: true } });
+
+    const config = (site?.affiliateConfig as any) || this.DEFAULT_AFFILIATE_CONFIG;
+
+    return {
+      data: config,
+      siteId: site?.id || null,
+      brandName: site?.brandName || null,
+    };
+  }
+
+  async updateAffiliateConfig(siteId: string | undefined, body: any) {
+    const targetSiteId = siteId || 'default-site-001';
+
+    // Validate the config structure
+    if (!body.tiers || typeof body.tiers !== 'object') {
+      throw new Error('Invalid affiliate config: tiers object is required');
+    }
+
+    // Validate each tier has required fields
+    for (const [tierName, tierConfig] of Object.entries(body.tiers)) {
+      const tc = tierConfig as any;
+      if (tc.tier1Rate === undefined || tc.minPlayers === undefined) {
+        throw new Error(`Invalid tier config for ${tierName}: tier1Rate and minPlayers are required`);
+      }
+      // Ensure rates are decimals (0-1), not percentages
+      if (tc.tier1Rate > 1) tc.tier1Rate = tc.tier1Rate / 100;
+      if (tc.tier2Rate > 1) tc.tier2Rate = tc.tier2Rate / 100;
+      if (tc.tier3Rate > 1) tc.tier3Rate = tc.tier3Rate / 100;
+    }
+
+    const config = {
+      model: body.model || 'REVENUE_SHARE',
+      tiers: body.tiers,
+    };
+
+    await this.prisma.siteConfiguration.update({
+      where: { id: targetSiteId },
+      data: { affiliateConfig: config },
+    });
+
+    this.logger.log(`Affiliate config updated for site ${targetSiteId}`);
+
+    return { success: true, data: config };
+  }
 }

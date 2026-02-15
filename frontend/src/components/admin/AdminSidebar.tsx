@@ -86,6 +86,12 @@ const adminNavItems: NavItem[] = [
     badge: "NEW",
   },
   {
+    id: 'affiliate-settings',
+    label: 'Affiliate Settings',
+    icon: <Users className="w-5 h-5" />,
+    href: '/admin/affiliate-settings',
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: <Settings className="w-5 h-5" />,
