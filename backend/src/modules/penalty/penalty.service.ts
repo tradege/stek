@@ -1,3 +1,4 @@
+import { VaultService } from '../vault/vault.service';
 /**
  * ============================================
  * PENALTY SHOOTOUT SERVICE - Visual Accumulator
@@ -134,7 +135,9 @@ setInterval(() => {
 
 @Injectable()
 export class PenaltyService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   // ============================================
   // PROVABLY FAIR RNG
@@ -210,24 +213,41 @@ export class PenaltyService {
       }
     }
 
-    // Get wallet and validate balance
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { userId, currency: currency as any },
+    // Get wallet and validate balance with row-level locking (prevents race conditions)
+    const walletResult = await this.prisma.$transaction(async (tx) => {
+      const lockedWallets = await tx.$queryRaw<any[]>`
+        SELECT id, balance FROM "Wallet"
+        WHERE "userId" = ${userId} AND currency = ${currency}::"Currency" AND "siteId" = ${siteId}
+        FOR UPDATE
+      `;
+      if (!lockedWallets || lockedWallets.length === 0) {
+        const fallbackWallets = await tx.$queryRaw<any[]>`
+          SELECT id, balance FROM "Wallet"
+          WHERE "userId" = ${userId} AND currency = ${currency}::"Currency"
+          FOR UPDATE
+        `;
+        if (!fallbackWallets || fallbackWallets.length === 0) {
+          throw new BadRequestException(`No ${currency} wallet found`);
+        }
+        var lockedWallet = fallbackWallets[0];
+      } else {
+        var lockedWallet = lockedWallets[0];
+      }
+      const currentBalance = new Decimal(lockedWallet.balance);
+      if (currentBalance.lt(betAmount)) {
+        throw new BadRequestException('Insufficient balance');
+      }
+      // Deduct bet amount atomically
+      const newBalance = currentBalance.minus(betAmount);
+      await tx.wallet.update({
+        where: { id: lockedWallet.id },
+        data: { balance: newBalance.toNumber() },
+      });
+      return { id: lockedWallet.id, currentBalance, newBalance };
     });
-    if (!wallet) {
-      throw new BadRequestException(`No ${currency} wallet found`);
-    }
-    const currentBalance = new Decimal(wallet.balance.toString());
-    if (currentBalance.lt(betAmount)) {
-      throw new BadRequestException('Insufficient balance');
-    }
-
-    // Deduct bet amount atomically
-    const newBalance = currentBalance.minus(betAmount);
-    await this.prisma.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: newBalance.toNumber() },
-    });
+    const wallet = { id: walletResult.id, balance: walletResult.currentBalance };
+    const currentBalance = walletResult.currentBalance;
+    const newBalance = walletResult.newBalance;
 
     // Generate provably fair seeds
     let serverSeedRecord = await this.prisma.serverSeed.findFirst({

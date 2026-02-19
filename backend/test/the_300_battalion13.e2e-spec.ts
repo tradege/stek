@@ -16,7 +16,7 @@ import * as crypto from 'crypto';
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const JWT_SECRET = 'stek-casino-jwt-secret-2026-production-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 const SUPER_ADMIN_EMAIL = 'marketedgepros@gmail.com';
 
 // ============================================================

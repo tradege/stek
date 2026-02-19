@@ -10,10 +10,22 @@ import { PlinkoController } from './plinko.controller';
 import { PlinkoService } from './plinko.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BadRequestException } from '@nestjs/common';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 const mockPlinkoService = {
   play: jest.fn(),
   getMultipliers: jest.fn(),
+};
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
 };
 
 describe('PlinkoController - Security & API Tests', () => {
@@ -26,6 +38,18 @@ describe('PlinkoController - Security & API Tests', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PlinkoController],
       providers: [
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CommissionProcessorService,
+          useValue: {
+            processCommission: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         { provide: PlinkoService, useValue: mockPlinkoService },
       ],
     })
@@ -58,7 +82,7 @@ describe('PlinkoController - Security & API Tests', () => {
 
       await controller.play(mockRequest, validDto as any);
 
-      expect(service.play).toHaveBeenCalledWith('user-123', validDto, 'default-site-001');
+      expect(service.play).toHaveBeenCalledWith('user-123', validDto, '1');
     });
 
     it('1.2 Should return the full result from service', async () => {
@@ -114,7 +138,7 @@ describe('PlinkoController - Security & API Tests', () => {
 
       await controller.play(customRequest, validDto as any);
 
-      expect(service.play).toHaveBeenCalledWith('custom-user-xyz', validDto, 'default-site-001');
+      expect(service.play).toHaveBeenCalledWith('custom-user-xyz', validDto, '1');
     });
   });
 

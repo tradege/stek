@@ -20,7 +20,7 @@ export class PenaltyController {
 
   @Post('start')
   async start(@Req() req: any, @Body() dto: StartPenaltyDto) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.penaltyService.start(req.user.id, dto, siteId);
   }
 
@@ -41,13 +41,13 @@ export class PenaltyController {
 
   @Get('history')
   async history(@Req() req: any, @Query('limit') limit?: string) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.penaltyService.getHistory(req.user.id, siteId, limit ? parseInt(limit) : 20);
   }
 
   @Get('multipliers')
   async getMultipliers(@Req() req: any) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.penaltyService.getMultiplierTable(siteId);
   }
 }

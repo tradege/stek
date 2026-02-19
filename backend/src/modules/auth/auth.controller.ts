@@ -10,6 +10,9 @@ import {
   HttpStatus,
   Put,
   Req,
+  Query,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { AuthService, RegisterDto, LoginDto, AuthResponse, UserWithBalance } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -21,7 +24,6 @@ export class AuthController {
 
   /**
    * POST /auth/register
-   * Create a new user account - TENANT AWARE
    */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -32,18 +34,18 @@ export class AuthController {
 
   /**
    * POST /auth/login
-   * Authenticate user - TENANT AWARE
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Request() req): Promise<AuthResponse> {
     const siteId = req.tenant?.siteId || null;
-    return this.authService.login(dto, siteId);
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.login(dto, siteId, ip, userAgent);
   }
 
   /**
    * GET /auth/me
-   * Get current authenticated user with balance
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -53,7 +55,6 @@ export class AuthController {
 
   /**
    * POST /auth/logout
-   * Logout is handled client-side (remove JWT)
    */
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -68,5 +69,124 @@ export class AuthController {
     @Body() body: { currentPassword: string; newPassword: string },
   ) {
     return this.authService.changePassword(req.user.id, body.currentPassword, body.newPassword);
+  }
+
+  // ============================================
+  // EMAIL VERIFICATION WITH 6-DIGIT CODE
+  // ============================================
+
+  /**
+   * POST /auth/verify-email
+   * Body: { email: string, code: string }
+   */
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Body() body: { email: string; code: string }) {
+    if (!body.email || !body.code) {
+      return { success: false, message: 'Email and code are required' };
+    }
+    return this.authService.verifyEmail(body.email, body.code);
+  }
+
+  /**
+   * POST /auth/resend-code
+   * Body: { email: string }
+   */
+  @Post('resend-code')
+  @HttpCode(HttpStatus.OK)
+  async resendCode(@Body() body: { email: string }) {
+    if (!body.email) {
+      return { success: false, message: 'Email is required' };
+    }
+    return this.authService.resendVerificationCode(body.email);
+  }
+
+  // ============================================
+  // PASSWORD RESET
+  // ============================================
+
+  /**
+   * POST /auth/forgot-password
+   */
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  /**
+   * POST /auth/reset-password
+   */
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: { token: string; newPassword: string }) {
+    return this.authService.resetPassword(body.token, body.newPassword);
+  }
+
+  // ============================================
+  // TWO-FACTOR AUTHENTICATION
+  // ============================================
+
+  /**
+   * POST /auth/2fa/enable - Generate QR code for 2FA setup
+   */
+  @Post('2fa/enable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async enable2FA(@Request() req) {
+    return this.authService.enable2FA(req.user.id);
+  }
+
+  /**
+   * POST /auth/2fa/verify - Verify TOTP code to complete 2FA setup
+   */
+  @Post('2fa/verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async verify2FA(@Request() req, @Body() body: { code: string }) {
+    return this.authService.verify2FA(req.user.id, body.code);
+  }
+
+  /**
+   * POST /auth/2fa/disable - Disable 2FA (requires current TOTP code)
+   */
+  @Post('2fa/disable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async disable2FA(@Request() req, @Body() body: { code: string }) {
+    return this.authService.disable2FA(req.user.id, body.code);
+  }
+
+  // ============================================
+  // SESSION MANAGEMENT
+  // ============================================
+
+  /**
+   * GET /auth/sessions - Get active sessions
+   */
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  async getSessions(@Request() req) {
+    return this.authService.getActiveSessions(req.user.id);
+  }
+
+  /**
+   * DELETE /auth/sessions/:id - Revoke a specific session
+   */
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  async revokeSession(@Request() req, @Param('id') sessionId: string) {
+    return this.authService.revokeSession(req.user.id, sessionId);
+  }
+
+  /**
+   * Post /auth/sessions/revoke-all - Revoke all sessions except current
+   */
+  @Post('sessions/revoke-all')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async revokeAllSessions(@Request() req) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    return this.authService.revokeAllSessions(req.user.id, token);
   }
 }

@@ -1,19 +1,6 @@
 /**
  * App Gateway - WebSocket Real-Time Communication
  * ================================================
- * 
- * The "Nervous System" of the casino - handles all real-time communication.
- * 
- * Architecture:
- * - Namespace: /casino
- * - Public Rooms: room:crash, room:chat
- * - Private Rooms: user:{userId}
- * 
- * Features:
- * - JWT Authentication on handshake
- * - Rate limiting for chat (1 msg/sec)
- * - Volatile emit for game ticks (prevents lag accumulation)
- * - Private balance updates per user
  */
 
 import { Server, Socket } from 'socket.io';
@@ -29,6 +16,7 @@ interface AuthenticatedSocket extends Socket {
   username?: string;
   role?: string;
   lastChatTime?: number;
+  lastHeartbeat?: number;
 }
 
 // Socket-based Rate Limiter (prevents DDoS by Socket ID)
@@ -154,9 +142,10 @@ interface CashoutEvent {
 // CONFIGURATION
 // ============================================
 
-const JWT_SECRET = process.env.JWT_SECRET || 'stakepro-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'betworkss-secret-key-change-in-production';
 const CHAT_RATE_LIMIT_MS = 1000;  // 1 message per second
 const MAX_CHAT_MESSAGE_LENGTH = 500;
+const STALE_CONNECTION_TIMEOUT = 300000; // 5 minutes
 
 // ============================================
 // APP GATEWAY CLASS
@@ -191,6 +180,32 @@ export class AppGateway {
         totalVolume: 0,
       });
     }, 10000);
+
+    // FIX-2: Periodic Cleanup of Stale Connections
+    setInterval(() => this.cleanupStaleConnections(), 60000); // Every minute
+  }
+
+  private cleanupStaleConnections(): void {
+    const now = Date.now();
+    for (const [socketId, socket] of this.connectedClients.entries()) {
+      const lastActive = socket.lastHeartbeat || (socket as any).connectedTime || now;
+      if (now - lastActive > STALE_CONNECTION_TIMEOUT) {
+        socket.disconnect(true);
+        this.handleDisconnect(socket);
+      }
+    }
+
+    // Secondary deep cleanup for userSockets Map
+    for (const [userId, sockets] of this.userSockets.entries()) {
+      for (const socketId of sockets) {
+        if (!this.connectedClients.has(socketId)) {
+          sockets.delete(socketId);
+        }
+      }
+      if (sockets.size === 0) {
+        this.userSockets.delete(userId);
+      }
+    }
   }
 
   // ============================================
@@ -243,6 +258,8 @@ export class AppGateway {
 
   private handleConnection(socket: AuthenticatedSocket): void {
     // Track connection
+    (socket as any).connectedTime = Date.now();
+    socket.lastHeartbeat = Date.now();
     this.connectedClients.set(socket.id, socket);
     this.stats.totalConnections++;
     this.stats.currentConnections++;
@@ -275,20 +292,28 @@ export class AppGateway {
     socket.on('disconnect', () => {
       this.handleDisconnect(socket);
     });
+
+    // FIX-2: Heartbeat listener
+    socket.on('heartbeat', () => {
+      socket.lastHeartbeat = Date.now();
+      socket.emit('heartbeat:ack', { timestamp: Date.now() });
+    });
   }
 
   private handleDisconnect(socket: AuthenticatedSocket): void {
-    this.connectedClients.delete(socket.id);
-    this.stats.currentConnections--;
+    if (this.connectedClients.has(socket.id)) {
+      this.connectedClients.delete(socket.id);
+      this.stats.currentConnections--;
 
-    // Remove from rate limiter
-    this.chatRateLimiter.removeSocket(socket.id);
+      // Remove from rate limiter
+      this.chatRateLimiter.removeSocket(socket.id);
 
-    // Remove from user sockets
-    if (socket.userId && this.userSockets.has(socket.userId)) {
-      this.userSockets.get(socket.userId)!.delete(socket.id);
-      if (this.userSockets.get(socket.userId)!.size === 0) {
-        this.userSockets.delete(socket.userId);
+      // Remove from user sockets
+      if (socket.userId && this.userSockets.has(socket.userId)) {
+        this.userSockets.get(socket.userId)!.delete(socket.id);
+        if (this.userSockets.get(socket.userId)!.size === 0) {
+          this.userSockets.delete(socket.userId);
+        }
       }
     }
   }
@@ -352,7 +377,6 @@ export class AppGateway {
       });
     });
 
-    // Ping for latency measurement
     // Stats request handler
     socket.on('stats:request', () => {
       const stats = this.getStats();
@@ -362,6 +386,7 @@ export class AppGateway {
         totalVolume: 0,
       });
     });
+
     socket.on('ping', (timestamp: number) => {
       socket.emit('pong', { sent: timestamp, received: Date.now() });
     });

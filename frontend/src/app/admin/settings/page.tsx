@@ -104,7 +104,7 @@ export default function AdminSettings() {
   };
 
   const ToggleSwitch = ({ enabled, onChange, label }: { enabled: boolean; onChange: () => void; label: string }) => (
-    <div className="flex items-center justify-between py-3 border-b border-[#2f4553]/50 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-white/10/50 last:border-0">
       <span className="text-gray-300 text-sm">{label}</span>
       <button
         onClick={onChange}
@@ -132,12 +132,12 @@ export default function AdminSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Site Settings</h1>
-          <p className="text-gray-400">Configure platform settings and preferences</p>
+          <p className="text-text-secondary">Configure platform settings and preferences</p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-2.5 bg-[#1475e1] hover:bg-[#1265c1] rounded-lg text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-accent-primary hover:bg-[#1265c1] rounded-lg text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save All'}
@@ -157,15 +157,15 @@ export default function AdminSettings() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#0f1923] p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-bg-main p-1 rounded-lg w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
               activeTab === tab.id
-                ? 'bg-[#1475e1] text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-accent-primary text-white'
+                : 'text-text-secondary hover:text-white'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -177,45 +177,45 @@ export default function AdminSettings() {
       {/* General Tab */}
       {activeTab === 'general' && (
         <div className="space-y-4">
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-[#1475e1]" />
+              <Globe className="w-5 h-5 text-accent-primary" />
               Site Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Site Name</label>
+                <label className="text-sm text-text-secondary mb-2 block">Site Name</label>
                 <input
                   type="text"
                   value={settings.siteName}
                   onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white focus:border-accent-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Site URL</label>
+                <label className="text-sm text-text-secondary mb-2 block">Site URL</label>
                 <input
                   type="text"
                   value={settings.siteUrl}
                   onChange={(e) => setSettings({ ...settings, siteUrl: e.target.value })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white focus:border-accent-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Support Email</label>
+                <label className="text-sm text-text-secondary mb-2 block">Support Email</label>
                 <input
                   type="email"
                   value={settings.supportEmail}
                   onChange={(e) => setSettings({ ...settings, supportEmail: e.target.value })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white focus:border-accent-primary focus:outline-none"
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Palette className="w-5 h-5 text-[#1475e1]" />
+              <Palette className="w-5 h-5 text-accent-primary" />
               Platform Controls
             </h3>
             <ToggleSwitch
@@ -230,46 +230,46 @@ export default function AdminSettings() {
             />
           </div>
 
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Database className="w-5 h-5 text-[#1475e1]" />
+              <Database className="w-5 h-5 text-accent-primary" />
               Financial Limits
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Min Deposit ($)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Min Deposit ($)</label>
                 <input
                   type="number"
                   value={settings.minDepositAmount}
                   onChange={(e) => setSettings({ ...settings, minDepositAmount: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Max Deposit ($)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Max Deposit ($)</label>
                 <input
                   type="number"
                   value={settings.maxDepositAmount}
                   onChange={(e) => setSettings({ ...settings, maxDepositAmount: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Min Withdraw ($)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Min Withdraw ($)</label>
                 <input
                   type="number"
                   value={settings.minWithdrawAmount}
                   onChange={(e) => setSettings({ ...settings, minWithdrawAmount: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Max Withdraw ($)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Max Withdraw ($)</label>
                 <input
                   type="number"
                   value={settings.maxWithdrawAmount}
                   onChange={(e) => setSettings({ ...settings, maxWithdrawAmount: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                 />
               </div>
             </div>
@@ -280,9 +280,9 @@ export default function AdminSettings() {
       {/* Security Tab */}
       {activeTab === 'security' && (
         <div className="space-y-4">
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Lock className="w-5 h-5 text-[#1475e1]" />
+              <Lock className="w-5 h-5 text-accent-primary" />
               Authentication
             </h3>
             <ToggleSwitch
@@ -302,9 +302,9 @@ export default function AdminSettings() {
             />
           </div>
 
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#1475e1]" />
+              <Shield className="w-5 h-5 text-accent-primary" />
               Security Status
             </h3>
             <div className="space-y-3">
@@ -316,10 +316,10 @@ export default function AdminSettings() {
                 { label: 'SSL/HTTPS', status: 'pending', detail: 'Not yet configured' },
                 { label: 'DDoS Protection', status: 'pending', detail: 'Recommended: Cloudflare' },
               ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between py-2 border-b border-[#2f4553]/50 last:border-0">
+                <div key={item.label} className="flex items-center justify-between py-2 border-b border-white/10/50 last:border-0">
                   <div>
                     <div className="text-white text-sm font-medium">{item.label}</div>
-                    <div className="text-gray-500 text-xs">{item.detail}</div>
+                    <div className="text-text-tertiary text-xs">{item.detail}</div>
                   </div>
                   <span className={`px-2 py-0.5 text-xs rounded-full ${
                     item.status === 'active'
@@ -338,9 +338,9 @@ export default function AdminSettings() {
       {/* Notifications Tab */}
       {activeTab === 'notifications' && (
         <div className="space-y-4">
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Mail className="w-5 h-5 text-[#1475e1]" />
+              <Mail className="w-5 h-5 text-accent-primary" />
               Email Notifications
             </h3>
             <ToggleSwitch enabled={true} onChange={() => {}} label="New User Registration Alert" />
@@ -350,14 +350,14 @@ export default function AdminSettings() {
             <ToggleSwitch enabled={true} onChange={() => {}} label="System Error Notifications" />
           </div>
 
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Bell className="w-5 h-5 text-[#1475e1]" />
+              <Bell className="w-5 h-5 text-accent-primary" />
               Push Notifications
             </h3>
             <div className="text-center py-6">
               <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">Push notifications will be available after domain and SSL setup</p>
+              <p className="text-text-secondary text-sm">Push notifications will be available after domain and SSL setup</p>
             </div>
           </div>
         </div>
@@ -366,9 +366,9 @@ export default function AdminSettings() {
       {/* System Tab */}
       {activeTab === 'system' && (
         <div className="space-y-4">
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Server className="w-5 h-5 text-[#1475e1]" />
+              <Server className="w-5 h-5 text-accent-primary" />
               System Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -382,30 +382,30 @@ export default function AdminSettings() {
                 { label: 'Process Manager', value: 'PM2 (Cluster Mode)' },
                 { label: 'Web Server', value: 'Nginx Reverse Proxy' },
               ].map((item) => (
-                <div key={item.label} className="bg-[#0f1923] rounded-lg p-3 flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">{item.label}</span>
+                <div key={item.label} className="bg-bg-main rounded-lg p-3 flex justify-between items-center">
+                  <span className="text-text-secondary text-sm">{item.label}</span>
                   <span className="text-white text-sm font-mono">{item.value}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Database className="w-5 h-5 text-[#1475e1]" />
+              <Database className="w-5 h-5 text-accent-primary" />
               Database Status
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-[#0f1923] rounded-lg p-3 text-center">
-                <div className="text-xs text-gray-400 mb-1">Connection</div>
+              <div className="bg-bg-main rounded-lg p-3 text-center">
+                <div className="text-xs text-text-secondary mb-1">Connection</div>
                 <div className="text-green-400 font-bold">Active</div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-3 text-center">
-                <div className="text-xs text-gray-400 mb-1">Provider</div>
+              <div className="bg-bg-main rounded-lg p-3 text-center">
+                <div className="text-xs text-text-secondary mb-1">Provider</div>
                 <div className="text-white font-bold">Prisma ORM</div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-3 text-center">
-                <div className="text-xs text-gray-400 mb-1">Migrations</div>
+              <div className="bg-bg-main rounded-lg p-3 text-center">
+                <div className="text-xs text-text-secondary mb-1">Migrations</div>
                 <div className="text-green-400 font-bold">Up to Date</div>
               </div>
             </div>

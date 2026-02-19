@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
 
 describe('AdminService', () => {
   let service: AdminService;
@@ -17,6 +18,11 @@ describe('AdminService', () => {
     role: 'USER',
     createdAt: new Date(),
     lastLoginAt: new Date(),
+    emailVerificationToken: null,
+    affiliateCarryover: new Decimal(0),
+    totalBets: 0,
+    claimableRakeback: new Decimal(0),
+    siteId: "default-site",
   };
 
   const mockAdminUser = {
@@ -24,6 +30,10 @@ describe('AdminService', () => {
     id: 'admin-123',
     role: 'ADMIN',
     status: UserStatus.ACTIVE,
+    emailVerificationToken: null,
+    affiliateCarryover: new Decimal(0),
+    totalBets: 0,
+    claimableRakeback: new Decimal(0),
   };
 
   const mockPrismaService = {
@@ -39,16 +49,28 @@ describe('AdminService', () => {
       groupBy: jest.fn(),
       findMany: jest.fn(),
     },
+    gameProvider: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     bet: {
       count: jest.fn(),
       aggregate: jest.fn(),
       groupBy: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+            getPoolStatus: jest.fn().mockResolvedValue({ balance: 0 }),
+          },
+        },
         AdminService,
         {
           provide: PrismaService,
@@ -81,9 +103,10 @@ describe('AdminService', () => {
         _sum: { betAmount: new Decimal(100000), payout: new Decimal(70000), profit: new Decimal(-30000) },
         _count: 1000,
       });
-      (prisma.bet as any).groupBy = jest.fn().mockResolvedValue([
-        { userId: 'user-1' }, { userId: 'user-2' },
-      ]);
+      (prisma.bet as any).groupBy = jest.fn()
+        .mockResolvedValueOnce([{ gameType: 'CRASH', _sum: { betAmount: new Decimal(50000), payout: new Decimal(35000) } }])
+        .mockResolvedValueOnce([{ userId: 'user-1' }, { userId: 'user-2' }]);
+      (prisma.bet as any).findFirst = jest.fn().mockResolvedValue({ payout: new Decimal(5000) });
 
       const result = await service.getStats();
 
@@ -107,6 +130,7 @@ describe('AdminService', () => {
         _count: 0,
       });
       (prisma.bet as any).groupBy = jest.fn().mockResolvedValue([]);
+      (prisma.bet as any).findFirst = jest.fn().mockResolvedValue(null);
 
       const result = await service.getStats();
       expect(result.totalDeposits).toBe(0);

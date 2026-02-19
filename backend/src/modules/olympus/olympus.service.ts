@@ -1,5 +1,10 @@
+import { VaultService } from '../vault/vault.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { VipService } from '../vip/vip.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getGameConfig } from '../../common/helpers/game-tenant.helper';
 import { Decimal } from '@prisma/client/runtime/library';
 import * as crypto from 'crypto';
 import {
@@ -9,7 +14,8 @@ import {
   MIN_BET,
   MAX_BET,
   MAX_WIN_MULTIPLIER,
-  HOUSE_EDGE,
+  DEFAULT_HOUSE_EDGE,
+  getOlympusScaleFactor,
   FREE_SPINS_COUNT,
   FREE_SPINS_RETRIGGER,
   SCATTERS_FOR_FREE_SPINS,
@@ -96,12 +102,18 @@ export class OlympusService {
   // In-memory free spin sessions
   private freeSpinSessions: Map<string, FreeSpinSession> = new Map();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vipService: VipService,
+    private readonly rewardPoolService: RewardPoolService,
+    private readonly commissionProcessor: CommissionProcessorService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   // ============================================
   // MAIN SPIN ENDPOINT
   // ============================================
-  async spin(userId: string, dto: SpinDto, siteId: string = "default-site-001") {
+  async spin(userId: string, dto: SpinDto, siteId: string = "1") {
     const { betAmount, currency = 'USDT', anteBet = false } = dto;
 
     // Validate bet
@@ -127,7 +139,13 @@ export class OlympusService {
 
     // Calculate final payout
     // Multiplier orbs are COSMETIC ONLY in base game
-    let totalWin = spinResult.totalWinMultiplier * actualBet;
+    // Get dynamic house edge from DB for this brand
+    const gameConfig = await getGameConfig(this.prisma, siteId, 'olympus');
+    const dynamicHE = gameConfig.houseEdge;
+    const scaleFactor = getOlympusScaleFactor(dynamicHE);
+
+    // Scale win by dynamic house edge
+    let totalWin = spinResult.totalWinMultiplier * scaleFactor * actualBet;
 
     // Cap at max win
     totalWin = Math.min(totalWin, actualBet * MAX_WIN_MULTIPLIER);
@@ -189,7 +207,7 @@ export class OlympusService {
           id: crypto.randomUUID(),
           userId,
           gameType: 'OLYMPUS',
-        siteId: 'default-site-001',
+        siteId: '1',
           currency: currency as any,
           betAmount: new Decimal(actualBet),
           multiplier: new Decimal(finalMultiplier),
@@ -241,6 +259,8 @@ export class OlympusService {
       });
     });
 
+    // VIP + RewardPool + Affiliate processing
+    this.postBetProcessing(userId, null, actualBet, totalWin, dynamicHE || DEFAULT_HOUSE_EDGE, siteId);
     return {
       initialGrid: this.formatGrid(spinResult.initialGrid),
       tumbles: spinResult.tumbles.map((t) => ({
@@ -295,7 +315,10 @@ export class OlympusService {
 
     // In FREE SPINS, payouts use the FREE_SPIN_PAYTABLE (already reduced)
     // NO multiplier boost is applied - the reduced paytable IS the balance mechanism
-    let spinWin = spinResult.totalWinMultiplier * session.betAmount;
+    // Get dynamic house edge for free spin payout scaling
+    const fsGameConfig = await getGameConfig(this.prisma, '1', 'olympus');
+    const fsScaleFactor = getOlympusScaleFactor(fsGameConfig.houseEdge);
+    let spinWin = spinResult.totalWinMultiplier * fsScaleFactor * session.betAmount;
 
     // Cap individual spin win
     spinWin = Math.min(spinWin, session.betAmount * MAX_WIN_MULTIPLIER);
@@ -343,7 +366,7 @@ export class OlympusService {
             id: crypto.randomUUID(),
             userId: session.userId,
             gameType: 'OLYMPUS',
-        siteId: 'default-site-001',
+        siteId: '1',
             currency: session.currency as any,
             betAmount: new Decimal(0), // Free spin - no cost
             multiplier: new Decimal(totalWin > 0 ? totalWin / session.betAmount : 0),
@@ -441,8 +464,8 @@ export class OlympusService {
         value: mv.value,
         probability: `${((mv.weight / MULTIPLIER_TOTAL_WEIGHT) * 100).toFixed(1)}%`,
       })),
-      houseEdge: `${HOUSE_EDGE * 100}%`,
-      rtp: `${(1 - HOUSE_EDGE) * 100}%`,
+      houseEdge: `${DEFAULT_HOUSE_EDGE * 100}%`,
+      rtp: `${(1 - DEFAULT_HOUSE_EDGE) * 100}%`,
       maxWin: `${MAX_WIN_MULTIPLIER}x`,
       freeSpins: {
         trigger: `${SCATTERS_FOR_FREE_SPINS}+ Scatter symbols`,
@@ -578,7 +601,6 @@ export class OlympusService {
 
     // Calculate free spins
     const freeSpinsAwarded = scatterCount >= SCATTERS_FOR_FREE_SPINS ? FREE_SPINS_COUNT : 0;
-
     return {
       initialGrid,
       tumbles,
@@ -827,5 +849,45 @@ export class OlympusService {
       formatted.push(rowData);
     }
     return formatted;
+  }
+
+
+  // ============================================
+  // POST-BET PROCESSING: VIP + RewardPool + Affiliate
+  // ============================================
+  private async postBetProcessing(
+    userId: string,
+    betId: string | null,
+    betAmount: number,
+    payout: number,
+    houseEdge: number,
+    siteId: string,
+  ): Promise<void> {
+    try {
+      // 1. Update user stats (totalWagered + totalBets)
+      await this.vipService.updateUserStats(userId, betAmount);
+
+      // 2. Check VIP level up
+      await this.vipService.checkLevelUp(userId);
+
+      // 3. Process rakeback (betAmount × houseEdge × VIP rate)
+      await this.vipService.processRakeback(userId, betAmount, houseEdge);
+
+      // 4. Contribute to reward pool (0.20% of bet)
+      await this.rewardPoolService.contributeToPool(userId, betId, betAmount, houseEdge, 'OLYMPUS');
+
+      // 5. Process affiliate commission
+      await this.commissionProcessor.processCommission(
+        betId || '',
+        userId,
+        betAmount,
+        payout,
+        'OLYMPUS' as any,
+        siteId,
+      );
+    } catch (error) {
+      // Fire-and-forget: don't block the game
+      console.error('Post-bet processing error:', error?.message);
+    }
   }
 }

@@ -67,19 +67,27 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
   const games = Object.entries(gb).sort((a: any, b: any) => b[1].bets - a[1].bets);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-[#1a1d2e] border border-white/10 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-lg mx-4 bg-bg-card rounded-xl border border-white/10 shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-gradient-to-r from-accent-primary/10 to-transparent">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between p-6 border-b border-white/10 sticky top-0 bg-bg-card z-10">
+          <h2 className="text-xl font-bold text-white flex items-center gap-3">
             <span className="text-2xl">📊</span>
-            <h2 className="text-xl font-bold text-white">Statistics</h2>
-          </div>
-          <button onClick={onClose} className="text-text-secondary hover:text-white text-2xl">&times;</button>
+            Statistics
+          </h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(85vh-130px)] px-6 py-5 space-y-5">
+        <div className="overflow-y-auto max-h-[calc(90vh-130px)] p-6 space-y-4">
           {loading ? (
             <div className="flex justify-center py-10">
               <div className="w-10 h-10 border-4 border-accent-primary/30 border-t-primary rounded-full animate-spin" />
@@ -159,12 +167,6 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10 bg-white/5">
-          <button onClick={onClose} className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-colors">
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );

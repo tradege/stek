@@ -10,8 +10,11 @@ import { CrashService, GameState } from './crash.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GameConfigService } from './game-config.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import Decimal from 'decimal.js';
 import * as crypto from 'crypto';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { Decimal } from '@prisma/client/runtime/library';
 
 // ============================================
 // MOCK SETUP
@@ -19,6 +22,8 @@ import * as crypto from 'crypto';
 
 // Transaction mock that simulates Prisma's interactive transaction
 const createTxMock = () => ({
+  transaction: { create: jest.fn().mockResolvedValue({ id: "tx-1" }) },
+  wallet: { update: jest.fn() },
   $queryRaw: jest.fn().mockResolvedValue([{ id: 'wallet-1', balance: '1000' }]),
   $executeRaw: jest.fn().mockResolvedValue(1),
 });
@@ -60,6 +65,19 @@ const mockEventEmitter = {
   removeAllListeners: jest.fn(),
 };
 
+
+const mockCommissionProcessor = {
+  processCommission: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
 describe('🎰 CrashService - Unit Tests', () => {
   let service: CrashService;
 
@@ -89,8 +107,16 @@ describe('🎰 CrashService - Unit Tests', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         CrashService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: CommissionProcessorService, useValue: mockCommissionProcessor },
+        { provide: VipService, useValue: mockVipService },
         { provide: GameConfigService, useValue: mockGameConfig },
       ],
     }).compile();

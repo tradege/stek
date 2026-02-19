@@ -237,7 +237,7 @@ async function main(): Promise<void> {
   
   // Generate master seed
   const masterSeed = crypto.randomBytes(32).toString('hex');
-  const clientSeed = 'stakepro-public-seed';
+  const clientSeed = 'betworkss-public-seed';
   
   console.log('  🔑 Master Seed Generated (kept secret)');
   console.log(`  🌐 Client Seed: ${clientSeed}`);

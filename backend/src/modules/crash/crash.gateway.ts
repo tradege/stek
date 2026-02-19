@@ -107,7 +107,7 @@ export class CrashGateway
       try {
         const cleanToken = token.replace(/^Bearer\s+/i, '');
         const decoded = this.jwtService.verify(cleanToken, {
-          secret: process.env.JWT_SECRET || 'stek-casino-jwt-secret-2026-production-key',
+          secret: process.env.JWT_SECRET,
         });
         
         const userId = decoded.sub || decoded.userId || decoded.id;
@@ -119,7 +119,7 @@ export class CrashGateway
           this.userToSocket.set(userId, client.id);
           this.userInfoCache.set(userId, { username, role });
           
-          const siteId = client.handshake.auth?.siteId || client.handshake.query?.siteId || 'default-site-001';
+          const siteId = client.handshake.auth?.siteId || client.handshake.query?.siteId || '1';
           this.userSiteId.set(userId, siteId as string);
           this.logger.log(`🔐 User ${userId} (${username}) authenticated on connect [Site: ${siteId}]`);
           
@@ -307,7 +307,7 @@ export class CrashGateway
     
     // Save bot bet to database for stats tracking
     try {
-      const siteId = payload.siteId || 'default-site-001';
+      const siteId = payload.siteId || '1';
       await this.crashService.saveBotBet(
         payload.userId,
         betId,
@@ -344,7 +344,7 @@ export class CrashGateway
     
     // Update bot bet in database with cashout result
     try {
-      const siteId = payload.siteId || 'default-site-001';
+      const siteId = payload.siteId || '1';
       await this.crashService.settleBotBet(
         payload.userId,
         payload.multiplier,
@@ -387,7 +387,7 @@ export class CrashGateway
     try {
       const cleanToken = token.replace(/^Bearer\s+/i, '');
       const decoded = this.jwtService.verify(cleanToken, {
-        secret: process.env.JWT_SECRET || 'stek-casino-jwt-secret-2026-production-key',
+        secret: process.env.JWT_SECRET,
       });
       const userId = decoded.sub || decoded.userId || decoded.id;
       const username = decoded.username || 'User';
@@ -471,7 +471,7 @@ export class CrashGateway
       autoCashoutValue = parsed;
     }
     
-    const userSiteId = this.userSiteId.get(userId) || 'default-site-001';
+    const userSiteId = this.userSiteId.get(userId) || '1';
     this.logger.log(`🏢 Bet placed for Site: ${userSiteId}`);
     
     const result = await this.crashService.placeBet(
@@ -689,4 +689,46 @@ export class CrashGateway
       }
     }
   }
+  
+
+  /**
+   * Live Rakeback Stream: Send private rakeback notification to user
+   */
+  @OnEvent('rakeback:earned')
+  handleRakebackEarned(data: { userId: string; amount: number; betAmount: number }) {
+    // Send to specific user's room
+    this.server.to(`user:${data.userId}`).emit('rakeback:earned', {
+      amount: data.amount,
+      betAmount: data.betAmount,
+      timestamp: new Date(),
+    });
   }
+
+  /**
+   * Live Feed: Broadcast wins, rakeback, jackpots to all connected clients
+   */
+  @OnEvent('live:feed')
+  handleLiveFeed(data: { username: string; type: string; amount: number; gameType?: string; message?: string }) {
+    this.server.emit('live:feed', {
+      ...data,
+      timestamp: new Date(),
+    });
+  }
+
+  /**
+   * The Vault: Broadcast jackpot updates and wins
+   */
+  @OnEvent('vault:update')
+  handleVaultUpdate(data: { currentAmount: number }) {
+    this.server.emit('vault:update', data);
+  }
+
+  @OnEvent('vault:win')
+  handleVaultWin(data: { userId: string; amount: number; gameType: string }) {
+    this.server.emit('vault:win', {
+      ...data,
+      timestamp: new Date(),
+    });
+  }
+
+}

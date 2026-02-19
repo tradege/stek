@@ -1,4 +1,5 @@
 'use client';
+import { useBranding } from '@/contexts/BrandingContext';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -64,6 +65,8 @@ interface SuperAdminSidebarProps {
 
 export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdminSidebarProps) {
   const pathname = usePathname();
+  const { branding } = useBranding();
+  const brandName = branding?.brandName || 'Casino';
 
   const handleNavClick = () => {
     if (window.innerWidth < 1024) {
@@ -95,7 +98,7 @@ export default function SuperAdminSidebar({ isOpen, onClose, onOpen }: SuperAdmi
                 <Globe className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-white">StakePro</h1>
+                <h1 className="text-sm font-bold text-white">{brandName}</h1>
                 <p className="text-xs text-text-secondary">Super Admin</p>
               </div>
             </div>

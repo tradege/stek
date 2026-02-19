@@ -23,7 +23,7 @@ interface User {
   lastLoginAt: string | null;
   isBot: boolean;
   vipLevel: number;
-  wallets: { balance: string; currency: string }[];
+  wallets: { balance: string; bonusBalance?: string; currency: string }[];
   stats: UserStats;
 }
 
@@ -33,7 +33,7 @@ interface UserDetail {
   twoFactorEnabled: boolean; lastLoginAt: string | null; lastLoginIp: string | null;
   vipLevel: number; totalWagered: string; xp: number; isBot: boolean;
   createdAt: string; updatedAt: string; siteId: string | null;
-  wallets: { id: string; balance: string; currency: string }[];
+  wallets: { id: string; balance: string; bonusBalance?: string; currency: string }[];
   stats: {
     totalBets: number; totalWagered: number; totalPayout: number; totalProfit: number;
     deposits: number; withdrawals: number;
@@ -60,7 +60,9 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [bets, setBets] = useState<BetRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"info" | "balance" | "bets">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "balance" | "bets" | "rewards">("info");
+  const [rewards, setRewards] = useState<any[]>([]);
+  const [bonusStats, setBonusStats] = useState<any>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
@@ -68,7 +70,32 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
   useEffect(() => {
     fetchDetail();
     fetchBets();
+    fetchRewards();
   }, [userId]);
+
+  
+  const fetchRewards = async () => {
+    try {
+      const [rewardsRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/users/${userId}/rewards`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/api/admin/users/${userId}/bonus-stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      if (rewardsRes.ok) {
+        const data = await rewardsRes.json();
+        setRewards(Array.isArray(data) ? data : data.history || []);
+      }
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setBonusStats(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch rewards:", err);
+    }
+  };
 
   const fetchDetail = async () => {
     try {
@@ -156,12 +183,12 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
 
         {/* Tabs */}
         <div className="flex border-b border-white/10">
-          {(["info", "balance", "bets"] as const).map(tab => (
+          {(["info", "balance", "bets", "rewards"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab ? "text-accent-primary border-b-2 border-primary" : "text-text-secondary hover:text-white"
               }`}>
-              {tab === "info" ? "User Info" : tab === "balance" ? "Balance Manager" : "Bet History"}
+              {tab === "info" ? "User Info" : tab === "balance" ? "Balance Manager" : tab === "bets" ? "Bet History" : "Rewards"}
             </button>
           ))}
         </div>
@@ -176,7 +203,13 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
                 <div className="bg-white/5 rounded-lg p-3 text-center">
                   <div className="text-xs text-text-secondary">Balance</div>
                   <div className="text-lg font-bold text-green-400">
-                    ${detail.wallets[0] ? parseFloat(detail.wallets[0].balance).toFixed(2) : "0.00"}
+                    ${(() => { const w = detail.wallets?.find((w: any) => w.currency === 'USDT') || detail.wallets?.[0]; return w ? parseFloat(w.balance).toFixed(2) : '0.00'; })()}
+                  </div>
+                </div>
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-center">
+                  <div className="text-xs text-text-secondary">Bonus</div>
+                  <div className="text-lg font-bold text-yellow-400">
+                    ${(() => { const w = detail.wallets?.find((w: any) => w.currency === 'USDT') || detail.wallets?.[0]; return w && w.bonusBalance ? parseFloat(w.bonusBalance).toFixed(2) : '0.00'; })()}
                   </div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3 text-center">
@@ -248,9 +281,9 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
               <div className="bg-white/5 rounded-xl p-6 text-center">
                 <p className="text-sm text-text-secondary mb-1">Current Balance</p>
                 <p className="text-4xl font-bold text-white">
-                  ${detail.wallets[0] ? parseFloat(detail.wallets[0].balance).toFixed(2) : "0.00"}
+                  ${(() => { const w = detail.wallets?.find((w: any) => w.currency === 'USDT') || detail.wallets?.[0]; return w ? parseFloat(w.balance).toFixed(2) : '0.00'; })()}
                 </p>
-                <p className="text-xs text-text-secondary mt-1">{detail.wallets[0]?.currency || "USDT"}</p>
+                <p className="text-xs text-text-secondary mt-1">{(detail.wallets?.find((w: any) => w.currency === 'USDT') || detail.wallets?.[0])?.currency || "USDT"}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -366,6 +399,85 @@ function UserDetailModal({ userId, token, onClose, onBalanceChange }: {
               )}
             </div>
           )}
+
+          {activeTab === "rewards" && (
+            <div className="space-y-4 p-4">
+              {/* Bonus Stats Summary */}
+              {bonusStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-xl p-4 border border-green-500/30">
+                    <div className="text-green-400 text-xs font-medium mb-1">Bonus Balance</div>
+                    <div className="text-white text-lg font-bold">${Number(bonusStats.currentBonusBalance || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-xl p-4 border border-blue-500/30">
+                    <div className="text-blue-400 text-xs font-medium mb-1">Total Earned</div>
+                    <div className="text-white text-lg font-bold">${Number(bonusStats.totalRewardsReceived || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-xl p-4 border border-purple-500/30">
+                    <div className="text-purple-400 text-xs font-medium mb-1">Rakeback</div>
+                    <div className="text-white text-lg font-bold">${Number(bonusStats.claimableRakeback || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-xl p-4 border border-yellow-500/30">
+                    <div className="text-yellow-400 text-xs font-medium mb-1">Pool Contributions</div>
+                    <div className="text-white text-lg font-bold">${Number(bonusStats.totalContributed || 0).toFixed(2)}</div>
+                  </div>
+                </div>
+              )}
+              {/* Rewards History Table */}
+              <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                <div className="p-4 border-b border-white/10">
+                  <h3 className="text-white font-semibold">Reward History</h3>
+                </div>
+                <div className="max-h-[400px] overflow-y-auto">
+                  {rewards.length === 0 ? (
+                    <div className="text-center py-8 text-text-secondary">No rewards yet</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-bg-card">
+                        <tr className="text-text-secondary text-xs">
+                          <th className="text-left p-3">Type</th>
+                          <th className="text-right p-3">Amount</th>
+                          <th className="text-left p-3">Source</th>
+                          <th className="text-left p-3">Date</th>
+                          <th className="text-left p-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rewards.map((r: any, i: number) => (
+                          <tr key={i} className="border-t border-white/5 hover:bg-white/5">
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                r.type === 'WEEKLY_BONUS' ? 'bg-blue-500/20 text-blue-400' :
+                                r.type === 'MONTHLY_BONUS' ? 'bg-purple-500/20 text-purple-400' :
+                                r.type === 'RAKEBACK' ? 'bg-green-500/20 text-green-400' :
+                                r.type === 'LEVEL_UP' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-gray-500/20 text-text-secondary'
+                              }`}>
+                                {r.type?.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right font-mono text-green-400">+${Number(r.amount || 0).toFixed(2)}</td>
+                            <td className="p-3 text-text-secondary">{r.source || r.gameType || '-'}</td>
+                            <td className="p-3 text-text-secondary">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() + ' ' + new Date(r.createdAt).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '-'}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                r.status === 'CREDITED' ? 'bg-green-500/20 text-green-400' :
+                                r.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-gray-500/20 text-text-secondary'
+                              }`}>
+                                {r.status || 'CREDITED'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -434,6 +546,23 @@ export default function AdminUsersPage() {
     setProcessingId(null);
   };
 
+  const handleDeleteUser = async (userId: string, username: string) => {
+    if (!confirm(`⚠️ Are you sure you want to PERMANENTLY DELETE user "${username}"?\n\nThis will delete ALL their data including:\n- Wallet & balance\n- All transactions\n- All bets & game history\n- All sessions\n\nThis action CANNOT be undone!`)) return;
+    if (!confirm(`FINAL CONFIRMATION: Delete "${username}" permanently?`)) return;
+    setProcessingId(userId);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || `Failed to delete user`);
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      alert(`✅ ${data.message}`);
+    } catch (err: any) { alert(`❌ ${err.message}`); }
+    setProcessingId(null);
+  };
+
+
   const handleBulkAction = async (action: "approve" | "ban" | "unban") => {
     const selected = filteredUsers.filter(u => selectedIds.has(u.id));
     if (!selected.length) return;
@@ -463,13 +592,18 @@ export default function AdminUsersPage() {
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
-  const getBalance = (u: User) => u.wallets?.[0] ? parseFloat(u.wallets[0].balance) : 0;
+  const getBalance = (u: User) => { const w = u.wallets?.find(w => w.currency === 'USDT') || u.wallets?.[0]; return w ? parseFloat(w.balance) : 0; };
+  const getBonus = (u: User) => { const w = u.wallets?.find(w => w.currency === 'USDT') || u.wallets?.[0]; return w && w.bonusBalance ? parseFloat(w.bonusBalance) : 0; };
+  const getDeposits = (u: User) => { return u.stats?.deposits || 0; };
+  const getRealBalance = (u: User) => { const w = u.wallets?.find(w => w.currency === "USDT") || u.wallets?.[0]; return w && (w as any).realBalance ? parseFloat((w as any).realBalance) : 0; };
 
   const filteredUsers = users
     .filter(u => {
+      // Hide root/admin users from the regular user list
+      if (u.role === 'ADMIN') return false;
       const matchSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = filterStatus === "ALL" || u.status === filterStatus;
-      const matchBot = showBots ? true : !u.isBot;
+      const matchBot = showBots ? true : (!u.isBot || u.status === 'PENDING_APPROVAL');
       return matchSearch && matchStatus && matchBot;
     })
     .sort((a, b) => {
@@ -586,40 +720,40 @@ export default function AdminUsersPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+        <div className="bg-bg-card border border-white/10 rounded-lg p-4">
           <div className="text-text-secondary text-xs mb-1">Real Players</div>
           <div className="text-2xl font-bold text-white">{realUsers.filter(u => u.role !== 'ADMIN').length}</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+        <div className="bg-bg-card border border-white/10 rounded-lg p-4">
           <div className="text-text-secondary text-xs mb-1">Active</div>
           <div className="text-2xl font-bold text-green-400">{realUsers.filter(u => u.status === "ACTIVE").length}</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+        <div className="bg-bg-card border border-white/10 rounded-lg p-4">
           <div className="text-text-secondary text-xs mb-1">Total Wagered</div>
           <div className="text-2xl font-bold text-blue-400">{fmtCurrency(totalRealWagered)}</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+        <div className="bg-bg-card border border-white/10 rounded-lg p-4">
           <div className="text-text-secondary text-xs mb-1">Total Deposits</div>
           <div className="text-2xl font-bold text-emerald-400">{fmtCurrency(totalRealDeposits)}</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+        <div className="bg-bg-card border border-white/10 rounded-lg p-4">
           <div className="text-text-secondary text-xs mb-1">House Profit</div>
           <div className={`text-2xl font-bold ${totalRealProfit <= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {fmtCurrency(Math.abs(totalRealProfit))}
           </div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+        <div className="bg-bg-card border border-white/10 rounded-lg p-4">
           <div className="text-text-secondary text-xs mb-1">Pending</div>
           <div className="text-2xl font-bold text-yellow-400">{pendingCount}</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-4">
+      <div className="bg-bg-card border border-white/10 rounded-lg p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <input type="text" placeholder="Search by username or email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-2 pl-10 text-white focus:border-[#1475e1] focus:outline-none" />
+              className="w-full bg-bg-main border border-white/10 rounded-lg px-4 py-2 pl-10 text-white focus:border-accent-primary focus:outline-none" />
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -628,7 +762,7 @@ export default function AdminUsersPage() {
             {["ALL", "PENDING_APPROVAL", "ACTIVE", "BANNED"].map(s => (
               <button key={s} onClick={() => setFilterStatus(s)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filterStatus === s ? "bg-[#1475e1] text-white" : "bg-[#0f212e] text-text-secondary hover:text-white"
+                  filterStatus === s ? "bg-accent-primary text-white" : "bg-bg-main text-text-secondary hover:text-white"
                 }`}>
                 {s === "PENDING_APPROVAL" ? "Pending" : s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
               </button>
@@ -644,11 +778,11 @@ export default function AdminUsersPage() {
 
       {/* Bulk Actions Bar */}
       {selectedIds.size > 0 && (
-        <div className="bg-[#1a2c38] border border-[#1475e1]/50 rounded-lg p-4">
+        <div className="bg-bg-card border border-accent-primary/50 rounded-lg p-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1475e1]/20 flex items-center justify-center">
-                <span className="text-lg font-bold text-[#1475e1]">{selectedIds.size}</span>
+              <div className="w-10 h-10 rounded-full bg-accent-primary/20 flex items-center justify-center">
+                <span className="text-lg font-bold text-accent-primary">{selectedIds.size}</span>
               </div>
               <div>
                 <p className="font-semibold text-white">{selectedIds.size} user{selectedIds.size > 1 ? 's' : ''} selected</p>
@@ -670,10 +804,10 @@ export default function AdminUsersPage() {
             <div className="mt-3">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-text-secondary">Processing {bulkProgress.action}... {bulkProgress.current}/{bulkProgress.total}</span>
-                <span className="text-[#1475e1] font-medium">{Math.round((bulkProgress.current / bulkProgress.total) * 100)}%</span>
+                <span className="text-accent-primary font-medium">{Math.round((bulkProgress.current / bulkProgress.total) * 100)}%</span>
               </div>
-              <div className="w-full bg-[#0f212e] rounded-full h-2 overflow-hidden">
-                <div className="bg-[#1475e1] h-2 rounded-full transition-all duration-300" style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }} />
+              <div className="w-full bg-bg-main rounded-full h-2 overflow-hidden">
+                <div className="bg-accent-primary h-2 rounded-full transition-all duration-300" style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }} />
               </div>
             </div>
           )}
@@ -681,55 +815,59 @@ export default function AdminUsersPage() {
       )}
 
       {/* Users Table */}
-      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg overflow-hidden">
+      <div className="bg-bg-card border border-white/10 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-[#0f212e]">
+            <thead className="bg-bg-main">
               <tr>
                 <th className="px-3 py-3 text-left w-10">
                   <input type="checkbox" checked={isAllSelected}
                     ref={el => { if (el) el.indeterminate = isSomeSelected && !isAllSelected; }}
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-white/30 bg-transparent text-[#1475e1] focus:ring-[#1475e1] cursor-pointer" />
+                    className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-accent-primary cursor-pointer" />
                 </th>
                 <SortHeader field="username" label="User" />
                 <th className="py-3 px-3 text-left text-sm font-medium text-text-secondary">Status</th>
+                <th className="py-3 px-3 text-right text-sm font-medium text-emerald-400">Deposits</th>
+                <th className="py-3 px-3 text-right text-sm font-medium text-yellow-400">Bonus</th>
                 <SortHeader field="balance" label="Balance" align="right" />
+                <th className="py-3 px-3 text-right text-sm font-medium text-cyan-400">Real Balance</th>
                 <SortHeader field="wagered" label="Wagered" align="right" />
                 <SortHeader field="profit" label="P&L (House)" align="right" />
-                <SortHeader field="deposits" label="Deposits" align="right" />
                 <SortHeader field="bets" label="Bets" align="right" />
                 <SortHeader field="vip" label="VIP" align="right" />
                 <SortHeader field="created" label="Joined" />
                 <th className="py-3 px-3 text-right text-sm font-medium text-text-secondary">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2f4553]/50">
+            <tbody className="divide-y divide-white/10/50">
               {filteredUsers.map(u => {
                 const sel = selectedIds.has(u.id);
                 const balance = getBalance(u);
                 const houseProfit = -(u.stats?.profit || 0); // Negate: player loss = house profit
                 return (
-                  <tr key={u.id} className={`hover:bg-[#0f212e]/50 transition-colors ${u.isBot ? 'opacity-60' : ''} ${u.status === "PENDING_APPROVAL" ? "bg-yellow-500/5" : ""} ${sel ? "bg-[#1475e1]/10" : ""}`}>
+                  <tr key={u.id} className={`hover:bg-bg-main/50 transition-colors ${u.isBot ? 'opacity-60' : ''} ${u.status === "PENDING_APPROVAL" ? "bg-yellow-500/5" : ""} ${sel ? "bg-accent-primary/10" : ""}`}>
                     <td className="px-3 py-3">
                       {u.role !== "ADMIN" ? (
                         <input type="checkbox" checked={sel} onChange={() => toggleSelect(u.id)}
-                          className="w-4 h-4 rounded border-white/30 bg-transparent text-[#1475e1] focus:ring-[#1475e1] cursor-pointer" />
+                          className="w-4 h-4 rounded border-white/30 bg-transparent text-accent-primary focus:ring-accent-primary cursor-pointer" />
                       ) : <div className="w-4 h-4" />}
                     </td>
                     <td className="px-3 py-3">
-                      <button onClick={() => setDetailUserId(u.id)} className="text-left hover:text-[#1475e1] transition-colors">
+                      <button onClick={() => setDetailUserId(u.id)} className="text-left hover:text-accent-primary transition-colors">
                         <div className="font-medium text-white">{u.username} {u.isBot && <span className="text-purple-400 text-xs">(BOT)</span>}</div>
                         <div className="text-xs text-text-secondary">{u.email}</div>
                       </button>
                     </td>
                     <td className="px-3 py-3">{statusBadge(u.status)}</td>
+                    <td className="px-3 py-3 text-right font-medium text-emerald-400">${getDeposits(u).toFixed(2)}</td>
+                    <td className="px-3 py-3 text-right font-medium text-yellow-400">${getBonus(u).toFixed(2)}</td>
                     <td className="px-3 py-3 text-right font-medium text-white">${balance.toFixed(2)}</td>
+                    <td className="px-3 py-3 text-right font-medium text-cyan-400">${getRealBalance(u).toFixed(2)}</td>
                     <td className="px-3 py-3 text-right text-blue-400 font-medium">{fmtCurrency(u.stats?.totalWagered || 0)}</td>
                     <td className={`px-3 py-3 text-right font-medium ${houseProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {houseProfit >= 0 ? '+' : ''}{fmtCurrency(houseProfit)}
                     </td>
-                    <td className="px-3 py-3 text-right text-emerald-400">{fmtCurrency(u.stats?.deposits || 0)}</td>
                     <td className="px-3 py-3 text-right text-text-secondary">{(u.stats?.totalBets || 0).toLocaleString()}</td>
                     <td className="px-3 py-3 text-right">
                       <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
@@ -742,7 +880,7 @@ export default function AdminUsersPage() {
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => setDetailUserId(u.id)}
-                          className="px-2 py-1 text-xs font-medium rounded bg-[#1475e1]/20 text-[#1475e1] hover:bg-[#1475e1]/30">
+                          className="px-2 py-1 text-xs font-medium rounded bg-accent-primary/20 text-accent-primary hover:bg-accent-primary/30">
                           View
                         </button>
                         {u.status === "PENDING_APPROVAL" && (
@@ -764,6 +902,12 @@ export default function AdminUsersPage() {
                             </button>
                           )
                         )}
+                        {u.role !== "ADMIN" && user?.email === "marketedgepros@gmail.com" && (
+                          <button onClick={() => handleDeleteUser(u.id, u.username)} disabled={processingId === u.id}
+                            className="px-2 py-1 text-xs font-medium rounded bg-red-600/30 text-red-300 hover:bg-red-600/50 disabled:opacity-50 border border-red-500/30">
+                            {processingId === u.id ? "..." : "Delete"}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -775,7 +919,7 @@ export default function AdminUsersPage() {
         {filteredUsers.length === 0 && (
           <div className="p-8 text-center text-text-secondary">No users found matching your criteria</div>
         )}
-        <div className="px-4 py-3 bg-[#0f212e] border-t border-[#2f4553] text-sm text-text-secondary">
+        <div className="px-4 py-3 bg-bg-main border-t border-white/10 text-sm text-text-secondary">
           Showing {filteredUsers.length} of {users.length} users {!showBots && `(${users.filter(u => u.isBot).length} bots hidden)`}
         </div>
       </div>

@@ -2,12 +2,10 @@
  * ============================================
  * BRANDING CONTEXT - Dynamic Theme Engine
  * ============================================
- * Fetches SiteConfiguration from the backend based on the
- * current domain, and injects CSS variables + brand assets
- * dynamically into the page.
- *
- * Uses localStorage caching so the correct brand name shows
- * instantly on repeat visits (no flash of wrong name).
+ * Receives initial SiteConfiguration from the Server Component
+ * (layout.tsx) via the `initialConfig` prop, so the first paint
+ * already has the correct brand.  Then silently refreshes from
+ * the API on the client to keep the cache warm.
  *
  * Usage:
  *   const { branding, isLoading } = useBranding();
@@ -42,7 +40,7 @@ export interface BrandConfig {
 // Default brand config (fallback if no brand is resolved)
 const DEFAULT_BRAND: BrandConfig = {
   id: 'default',
-  brandName: '',
+  brandName: 'Casino',
   domain: 'localhost',
   logoUrl: null,
   faviconUrl: null,
@@ -57,7 +55,7 @@ const DEFAULT_BRAND: BrandConfig = {
   loginBgUrl: null,
   gameAssets: null,
   locale: 'en',
-  supportEmail: 'support@stakepro.com',
+  supportEmail: 'support@localhost',
 };
 
 const CACHE_KEY = 'stek_brand_cache';
@@ -112,7 +110,8 @@ const BrandingContext = createContext<BrandingContextType>({
 });
 
 /**
- * Inject CSS variables into the document root based on brand config
+ * Inject CSS variables into the document root based on brand config.
+ * Called on the client after hydration to keep DOM in sync.
  */
 function injectCSSVariables(brand: BrandConfig) {
   const root = document.documentElement;
@@ -142,32 +141,36 @@ function injectCSSVariables(brand: BrandConfig) {
 
   // Update favicon if provided
   if (brand.faviconUrl) {
-    const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     if (favicon) {
       favicon.href = brand.faviconUrl;
+    } else {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      favicon.href = brand.faviconUrl;
+      document.head.appendChild(favicon);
     }
-  }
-
-  // Update page title
-  if (brand.brandName) {
-    document.title = `${brand.brandName} - Crypto Casino`;
   }
 }
 
 interface BrandingProviderProps {
   children: ReactNode;
+  /** SSR-provided initial config from layout.tsx — eliminates FOUC */
+  initialConfig?: BrandConfig;
 }
 
-export function BrandingProvider({ children }: BrandingProviderProps) {
-  // Initialize from cache if available — this prevents the flash
+export function BrandingProvider({ children, initialConfig }: BrandingProviderProps) {
+  // Priority: SSR initialConfig > localStorage cache > DEFAULT_BRAND
   const cached = getCachedBrand();
-  const [branding, setBranding] = useState<BrandConfig>(cached || DEFAULT_BRAND);
-  const [isLoading, setIsLoading] = useState(!cached); // Not loading if we have cache
+  const initial = initialConfig || cached || DEFAULT_BRAND;
+
+  const [branding, setBranding] = useState<BrandConfig>(initial);
+  const [isLoading, setIsLoading] = useState(!initialConfig && !cached);
   const [error, setError] = useState<string | null>(null);
 
   const fetchBranding = async () => {
     try {
-      if (!cached) setIsLoading(true);
+      if (!initialConfig && !cached) setIsLoading(true);
       setError(null);
 
       // Get current domain
@@ -197,22 +200,22 @@ export function BrandingProvider({ children }: BrandingProviderProps) {
           injectCSSVariables(data);
           cacheBrand(data); // Cache for next visit
         } else {
-          // No brand found for this domain — this is the main StakePro site
-          const mainSiteBrand = { ...DEFAULT_BRAND, brandName: 'StakePro', domain: currentDomain };
-          setBranding(mainSiteBrand);
-          injectCSSVariables(mainSiteBrand);
-          cacheBrand(mainSiteBrand);
+          // No brand found — use initialConfig or defaults
+          const fallback = { ...DEFAULT_BRAND, brandName: initial.brandName || 'Casino', domain: currentDomain };
+          setBranding(fallback);
+          injectCSSVariables(fallback);
+          cacheBrand(fallback);
         }
       } else {
-        // API error — if we have cache, keep using it; otherwise use defaults
-        if (!cached) {
+        // API error — if we have initial/cache, keep using it; otherwise use defaults
+        if (!initialConfig && !cached) {
           injectCSSVariables(DEFAULT_BRAND);
         }
       }
     } catch (err) {
       console.warn('Failed to fetch branding config, using defaults:', err);
       setError('Failed to load brand configuration');
-      if (!cached) {
+      if (!initialConfig && !cached) {
         injectCSSVariables(DEFAULT_BRAND);
       }
     } finally {
@@ -221,8 +224,11 @@ export function BrandingProvider({ children }: BrandingProviderProps) {
   };
 
   useEffect(() => {
-    // If we have cache, inject CSS immediately
-    if (cached) {
+    // If we have SSR config, inject CSS immediately on hydration
+    if (initialConfig) {
+      injectCSSVariables(initialConfig);
+      cacheBrand({ ...initialConfig, domain: window.location.hostname });
+    } else if (cached) {
       injectCSSVariables(cached);
     }
     // Always fetch fresh data (updates cache silently)

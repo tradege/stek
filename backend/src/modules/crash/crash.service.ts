@@ -1,3 +1,4 @@
+import { VaultService } from '../vault/vault.service';
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as crypto from 'crypto';
@@ -7,6 +8,7 @@ import { getGameConfig } from '../../common/helpers/game-tenant.helper';
 import { GameType } from '@prisma/client';
 import { GameConfigService } from './game-config.service';
 import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+import { RewardPoolService } from "../reward-pool/reward-pool.service";
 import { VipService } from '../vip/vip.service';
 
 
@@ -98,7 +100,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   private currentRound: GameRound | null = null;
   private gameNumber = 0;
   private masterServerSeed: string;
-  private defaultClientSeed = 'stakepro-public-seed';
+  private defaultClientSeed = 'betworkss-public-seed';
   private userClientSeeds: Map<string, string> = new Map();
   
   // Crash history
@@ -127,6 +129,8 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     private readonly gameConfig: GameConfigService,
     private readonly commissionProcessor: CommissionProcessorService,
     private readonly vipService: VipService,
+    private readonly rewardPoolService: RewardPoolService,
+    private readonly vaultService: VaultService,
   ) {
     this.masterServerSeed = crypto.randomBytes(32).toString('hex');
   }
@@ -134,12 +138,12 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   /**
    * Deduct balance from user's wallet
    */
-  private async deductBalance(userId: string, amount: Decimal, siteId: string = 'default-site-001'): Promise<boolean> {
+  private async deductBalance(userId: string, amount: Decimal, siteId: string = '1'): Promise<boolean> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const wallets = await tx.$queryRaw<any[]>`
           SELECT id, balance FROM "Wallet"
-          WHERE "userId" = ${userId} AND currency = 'USDT' AND "siteId" = ${siteId}
+          WHERE "userId" = ${userId} AND currency = 'USDT'
           FOR UPDATE
         `;
         if (!wallets || wallets.length === 0) {
@@ -158,13 +162,26 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           UPDATE "Wallet" 
           SET balance = balance - ${amountNum}::decimal,
               "updatedAt" = NOW()
-          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND "siteId" = ${siteId} AND balance >= ${amountNum}::decimal
+          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND balance >= ${amountNum}::decimal
         `;
         if (deducted === 0) {
           this.logger.warn(`Insufficient balance (atomic) for user ${userId}`);
           return false;
         }
         const newBalance = currentBalance.minus(amount);
+        // Create BET Transaction record for audit trail
+        await tx.transaction.create({
+          data: {
+            userId,
+            walletId: wallet.id,
+            type: 'BET' as any,
+            status: 'CONFIRMED',
+            amount: amount,
+            balanceBefore: currentBalance,
+            balanceAfter: newBalance,
+            metadata: { game: 'CRASH', siteId },
+          },
+        });
         this.logger.debug(`Deducted $${amount.toFixed(2)} from user ${userId}. New balance: $${newBalance.toFixed(2)}`);
         return true;
       });
@@ -177,12 +194,12 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
   /**
    * Add winnings to user's wallet
    */
-  private async addWinnings(userId: string, amount: Decimal, siteId: string = 'default-site-001'): Promise<boolean> {
+  private async addWinnings(userId: string, amount: Decimal, siteId: string = '1'): Promise<boolean> {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const wallets = await tx.$queryRaw<any[]>`
           SELECT id, balance FROM "Wallet"
-          WHERE "userId" = ${userId} AND currency = 'USDT' AND "siteId" = ${siteId}
+          WHERE "userId" = ${userId} AND currency = 'USDT'
           FOR UPDATE
         `;
         if (!wallets || wallets.length === 0) {
@@ -190,15 +207,29 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
           return false;
         }
         const wallet = wallets[0];
+        const balanceBefore = new Decimal(wallet.balance);
         // ATOMIC SQL: Single UPDATE to add winnings
         const amountNum = amount.toNumber();
         await tx.$executeRaw`
           UPDATE "Wallet" 
           SET balance = balance + ${amountNum}::decimal,
               "updatedAt" = NOW()
-          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency" AND "siteId" = ${siteId}
+          WHERE "userId" = ${userId} AND currency = 'USDT'::"Currency"
         `;
-        const newBalance = new Decimal(wallet.balance).plus(amount);
+        const newBalance = balanceBefore.plus(amount);
+        // Create WIN Transaction record for audit trail
+        await tx.transaction.create({
+          data: {
+            userId,
+            walletId: wallet.id,
+            type: 'WIN' as any,
+            status: 'CONFIRMED',
+            amount: amount,
+            balanceBefore: balanceBefore,
+            balanceAfter: newBalance,
+            metadata: { game: 'CRASH', siteId },
+          },
+        });
         this.logger.debug(`Added $${amount.toFixed(2)} to user ${userId}. New balance: $${newBalance.toFixed(2)}`);
         return true;
       });
@@ -324,7 +355,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     // Load house edge from DB (single source of truth)
     let dbHouseEdge: number | undefined;
     try {
-      const config = await getGameConfig(this.prisma, 'default-site-001', 'crash');
+      const config = await getGameConfig(this.prisma, '1', 'crash');
       dbHouseEdge = config.houseEdge;
       // Also update the in-memory config for consistency
       this.gameConfig.updateConfig({ houseEdge: dbHouseEdge });
@@ -455,7 +486,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
         if (betSlot === 1 && bet.status === 'ACTIVE') {
           bet.status = 'LOST';
           bet.profit = bet.amount.negated();
-          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint1, false, this.userSiteIds.get(parts[0]) || 'default-site-001');
+          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint1, false, this.userSiteIds.get(parts[0]) || '1');
         }
       }
       
@@ -477,7 +508,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
         if (betSlot === 2 && bet.status === 'ACTIVE') {
           bet.status = 'LOST';
           bet.profit = bet.amount.negated();
-          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint2, false, this.userSiteIds.get(parts[0]) || 'default-site-001');
+          this.saveBetToDatabase(parts[0], bet, this.currentRound.crashPoint2, false, this.userSiteIds.get(parts[0]) || '1');
         }
       }
       
@@ -571,7 +602,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     amount: Decimal | number | string,
     autoCashoutAt?: Decimal | number | string,
     slot?: number,
-    siteId: string = 'default-site-001',
+    siteId: string = '1',
     skin: string = 'classic'
   ): Promise<{ success: boolean; error?: string; bet?: CrashBet }> {
     if (!this.currentRound) {
@@ -703,7 +734,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     const payout = bet.amount.mul(cashoutMultiplier);
     const profit = payout.minus(bet.amount);
     
-    const winningsAdded = await this.addWinnings(userId, payout, this.userSiteIds.get(userId) || 'default-site-001');
+    const winningsAdded = await this.addWinnings(userId, payout, this.userSiteIds.get(userId) || '1');
     if (!winningsAdded) {
       this.logger.error(`Failed to add winnings for user ${userId}`);
     }
@@ -712,7 +743,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     bet.cashedOutAt = cashoutMultiplier;
     bet.profit = profit;
 
-    this.saveBetToDatabase(userId, bet, dragonCrashPoint, true, this.userSiteIds.get(userId) || 'default-site-001');
+    this.saveBetToDatabase(userId, bet, dragonCrashPoint, true, this.userSiteIds.get(userId) || '1');
     
     this.logger.log(`💸 User ${userId} cashed out Dragon ${cashoutSlot} at ${cashoutMultiplier.toFixed(2)}x - Payout: $${payout.toFixed(2)}`);
     
@@ -816,7 +847,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     betId: string,
     amount: number,
     targetCashout: number,
-    siteId: string = 'default-site-001',
+    siteId: string = '1',
     skin: string = 'classic'
   ): Promise<void> {
     try {
@@ -858,7 +889,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     multiplier: number,
     profit: number,
     amount: number,
-    siteId: string = 'default-site-001'
+    siteId: string = '1'
   ): Promise<void> {
     try {
       // Find the most recent unsettled bot bet for this user
@@ -919,6 +950,8 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
       // 3. Process rakeback (betAmount × houseEdge × VIP rate)
       const houseEdge = this.gameConfig.houseEdge;
       await this.vipService.processRakeback(userId, betAmount, houseEdge);
+      // Contribute to reward pool
+      await this.rewardPoolService.contributeToPool(userId, null, betAmount, houseEdge, "CRASH");
 
       // 4. Trigger affiliate commission (RevShare based on net loss)
       await this.commissionProcessor.processCommission(
@@ -940,7 +973,7 @@ export class CrashService implements OnModuleInit, OnModuleDestroy {
     bet: CrashBet,
     crashPoint: Decimal,
     isWin: boolean,
-    siteId: string = 'default-site-001'
+    siteId: string = '1'
   ): Promise<void> {
     const betAmount = bet.amount.toNumber();
     const payout = isWin ? bet.amount.mul(bet.cashedOutAt || 0).toNumber() : 0;

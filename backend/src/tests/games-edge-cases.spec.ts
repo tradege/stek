@@ -18,6 +18,8 @@ import { MinesService } from '../modules/mines/mines.service';
 import { PlinkoService } from '../modules/plinko/plinko.service';
 import { OlympusService } from '../modules/olympus/olympus.service';
 import { BadRequestException } from '@nestjs/common';
+import { RewardPoolService } from '../modules/reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../modules/affiliate/commission-processor.service';
 
 // Mock Date.now for rate limiting control
 let mockTime = 1000000;
@@ -43,6 +45,25 @@ function createMockPrisma(balance = 999999) {
         wallet: { update: jest.fn().mockResolvedValue({}) },
         bet: { create: jest.fn().mockResolvedValue({}) },
         transaction: { create: jest.fn().mockResolvedValue({}) },
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
       });
     }),
     bet: {
@@ -54,17 +75,45 @@ function createMockPrisma(balance = 999999) {
     riskLimit: {
       findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
     },
+    serverSeed: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'seed-1',
+        userId: 'test-user',
+        seed: 'a'.repeat(64),
+        seedHash: 'b'.repeat(64),
+        isActive: true,
+        nonce: 0,
+      }),
+      create: jest.fn().mockResolvedValue({
+        id: 'seed-1',
+        userId: 'test-user',
+        seed: 'a'.repeat(64),
+        seedHash: 'b'.repeat(64),
+        isActive: true,
+        nonce: 0,
+      }),
+      update: jest.fn().mockResolvedValue({ nonce: 1 }),
+    },
   };
 }
 
 // ============================================
 // DICE EDGE CASES
 // ============================================
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
 describe('Dice Edge Cases', () => {
   let service: DiceService;
 
   beforeEach(() => {
-    service = new DiceService(createMockPrisma() as any);
+    service = new DiceService(createMockPrisma() as any, mockVipService as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
   });
 
   describe('Invalid Bet Amounts', () => {
@@ -165,14 +214,14 @@ describe('Dice Edge Cases', () => {
 
   describe('Insufficient Balance', () => {
     it('should reject bet when balance is 0', async () => {
-      const poorService = new DiceService(createMockPrisma(0) as any);
+      const poorService = new DiceService(createMockPrisma(0) as any, mockVipService as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
       await expect(
         poorService.play('poor-user', { betAmount: 1, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
     });
 
     it('should reject bet exceeding balance', async () => {
-      const poorService = new DiceService(createMockPrisma(5) as any);
+      const poorService = new DiceService(createMockPrisma(5) as any, mockVipService as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
       await expect(
         poorService.play('poor-user-2', { betAmount: 10, target: 50, condition: 'UNDER' }, 'default-site-001'),
       ).rejects.toThrow();
@@ -206,7 +255,7 @@ describe('Mines Edge Cases', () => {
   let service: MinesService;
 
   beforeEach(() => {
-    service = new MinesService(createMockPrisma() as any);
+    service = new MinesService(createMockPrisma() as any, mockVipService as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
   });
 
   describe('Invalid Bet Amounts', () => {
@@ -340,7 +389,7 @@ describe('Plinko Edge Cases', () => {
   let service: PlinkoService;
 
   beforeEach(() => {
-    service = new PlinkoService(createMockPrisma() as any);
+    service = new PlinkoService(createMockPrisma() as any, mockVipService as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
   });
 
   describe('Invalid Bet Amounts', () => {
@@ -438,7 +487,7 @@ describe('Olympus Edge Cases', () => {
   let service: OlympusService;
 
   beforeEach(() => {
-    service = new OlympusService(createMockPrisma() as any);
+    service = new OlympusService(createMockPrisma() as any, { updateUserStats: jest.fn().mockResolvedValue(undefined), checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false }), processRakeback: jest.fn().mockResolvedValue(undefined) } as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
     if ((service as any).freeSpinSessions) {
       (service as any).freeSpinSessions.clear();
     }
@@ -528,7 +577,7 @@ describe('Olympus Edge Cases', () => {
 
   describe('Insufficient Balance', () => {
     it('should reject spin when balance is 0', async () => {
-      const poorService = new OlympusService(createMockPrisma(0) as any);
+      const poorService = new OlympusService(createMockPrisma(0) as any, { updateUserStats: jest.fn().mockResolvedValue(undefined), checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false }), processRakeback: jest.fn().mockResolvedValue(undefined) } as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
       await expect(
         poorService.spin('poor-user', { betAmount: 1 }),
       ).rejects.toThrow();

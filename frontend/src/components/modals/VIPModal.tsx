@@ -170,7 +170,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
               {/* Decorative Elements */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
               <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent-primary/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-20 right-0 w-72 h-72 bg-[#1475e1]/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 right-0 w-72 h-72 bg-accent-primary/10 rounded-full blur-3xl pointer-events-none" />
 
               {/* Close Button */}
               <button
@@ -345,7 +345,7 @@ export default function VIPModal({ isOpen, onClose }: VIPModalProps) {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Tier 2</span>
-                            <span className="text-[#1475e1] font-medium">{tier.tier2Rate}</span>
+                            <span className="text-accent-primary font-medium">{tier.tier2Rate}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-500">Tier 3</span>

@@ -1023,7 +1023,7 @@ describe('Battalion 14 — Frontend Admin Logic', () => {
 
     describe('6G: Sidebar Branding', () => {
       it('displays brand name from context', () => {
-        expect(sidebarCode).toContain("branding?.brandName || 'StakePro'");
+        expect(sidebarCode).toContain("branding?.brandName || 'Betworkss'");
       });
 
       it('has admin logo with data-testid', () => {

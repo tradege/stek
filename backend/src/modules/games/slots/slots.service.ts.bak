@@ -1,0 +1,641 @@
+/**
+ * ============================================
+ * SLOTS SERVICE - Full System Integration
+ * ============================================
+ * Integrates all 4 slot game modes with:
+ * - Wallet (atomic transactions with FOR UPDATE locking)
+ * - VIP (stats, level up, rakeback)
+ * - Reward Pool (contribution)
+ * - Affiliate (commission)
+ * - Game Logs (bet records)
+ * - Provably Fair (seed management)
+ */
+import { CommissionProcessorService } from '../../affiliate/commission-processor.service';
+import { RewardPoolService } from '../../reward-pool/reward-pool.service';
+import { VipService } from '../../vip/vip.service';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { Decimal } from '@prisma/client/runtime/library';
+import * as crypto from 'crypto';
+
+import { ProvablyFairEngine, SlotSymbol } from './slot-engine.core';
+import { BonanzaMode } from './modes/bonanza.mode';
+import { BookMode } from './modes/book.mode';
+import { StarburstMode } from './modes/starburst.mode';
+import { BassMode } from './modes/bass.mode';
+
+// ============================================
+// CONSTANTS
+// ============================================
+const MIN_BET = 0.10;
+const MAX_BET = 1000;
+const HOUSE_EDGE = 0.04;
+
+type SlotGameType = 'BONANZA' | 'BOOK_OF_DEAD' | 'STARBURST' | 'BIG_BASS';
+
+// Map slot types to GameType enum values in Prisma
+const GAME_TYPE_MAP: Record<SlotGameType, string> = {
+  'BONANZA': 'EXTERNAL',
+  'BOOK_OF_DEAD': 'EXTERNAL',
+  'STARBURST': 'EXTERNAL',
+  'BIG_BASS': 'EXTERNAL',
+};
+
+// ============================================
+// DTOs
+// ============================================
+export interface SlotSpinDto {
+  betAmount: number;
+  currency?: string;
+  gameMode: SlotGameType;
+  riskLevel?: 'normal' | 'extreme'; // For BookMode
+}
+
+export interface SlotFreeSpinDto {
+  sessionId: string;
+}
+
+// ============================================
+// FREE SPIN SESSION
+// ============================================
+interface FreeSpinSession {
+  id: string;
+  userId: string;
+  gameMode: SlotGameType;
+  betAmount: number;
+  currency: string;
+  spinsRemaining: number;
+  totalSpins: number;
+  totalWin: number;
+  serverSeed: string;
+  clientSeed: string;
+  nonce: number;
+  // Mode-specific state
+  expandingSymbols?: SlotSymbol[];  // BookMode
+  riskLevel?: 'normal' | 'extreme'; // BookMode
+  cumulativeMultiplier?: number;     // BonanzaMode
+  quantumCharges?: number;           // StarburstMode
+  fishermanLevel?: number;           // BassMode
+  createdAt: Date;
+}
+
+// ============================================
+// STARBURST SESSION (for quantum wilds persistence)
+// ============================================
+interface StarburstSession {
+  userId: string;
+  quantumCharges: number;
+  lastUpdated: Date;
+}
+
+@Injectable()
+export class SlotsService {
+  private freeSpinSessions: Map<string, FreeSpinSession> = new Map();
+  private starburstSessions: Map<string, StarburstSession> = new Map();
+
+  // Game mode instances
+  private bonanzaMode: BonanzaMode;
+  private bookMode: BookMode;
+  private starburstMode: StarburstMode;
+  private bassMode: BassMode;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vipService: VipService,
+    private readonly rewardPoolService: RewardPoolService,
+    private readonly commissionProcessor: CommissionProcessorService,
+  ) {
+    this.bonanzaMode = new BonanzaMode();
+    this.bookMode = new BookMode();
+    this.starburstMode = new StarburstMode();
+    this.bassMode = new BassMode();
+  }
+
+  // ============================================
+  // MAIN SPIN ENDPOINT
+  // ============================================
+  async spin(userId: string, dto: SlotSpinDto, siteId: string = '1') {
+    const { betAmount, currency = 'USDT', gameMode, riskLevel = 'normal' } = dto;
+
+    // Validate bet
+    if (betAmount < MIN_BET || betAmount > MAX_BET) {
+      throw new BadRequestException(`Bet must be between $${MIN_BET} and $${MAX_BET}`);
+    }
+
+    // Check for active free spins
+    const activeSession = this.getActiveSession(userId, gameMode);
+    if (activeSession) {
+      throw new BadRequestException('You have active free spins. Complete them first.');
+    }
+
+    // Generate Provably Fair seeds
+    const serverSeed = ProvablyFairEngine.generateServerSeed();
+    const serverSeedHash = ProvablyFairEngine.hashServerSeed(serverSeed);
+    const clientSeed = ProvablyFairEngine.generateClientSeed();
+    const nonce = 0;
+
+    // Execute spin based on game mode
+    const mode = this.getGameMode(gameMode);
+    let options: any = {};
+
+    if (gameMode === 'STARBURST') {
+      const starburstSession = this.starburstSessions.get(userId);
+      options.quantumCharges = starburstSession?.quantumCharges || 0;
+    }
+
+    if (gameMode === 'BOOK_OF_DEAD') {
+      options.riskLevel = riskLevel;
+    }
+
+    const spinResult = mode.spin(serverSeed, clientSeed, nonce, betAmount, options);
+
+    // Cap total win
+    const totalWin = Math.min(spinResult.totalPayout, betAmount * 5000);
+    const profit = totalWin - betAmount;
+    const isWin = totalWin > 0;
+    const finalMultiplier = betAmount > 0 ? totalWin / betAmount : 0;
+
+    // Handle free spins trigger
+    let freeSpinSessionId: string | null = null;
+    if (spinResult.freeSpinsAwarded > 0) {
+      const session: FreeSpinSession = {
+        id: crypto.randomUUID(),
+        userId,
+        gameMode,
+        betAmount,
+        currency,
+        spinsRemaining: spinResult.freeSpinsAwarded,
+        totalSpins: spinResult.freeSpinsAwarded,
+        totalWin: 0,
+        serverSeed,
+        clientSeed,
+        nonce: 1,
+        createdAt: new Date(),
+      };
+
+      // Mode-specific state
+      if (gameMode === 'BOOK_OF_DEAD') {
+        const freeSpinFeature = spinResult.features.find(f => f.type === 'free_spins');
+        session.expandingSymbols = freeSpinFeature?.data?.expandingSymbols;
+        session.riskLevel = riskLevel;
+      }
+      if (gameMode === 'BONANZA') {
+        session.cumulativeMultiplier = 1;
+      }
+      if (gameMode === 'BIG_BASS') {
+        session.fishermanLevel = 1;
+      }
+
+      this.freeSpinSessions.set(session.id, session);
+      freeSpinSessionId = session.id;
+    }
+
+    // Handle Starburst quantum charges
+    if (gameMode === 'STARBURST' && spinResult.bonusData) {
+      this.starburstSessions.set(userId, {
+        userId,
+        quantumCharges: spinResult.bonusData.quantumCharges || 0,
+        lastUpdated: new Date(),
+      });
+
+      // Handle respin (recursive spin with sticky wilds)
+      if (spinResult.bonusData.triggerRespin) {
+        // The frontend will call a respin endpoint
+      }
+    }
+
+    // Atomic transaction: deduct bet, add winnings, save bet record
+    const betRecord = await this.prisma.$transaction(async (tx) => {
+      // Lock wallet
+      const lockedWallets = await tx.$queryRaw<any[]>`
+        SELECT id, balance FROM "Wallet"
+        WHERE "userId" = ${userId} AND currency = ${currency}::"Currency"
+        FOR UPDATE
+      `;
+
+      if (!lockedWallets || lockedWallets.length === 0) {
+        throw new BadRequestException('Wallet not found');
+      }
+
+      const wallet = lockedWallets[0];
+      const currentBalance = new Decimal(wallet.balance);
+
+      if (currentBalance.lessThan(betAmount)) {
+        throw new BadRequestException('Insufficient balance');
+      }
+
+      const newBalance = currentBalance.minus(betAmount).plus(totalWin);
+
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: newBalance.toNumber() },
+      });
+
+      // Create bet record
+      const bet = await tx.bet.create({
+        data: {
+          id: crypto.randomUUID(),
+          userId,
+          gameType: GAME_TYPE_MAP[gameMode] as any,
+          siteId,
+          currency: currency as any,
+          betAmount,
+          multiplier: finalMultiplier,
+          payout: totalWin,
+          profit,
+          serverSeed,
+          serverSeedHash,
+          clientSeed,
+          nonce,
+          isWin,
+          settledAt: new Date(),
+          gameData: ({
+            slotGame: gameMode,
+            grid: spinResult.grid,
+            features: spinResult.features,
+            totalWinMultiplier: spinResult.totalWinMultiplier,
+            freeSpinsAwarded: spinResult.freeSpinsAwarded,
+            freeSpinSessionId,
+          } as any),
+        },
+      });
+
+      return bet;
+    });
+
+    // Post-bet processing (fire-and-forget)
+    this.postBetProcessing(userId, betRecord.id, betAmount, totalWin, HOUSE_EDGE, siteId, gameMode);
+
+    return {
+      success: true,
+      game: gameMode,
+      grid: spinResult.grid,
+      wins: spinResult.wins,
+      features: spinResult.features,
+      totalWinMultiplier: spinResult.totalWinMultiplier,
+      totalPayout: totalWin,
+      profit,
+      isWin,
+      multiplier: finalMultiplier,
+      balance: undefined, // Will be fetched by frontend
+      freeSpins: freeSpinSessionId ? {
+        sessionId: freeSpinSessionId,
+        spinsRemaining: spinResult.freeSpinsAwarded,
+        totalSpins: spinResult.freeSpinsAwarded,
+      } : null,
+      bonusData: spinResult.bonusData,
+      provablyFair: {
+        serverSeedHash,
+        clientSeed,
+        nonce,
+      },
+    };
+  }
+
+  // ============================================
+  // FREE SPIN ENDPOINT
+  // ============================================
+  async freeSpin(userId: string, dto: SlotFreeSpinDto, siteId: string = '1') {
+    const session = this.freeSpinSessions.get(dto.sessionId);
+    if (!session) {
+      throw new NotFoundException('Free spin session not found or expired');
+    }
+    if (session.userId !== userId) {
+      throw new BadRequestException('This session does not belong to you');
+    }
+    if (session.spinsRemaining <= 0) {
+      throw new BadRequestException('No free spins remaining');
+    }
+
+    const mode = this.getGameMode(session.gameMode);
+    const nonce = session.nonce;
+    session.nonce++;
+    session.spinsRemaining--;
+
+    // Build mode-specific options
+    let options: any = { isFreeSpin: true };
+    if (session.gameMode === 'BOOK_OF_DEAD') {
+      options.expandingSymbols = session.expandingSymbols;
+      options.riskLevel = session.riskLevel;
+    }
+    if (session.gameMode === 'BONANZA') {
+      options.cumulativeMultiplier = session.cumulativeMultiplier || 1;
+    }
+    if (session.gameMode === 'BIG_BASS') {
+      options.fishermanLevel = session.fishermanLevel || 1;
+    }
+
+    const spinResult = mode.spin(
+      session.serverSeed, session.clientSeed, nonce, session.betAmount, options,
+    );
+
+    const totalWin = Math.min(spinResult.totalPayout, session.betAmount * 5000);
+    session.totalWin += totalWin;
+
+    // Handle retrigger
+    if (spinResult.freeSpinsAwarded > 0) {
+      session.spinsRemaining += spinResult.freeSpinsAwarded;
+      session.totalSpins += spinResult.freeSpinsAwarded;
+    }
+
+    // Update mode-specific state
+    if (session.gameMode === 'BONANZA') {
+      // Combo multiplier carries over between free spins
+      const comboFeature = spinResult.features.find(f => f.type === 'combo_multiplier');
+      if (comboFeature) {
+        session.cumulativeMultiplier = (session.cumulativeMultiplier || 1) + 1;
+      }
+    }
+    if (session.gameMode === 'BIG_BASS') {
+      // Fisherman can level up during free spins
+      const fishCollection = spinResult.features.find(f => f.data?.type === 'fish_collection');
+      if (fishCollection && fishCollection.data.fish.length >= 3) {
+        session.fishermanLevel = (session.fishermanLevel || 1) + 1;
+      }
+    }
+
+    // If last spin, settle the session
+    const isLastSpin = session.spinsRemaining <= 0;
+    if (isLastSpin) {
+      // Credit total free spin winnings
+      if (session.totalWin > 0) {
+        await this.prisma.$transaction(async (tx) => {
+          const lockedWallets = await tx.$queryRaw<any[]>`
+            SELECT id, balance FROM "Wallet"
+            WHERE "userId" = ${userId} AND currency = ${session.currency}::"Currency"
+            FOR UPDATE
+          `;
+
+          if (lockedWallets && lockedWallets.length > 0) {
+            const wallet = lockedWallets[0];
+            const newBalance = new Decimal(wallet.balance).plus(session.totalWin);
+            await tx.wallet.update({
+              where: { id: wallet.id },
+              data: { balance: newBalance.toNumber() },
+            });
+          }
+
+          // Create bet record for free spin session
+          await tx.bet.create({
+            data: {
+              id: crypto.randomUUID(),
+              userId,
+              gameType: GAME_TYPE_MAP[session.gameMode] as any,
+              siteId,
+              currency: session.currency as any,
+              betAmount: 0,
+              multiplier: session.betAmount > 0 ? session.totalWin / session.betAmount : 0,
+              payout: session.totalWin,
+              profit: session.totalWin,
+              serverSeed: session.serverSeed,
+              serverSeedHash: ProvablyFairEngine.hashServerSeed(session.serverSeed),
+              clientSeed: session.clientSeed,
+              nonce: session.nonce,
+              isWin: session.totalWin > 0,
+              settledAt: new Date(),
+              gameData: ({
+                slotGame: session.gameMode,
+                type: 'free_spin_session',
+                totalSpins: session.totalSpins,
+                totalWin: session.totalWin,
+              } as any),
+            },
+          });
+        });
+      }
+
+      this.freeSpinSessions.delete(dto.sessionId);
+    } else {
+      // Credit individual free spin win immediately
+      if (totalWin > 0) {
+        await this.prisma.$transaction(async (tx) => {
+          const lockedWallets = await tx.$queryRaw<any[]>`
+            SELECT id, balance FROM "Wallet"
+            WHERE "userId" = ${userId} AND currency = ${session.currency}::"Currency"
+            FOR UPDATE
+          `;
+
+          if (lockedWallets && lockedWallets.length > 0) {
+            const wallet = lockedWallets[0];
+            const newBalance = new Decimal(wallet.balance).plus(totalWin);
+            await tx.wallet.update({
+              where: { id: wallet.id },
+              data: { balance: newBalance.toNumber() },
+            });
+          }
+        });
+      }
+    }
+
+    return {
+      success: true,
+      game: session.gameMode,
+      grid: spinResult.grid,
+      wins: spinResult.wins,
+      features: spinResult.features,
+      totalWinMultiplier: spinResult.totalWinMultiplier,
+      totalPayout: totalWin,
+      isWin: totalWin > 0,
+      freeSpins: {
+        sessionId: dto.sessionId,
+        spinsRemaining: session.spinsRemaining,
+        totalSpins: session.totalSpins,
+        sessionTotalWin: session.totalWin,
+        isComplete: isLastSpin,
+      },
+      provablyFair: {
+        serverSeedHash: ProvablyFairEngine.hashServerSeed(session.serverSeed),
+        clientSeed: session.clientSeed,
+        nonce,
+      },
+    };
+  }
+
+  // ============================================
+  // STARBURST RESPIN ENDPOINT
+  // ============================================
+  async starburstRespin(userId: string, body: { stickyWilds: number[]; respinCount: number }, siteId: string = '1') {
+    // Generate new seeds for respin
+    const serverSeed = ProvablyFairEngine.generateServerSeed();
+    const clientSeed = ProvablyFairEngine.generateClientSeed();
+    const nonce = body.respinCount;
+
+    const starburstSession = this.starburstSessions.get(userId);
+    const quantumCharges = starburstSession?.quantumCharges || 0;
+
+    const spinResult = this.starburstMode.spin(serverSeed, clientSeed, nonce, 0, {
+      quantumCharges,
+      stickyWilds: body.stickyWilds,
+      respinCount: body.respinCount,
+    });
+
+    // Update quantum charges
+    if (spinResult.bonusData) {
+      this.starburstSessions.set(userId, {
+        userId,
+        quantumCharges: spinResult.bonusData.quantumCharges || 0,
+        lastUpdated: new Date(),
+      });
+    }
+
+    return {
+      success: true,
+      grid: spinResult.grid,
+      wins: spinResult.wins,
+      features: spinResult.features,
+      totalWinMultiplier: spinResult.totalWinMultiplier,
+      bonusData: spinResult.bonusData,
+    };
+  }
+
+  // ============================================
+  // GAME STATE
+  // ============================================
+  getState(userId: string, gameMode?: SlotGameType) {
+    const sessions: any[] = [];
+    for (const [id, session] of this.freeSpinSessions) {
+      if (session.userId === userId && (!gameMode || session.gameMode === gameMode)) {
+        sessions.push({
+          sessionId: id,
+          gameMode: session.gameMode,
+          spinsRemaining: session.spinsRemaining,
+          totalSpins: session.totalSpins,
+          totalWin: session.totalWin,
+          expandingSymbols: session.expandingSymbols,
+          cumulativeMultiplier: session.cumulativeMultiplier,
+          fishermanLevel: session.fishermanLevel,
+        });
+      }
+    }
+
+    const starburstSession = this.starburstSessions.get(userId);
+
+    return {
+      activeSessions: sessions,
+      starburst: starburstSession ? {
+        quantumCharges: starburstSession.quantumCharges,
+      } : null,
+    };
+  }
+
+  // ============================================
+  // PAYTABLE
+  // ============================================
+  getPaytable(gameMode: SlotGameType) {
+    const mode = this.getGameMode(gameMode);
+    return {
+      game: gameMode,
+      gridSize: `${mode.gridCols}x${mode.gridRows}`,
+      rtp: `${mode.rtp * 100}%`,
+      paytable: mode.getPaytable(),
+      symbolWeights: mode.getSymbolWeights(),
+    };
+  }
+
+  // ============================================
+  // VERIFY
+  // ============================================
+  verify(body: { serverSeed: string; clientSeed: string; nonce: number; gameMode: SlotGameType }) {
+    const mode = this.getGameMode(body.gameMode);
+    const result = mode.spin(body.serverSeed, body.clientSeed, body.nonce, 1);
+    return {
+      verified: true,
+      grid: result.grid,
+      wins: result.wins,
+      features: result.features,
+      totalWinMultiplier: result.totalWinMultiplier,
+    };
+  }
+
+  // ============================================
+  // BET HISTORY
+  // ============================================
+  async getHistory(userId: string, limit: number = 20) {
+    const bets = await this.prisma.bet.findMany({
+      where: {
+        userId,
+        gameType: 'EXTERNAL',
+        gameData: {
+          path: ['slotGame'],
+          not: undefined as any,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        betAmount: true,
+        multiplier: true,
+        payout: true,
+        profit: true,
+        isWin: true,
+        createdAt: true,
+        gameData: true,
+        serverSeedHash: true,
+        clientSeed: true,
+        nonce: true,
+      },
+    });
+
+    return { bets };
+  }
+
+  // ============================================
+  // PRIVATE HELPERS
+  // ============================================
+
+  private getGameMode(gameMode: SlotGameType) {
+    switch (gameMode) {
+      case 'BONANZA': return this.bonanzaMode;
+      case 'BOOK_OF_DEAD': return this.bookMode;
+      case 'STARBURST': return this.starburstMode;
+      case 'BIG_BASS': return this.bassMode;
+      default: throw new BadRequestException(`Unknown game mode: ${gameMode}`);
+    }
+  }
+
+  private getActiveSession(userId: string, gameMode: SlotGameType): FreeSpinSession | null {
+    for (const session of this.freeSpinSessions.values()) {
+      if (session.userId === userId && session.gameMode === gameMode && session.spinsRemaining > 0) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  private async postBetProcessing(
+    userId: string,
+    betId: string,
+    betAmount: number,
+    payout: number,
+    houseEdge: number,
+    siteId: string,
+    gameMode: SlotGameType,
+  ): Promise<void> {
+    try {
+      // 1. Update user stats (totalWagered + totalBets)
+      await this.vipService.updateUserStats(userId, betAmount);
+
+      // 2. Check VIP level up
+      await this.vipService.checkLevelUp(userId);
+
+      // 3. Process rakeback
+      await this.vipService.processRakeback(userId, betAmount, houseEdge);
+
+      // 4. Contribute to reward pool
+      await this.rewardPoolService.contributeToPool(userId, betId, betAmount, houseEdge, gameMode);
+
+      // 5. Process affiliate commission
+      await this.commissionProcessor.processCommission(
+        betId,
+        userId,
+        betAmount,
+        payout,
+        'EXTERNAL' as any,
+        siteId,
+      );
+    } catch (error) {
+      console.error('Slots post-bet processing error:', error?.message);
+    }
+  }
+}

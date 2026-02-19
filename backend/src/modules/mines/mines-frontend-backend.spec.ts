@@ -16,6 +16,9 @@
 
 import { MinesService } from './mines.service';
 import { BadRequestException } from '@nestjs/common';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 // Mock Date.now to bypass rate limiting
 let mockTime = 1000000;
@@ -29,6 +32,24 @@ beforeAll(() => {
 afterAll(() => {
   Date.now = originalDateNow;
 });
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
+
+const mockRewardPoolService = {
+  contributeToPool: jest.fn().mockResolvedValue(undefined),
+} as any;
+
+const mockCommissionProcessor = {
+  processCommission: jest.fn().mockResolvedValue(undefined),
+} as any;
 
 describe('Mines Frontend-Backend Consistency', () => {
   let service: MinesService;
@@ -49,9 +70,34 @@ describe('Mines Frontend-Backend Consistency', () => {
       bet: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
+      siteConfiguration: {
+        findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { mines: 0.03 } }),
+      },
+      riskLimit: {
+        findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
+      },
     };
 
-    service = new MinesService(mockPrisma);
+    service = new MinesService(mockPrisma, mockVipService as any, mockRewardPoolService, mockCommissionProcessor);
     // Clear all active games between tests
     const activeGames = (service as any).constructor.prototype.getActiveGame ? null : null;
     // Use reflection to clear the module-level activeGames map
@@ -136,12 +182,12 @@ describe('Mines Frontend-Backend Consistency', () => {
   // SECTION 2: Multiplier Formula Consistency
   // ============================================
   describe('Multiplier Formula Consistency', () => {
-    it('should calculate multiplier as (0.96 / probability) * 0.99 floored to 4 decimals', () => {
+    it('should calculate multiplier as (0.96 / probability) floored to 4 decimals', () => {
       // For 5 mines, revealing 1 tile:
       // P = 20/25 = 0.8
-      // Multiplier = (0.96 / 0.8) * 0.99 = 1.188
+      // Multiplier = 0.96 / 0.8 = 1.2
       const multiplier = service.calculateMultiplier(5, 1);
-      expect(multiplier).toBe(Math.floor(1.2 * 0.99 * 10000) / 10000);
+      expect(multiplier).toBe(Math.floor((0.96 / 0.8) * 10000) / 10000);
     });
 
     it('should have multiplier = 1 for 0 reveals', () => {
@@ -176,7 +222,7 @@ describe('Mines Frontend-Backend Consistency', () => {
       for (let mineCount = 1; mineCount <= 24; mineCount++) {
         const safeTiles = 25 - mineCount;
         const probability = safeTiles / 25;
-        const expected = Math.floor((0.96 / probability) * 0.99 * 10000) / 10000;
+        const expected = Math.floor((0.96 / probability) * 10000) / 10000;
         const actual = service.calculateMultiplier(mineCount, 1);
         expect(actual).toBe(expected);
       }
@@ -192,7 +238,7 @@ describe('Mines Frontend-Backend Consistency', () => {
       let probability = 1;
       for (let reveals = 1; reveals <= 5; reveals++) {
         probability *= (safeTiles - reveals + 1) / (25 - reveals + 1);
-        const expected = Math.floor((0.96 / probability) * 0.99 * 10000) / 10000;
+        const expected = Math.floor((0.96 / probability) * 10000) / 10000;
         const actual = service.calculateMultiplier(mineCount, reveals);
         expect(actual).toBe(expected);
       }
@@ -276,19 +322,30 @@ describe('Mines Frontend-Backend Consistency', () => {
       expect(result.serverSeedHash.length).toBe(64);
     });
 
-    it('should have unique serverSeedHash for each game', async () => {
-      const hashes = new Set<string>();
-
+    it('should increment nonce for each game (persistent seed model)', async () => {
+      let nonceCounter = 0;
+      mockPrisma.serverSeed.update.mockImplementation(async () => {
+        nonceCounter++;
+        return { nonce: nonceCounter };
+      });
+      mockPrisma.serverSeed.findFirst.mockImplementation(async () => ({
+        id: 'seed-1',
+        userId: 'test-user',
+        seed: 'a'.repeat(64),
+        seedHash: 'b'.repeat(64),
+        isActive: true,
+        nonce: nonceCounter,
+      }));
+      const nonces = new Set<number>();
       for (let i = 0; i < 10; i++) {
         const userId = `mines-hash-test-${i}`;
         const result = await service.startGame(userId, {
           betAmount: 10,
           mineCount: 5,
         });
-        hashes.add(result.serverSeedHash);
+        nonces.add(result.nonce);
       }
-
-      expect(hashes.size).toBe(10);
+      expect(nonces.size).toBe(10);
     });
   });
 

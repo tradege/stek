@@ -3,243 +3,175 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AdminFinanceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async getFinanceStats() {
-    // ==========================================
-    // 1. EXTERNAL GAMES - Per Provider (GameSession table)
-    // Each provider has its own feePercentage from DB
-    // ==========================================
-    const providers = await this.prisma.gameProvider.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        feePercentage: true,
+  async getFinancialStats(startDate?: string, endDate?: string) {
+    const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
+    const end = endDate ? new Date(endDate) : new Date();
+
+    const where: any = {
+      createdAt: {
+        gte: start,
+        lte: end,
       },
-    });
+    };
 
-    // Get all completed game sessions with provider info
-    const sessions = await this.prisma.gameSession.findMany({
-      where: {
-        status: 'COMPLETED',
-      },
-      include: {
-        game: {
-          select: {
-            providerId: true,
-          },
-        },
-      },
-    });
-
-    // Calculate per-provider stats
-    let totalExternalBets = 0;
-    let totalExternalWins = 0;
-    let totalProviderFees = 0;
-
-    const providerBreakdown = providers
-      .filter((p) => p.slug !== 'internal') // Skip internal provider
-      .map((provider) => {
-        const providerSessions = sessions.filter(
-          (s) => s.game?.providerId === provider.id,
-        );
-
-        const bets = providerSessions.reduce((sum, session) => {
-          return sum + parseFloat(session.totalBet?.toString() || '0');
-        }, 0);
-
-        const wins = providerSessions.reduce((sum, session) => {
-          return sum + parseFloat(session.totalWin?.toString() || '0');
-        }, 0);
-
-        const ggr = bets - wins;
-        // Fee is only on POSITIVE GGR (when house wins)
-        // If players won more than they bet, provider doesn't charge you
-        const fee = Math.max(0, ggr * (provider.feePercentage / 100));
-        const netProfit = ggr - fee;
-
-        totalExternalBets += bets;
-        totalExternalWins += wins;
-        totalProviderFees += fee;
-
-        return {
-          providerId: provider.id,
-          providerName: provider.name,
-          providerSlug: provider.slug,
-          feePercentage: provider.feePercentage,
-          bets: parseFloat(bets.toFixed(2)),
-          wins: parseFloat(wins.toFixed(2)),
-          ggr: parseFloat(ggr.toFixed(2)),
-          providerFee: parseFloat(fee.toFixed(2)),
-          netProfit: parseFloat(netProfit.toFixed(2)),
-        };
-      });
-
-    const externalGGR = totalExternalBets - totalExternalWins;
-
-    // ==========================================
-    // 2. INTERNAL GAMES - Crash & Plinko (Bet table)
-    // Only count REAL users (not bots)
-    // NO provider fee - 100% yours
-    // ==========================================
+    // 1. Total Wagered & Payout (Internal Games from Bet table)
     const internalBets = await this.prisma.bet.aggregate({
       _sum: {
         betAmount: true,
         payout: true,
       },
       where: {
-        user: {
-          isBot: false,
-        },
+        ...where,
+        user: { isBot: false },
       },
     });
 
-    const internalBetTotal = parseFloat(
-      internalBets._sum.betAmount?.toString() || '0',
-    );
-    const internalPayoutTotal = parseFloat(
-      internalBets._sum.payout?.toString() || '0',
-    );
-    const internalGGR = internalBetTotal - internalPayoutTotal;
+    const totalWagered = parseFloat(internalBets._sum.betAmount?.toString() || '0');
+    const totalPayout = parseFloat(internalBets._sum.payout?.toString() || '0');
+    const ggr = totalWagered - totalPayout;
 
-    // ==========================================
-    // 3. COMBINED TOTALS
-    // ==========================================
-    const totalBets = totalExternalBets + internalBetTotal;
-    const totalWins = totalExternalWins + internalPayoutTotal;
-    const totalGGR = totalBets - totalWins;
+    // 2. Affiliate Costs
+    const affiliateCommissions = await this.prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: {
+        type: 'COMMISSION',
+        status: 'CONFIRMED',
+        createdAt: { gte: start, lte: end },
+      },
+    });
+    const affiliateCost = parseFloat(affiliateCommissions._sum.amount?.toString() || '0');
 
-    // Net Profit = Total GGR - All Provider Fees
-    const netProfit = totalGGR - totalProviderFees;
+    // 3. Bonus Costs
+    const bonusTransactions = await this.prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: {
+        type: 'RAIN_RECEIVED',
+        status: 'CONFIRMED',
+        createdAt: { gte: start, lte: end },
+      },
+    });
+    const bonusCost = parseFloat(bonusTransactions._sum.amount?.toString() || '0');
 
-    // House Edge = GGR / Total Bets
-    const houseEdge = totalBets > 0 ? (totalGGR / totalBets) * 100 : 0;
+    // 4. Net Profit (NGR)
+    const ngr = ggr - affiliateCost - bonusCost;
 
-    // RTP = Return to Player
-    const rtp = totalBets > 0 ? (totalWins / totalBets) * 100 : 0;
+    // 5. Daily Breakdown for Charts
+    const dailyStats = await this.getDailyBreakdown(start, end);
+
+    // 6. Top Players
+    const topPlayers = await this.getTopPlayers();
+
+    // 7. Deposits & Withdrawals for KPI cards
+    const deposits = await this.prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { type: 'DEPOSIT', status: 'CONFIRMED', createdAt: { gte: start, lte: end } }
+    });
+    const withdrawals = await this.prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { type: 'WITHDRAWAL', status: 'CONFIRMED', createdAt: { gte: start, lte: end } }
+    });
 
     return {
-      // Combined
-      totalGGR: parseFloat(totalGGR.toFixed(2)),
-      providerFees: parseFloat(totalProviderFees.toFixed(2)),
-      netProfit: parseFloat(netProfit.toFixed(2)),
-      totalBets: parseFloat(totalBets.toFixed(2)),
-      totalWins: parseFloat(totalWins.toFixed(2)),
-      houseEdge: parseFloat(houseEdge.toFixed(2)),
-      rtp: parseFloat(rtp.toFixed(2)),
-
-      // Per-Provider Breakdown (each with its own fee %)
-      providerBreakdown,
-
-      // Summary Breakdown
-      breakdown: {
-        external: {
-          bets: parseFloat(totalExternalBets.toFixed(2)),
-          wins: parseFloat(totalExternalWins.toFixed(2)),
-          ggr: parseFloat(externalGGR.toFixed(2)),
-          providerFee: parseFloat(totalProviderFees.toFixed(2)),
-          netProfit: parseFloat((externalGGR - totalProviderFees).toFixed(2)),
-        },
-        internal: {
-          bets: parseFloat(internalBetTotal.toFixed(2)),
-          payouts: parseFloat(internalPayoutTotal.toFixed(2)),
-          ggr: parseFloat(internalGGR.toFixed(2)),
-          providerFee: 0, // No fee on internal games
-          netProfit: parseFloat(internalGGR.toFixed(2)),
-        },
+      summary: {
+        totalWagered: parseFloat(totalWagered.toFixed(2)),
+        totalPayout: parseFloat(totalPayout.toFixed(2)),
+        ggr: parseFloat(ggr.toFixed(2)),
+        affiliateCost: parseFloat(affiliateCost.toFixed(2)),
+        bonusCost: parseFloat(bonusCost.toFixed(2)),
+        ngr: parseFloat(ngr.toFixed(2)),
+        totalDeposits: parseFloat(deposits._sum.amount?.toString() || '0'),
+        totalWithdrawals: parseFloat(withdrawals._sum.amount?.toString() || '0'),
       },
+      dailyStats,
+      topPlayers,
     };
   }
 
+  private async getDailyBreakdown(start: Date, end: Date) {
+    const days = [];
+    const current = new Date(start);
+    while (current <= end) {
+      const dayStart = new Date(current.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(current.setHours(23, 59, 59, 999));
+      
+      const bets = await this.prisma.bet.aggregate({
+        _sum: { betAmount: true, payout: true },
+        where: { createdAt: { gte: dayStart, lte: dayEnd }, user: { isBot: false } }
+      });
+
+      const dayWagered = parseFloat(bets._sum.betAmount?.toString() || '0');
+      const dayPayout = parseFloat(bets._sum.payout?.toString() || '0');
+      const dayGGR = dayWagered - dayPayout;
+
+      days.push({
+        date: dayStart.toISOString().split('T')[0],
+        ggr: parseFloat(dayGGR.toFixed(2)),
+        ngr: parseFloat(dayGGR.toFixed(2)),
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    return days;
+  }
+
+  private async getTopPlayers() {
+    const whales = await this.prisma.bet.groupBy({
+      by: ['userId'],
+      _sum: { betAmount: true, payout: true },
+      orderBy: { _sum: { betAmount: 'desc' } },
+      take: 10,
+    });
+
+    const sharks = await this.prisma.bet.groupBy({
+      by: ['userId'],
+      _sum: { payout: true },
+      orderBy: { _sum: { payout: 'desc' } },
+      take: 10,
+    });
+
+    // Hydrate with usernames if possible
+    const whaleDetails = await Promise.all(whales.map(async (w) => {
+      const user = await this.prisma.user.findUnique({ where: { id: w.userId }, select: { username: true } });
+      const netLoss = parseFloat(w._sum.betAmount?.toString() || '0') - parseFloat(w._sum.payout?.toString() || '0');
+      return { userId: w.userId, username: user?.username || 'Unknown', netLoss };
+    }));
+
+    const sharkDetails = await Promise.all(sharks.map(async (s) => {
+      const user = await this.prisma.user.findUnique({ where: { id: s.userId }, select: { username: true } });
+      const netWin = parseFloat(s._sum.payout?.toString() || '0') - parseFloat(s._sum.payout?.toString() || '0'); // Simplified
+      return { userId: s.userId, username: user?.username || 'Unknown', netWin: parseFloat(s._sum.payout?.toString() || '0') };
+    }));
+
+    return { 
+      whales: whaleDetails.sort((a, b) => b.netLoss - a.netLoss), 
+      sharks: sharkDetails.sort((a, b) => b.netWin - a.netWin) 
+    };
+  }
+
+  async getFinanceStats() {
+    // Keep for backward compatibility if needed
+    return this.getFinancialStats();
+  }
+
   async getDashboardStats() {
-    // Get total users (real only)
-    const totalUsers = await this.prisma.user.count({
-      where: { isBot: false },
-    });
-
-    // Get total bots
-    const totalBots = await this.prisma.user.count({
-      where: { isBot: true },
-    });
-
-    // Get active sessions (last 24 hours)
+    const totalUsers = await this.prisma.user.count({ where: { isBot: false } });
+    const totalBots = await this.prisma.user.count({ where: { isBot: true } });
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const activeSessions = await this.prisma.gameSession.count({
-      where: {
-        startedAt: {
-          gte: oneDayAgo,
-        },
-      },
-    });
-
-    // Get active users (users with bets in last 24 hours)
+    const activeSessions = await this.prisma.gameSession.count({ where: { startedAt: { gte: oneDayAgo } } });
     const activeUsers = await this.prisma.bet.findMany({
-      where: {
-        createdAt: {
-          gte: oneDayAgo,
-        },
-        user: {
-          isBot: false,
-        },
-      },
-      select: {
-        userId: true,
-      },
+      where: { createdAt: { gte: oneDayAgo }, user: { isBot: false } },
+      select: { userId: true },
       distinct: ['userId'],
     });
 
-    // Get finance stats
-    const financeStats = await this.getFinanceStats();
-
-    // Get total real deposits from transactions
-    const deposits = await this.prisma.transaction.aggregate({
-      _sum: {
-        amount: true,
-      },
-      where: {
-        type: 'DEPOSIT',
-        status: 'CONFIRMED',
-        user: {
-          isBot: false,
-        },
-      },
-    });
-
-    const withdrawals = await this.prisma.transaction.aggregate({
-      _sum: {
-        amount: true,
-      },
-      where: {
-        type: 'WITHDRAWAL',
-        status: 'CONFIRMED',
-        user: {
-          isBot: false,
-        },
-      },
-    });
-
-    const totalDeposits = parseFloat(deposits._sum.amount?.toString() || '0');
-    const totalWithdrawals = parseFloat(
-      withdrawals._sum.amount?.toString() || '0',
-    );
-
+    const fin = await this.getFinancialStats();
     return {
-      totalRevenue: financeStats.netProfit,
+      ...fin.summary,
       totalUsers,
       totalBots,
       activeUsers: activeUsers.length,
       activeSessions,
-      totalGGR: financeStats.totalGGR,
-      providerFees: financeStats.providerFees,
-      netProfit: financeStats.netProfit,
-      totalDeposits: parseFloat(totalDeposits.toFixed(2)),
-      totalWithdrawals: parseFloat(totalWithdrawals.toFixed(2)),
-      houseEdge: financeStats.houseEdge,
-      rtp: financeStats.rtp,
-      breakdown: financeStats.breakdown,
-      providerBreakdown: financeStats.providerBreakdown,
     };
   }
 }

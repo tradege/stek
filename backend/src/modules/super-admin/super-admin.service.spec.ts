@@ -10,6 +10,8 @@ import { SuperAdminService } from './super-admin.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { Decimal } from '@prisma/client/runtime/library';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
 
 // ============================================
 // MOCK SETUP
@@ -65,6 +67,13 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+            getPoolStatus: jest.fn().mockResolvedValue({ balance: 0 }),
+          },
+        },
         SuperAdminService,
         { provide: PrismaService, useValue: mockPrisma },
       ],
@@ -100,6 +109,11 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
         user: {
           create: jest.fn().mockResolvedValue({
             id: 'user-new', username: 'testbrand_admin', email: 'admin@testbrand.com', role: 'ADMIN',
+    emailVerificationToken: null,
+    affiliateCarryover: new Decimal(0),
+    totalBets: 0,
+    claimableRakeback: new Decimal(0),
+    siteId: "default-site",
           }),
         },
         wallet: {
@@ -234,6 +248,7 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             role: 'ADMIN',
+            siteId: 'site-new',
           }),
         }),
       );
@@ -414,7 +429,9 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
       });
       mockPrisma.bet.aggregate.mockResolvedValueOnce({
         _sum: { betAmount: 50000, payout: 45000 },
+        _count: 1000,
       });
+      mockPrisma.user.count.mockResolvedValueOnce(50);
       mockPrisma.bet.findMany.mockResolvedValueOnce([]);
       mockPrisma.user.findUnique.mockResolvedValueOnce({
         id: 'admin-1', username: 'admin', email: 'admin@test.com', role: 'ADMIN',
@@ -444,6 +461,10 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
       mockPrisma.bet.findMany.mockResolvedValueOnce([]);
       mockPrisma.user.findUnique.mockResolvedValueOnce({
         id: 'admin-1', username: 'admin', email: 'admin@test.com', role: 'ADMIN',
+    emailVerificationToken: null,
+    affiliateCarryover: new Decimal(0),
+    totalBets: 0,
+    claimableRakeback: new Decimal(0),
       });
 
       const result = await service.getTenantById('site-1');
@@ -568,11 +589,12 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
       mockPrisma.siteConfiguration.count
         .mockResolvedValueOnce(5)  // total
         .mockResolvedValueOnce(3); // active
-      mockPrisma.user.count.mockResolvedValueOnce(100);
-      mockPrisma.bet.count.mockResolvedValueOnce(5000);
+      mockPrisma.user.count
+        .mockResolvedValueOnce(100)  // realPlayerCount
+        .mockResolvedValueOnce(10); // botCount
       mockPrisma.bet.aggregate
-        .mockResolvedValueOnce({ _sum: { betAmount: 100000 } })
-        .mockResolvedValueOnce({ _sum: { payout: 90000 } });
+        .mockResolvedValueOnce({ _sum: { betAmount: 100000, payout: 90000 }, _count: 5000 })  // realBetsAgg
+        .mockResolvedValueOnce({ _sum: { betAmount: 20000, payout: 18000 }, _count: 1000 }); // botBetsAgg
 
       const result = await service.getDashboardStats();
       expect(result.totalBrands).toBe(5);
@@ -587,11 +609,12 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
 
     it('6.2 - Should calculate GGR as wagered - payout', async () => {
       mockPrisma.siteConfiguration.count.mockResolvedValue(0);
-      mockPrisma.user.count.mockResolvedValueOnce(0);
-      mockPrisma.bet.count.mockResolvedValueOnce(0);
+      mockPrisma.user.count
+        .mockResolvedValueOnce(0)   // realPlayerCount
+        .mockResolvedValueOnce(0);  // botCount
       mockPrisma.bet.aggregate
-        .mockResolvedValueOnce({ _sum: { betAmount: 50000 } })
-        .mockResolvedValueOnce({ _sum: { payout: 48000 } });
+        .mockResolvedValueOnce({ _sum: { betAmount: 50000, payout: 48000 }, _count: 100 })  // realBetsAgg
+        .mockResolvedValueOnce({ _sum: { betAmount: 0, payout: 0 }, _count: 0 });           // botBetsAgg
 
       const result = await service.getDashboardStats();
       expect(result.totalGGR).toBe(2000);
@@ -599,11 +622,12 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
 
     it('6.3 - Should handle null aggregates', async () => {
       mockPrisma.siteConfiguration.count.mockResolvedValue(0);
-      mockPrisma.user.count.mockResolvedValueOnce(0);
-      mockPrisma.bet.count.mockResolvedValueOnce(0);
+      mockPrisma.user.count
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0);
       mockPrisma.bet.aggregate
-        .mockResolvedValueOnce({ _sum: { betAmount: null } })
-        .mockResolvedValueOnce({ _sum: { payout: null } });
+        .mockResolvedValueOnce({ _sum: { betAmount: null, payout: null }, _count: 0 })
+        .mockResolvedValueOnce({ _sum: { betAmount: null, payout: null }, _count: 0 });
 
       const result = await service.getDashboardStats();
       expect(result.totalWagered).toBe(0);
@@ -791,13 +815,14 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
         id: 'site-1', adminUserId: null,
         _count: { users: 0, bets: 0, transactions: 0 },
       });
-      mockPrisma.bet.aggregate.mockResolvedValueOnce({ _sum: { betAmount: 0, payout: 0 } });
+      mockPrisma.bet.aggregate.mockResolvedValueOnce({ _sum: { betAmount: 0, payout: 0 }, _count: 0 });
+      mockPrisma.user.count.mockResolvedValueOnce(0);
       mockPrisma.bet.findMany.mockResolvedValueOnce([]);
 
       await service.getTenantById('site-1');
       expect(mockPrisma.bet.aggregate).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { siteId: 'site-1' },
+          where: expect.objectContaining({ siteId: 'site-1' }),
         }),
       );
     });
@@ -807,7 +832,8 @@ describe('🏢 SuperAdminService - Unit Tests', () => {
         id: 'site-1', adminUserId: null,
         _count: { users: 10, bets: 0, transactions: 0 },
       });
-      mockPrisma.bet.aggregate.mockResolvedValueOnce({ _sum: { betAmount: 0, payout: 0 } });
+      mockPrisma.bet.aggregate.mockResolvedValueOnce({ _sum: { betAmount: 0, payout: 0 }, _count: 0 });
+      mockPrisma.user.count.mockResolvedValueOnce(10);
       mockPrisma.bet.findMany.mockResolvedValueOnce([]);
 
       const result = await service.getTenantById('site-1');

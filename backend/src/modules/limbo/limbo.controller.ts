@@ -20,7 +20,7 @@ export class LimboController {
 
   @Post('play')
   async play(@Req() req: any, @Body() dto: PlayLimboDto) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.limboService.play(req.user.id, dto, siteId);
   }
 
@@ -31,7 +31,7 @@ export class LimboController {
 
   @Get('history')
   async history(@Req() req: any, @Query('limit') limit?: string) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.limboService.getHistory(req.user.id, siteId, limit ? parseInt(limit) : 20);
   }
 }

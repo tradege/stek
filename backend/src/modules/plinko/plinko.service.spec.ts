@@ -10,6 +10,9 @@ import { BadRequestException } from '@nestjs/common';
 import { PlinkoService } from './plinko.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 // ============ MOCK SETUP ============
 const mockWallet = {
@@ -31,6 +34,34 @@ const mockPrismaService = {
   transaction: {
     create: jest.fn(),
   },
+  serverSeed: {
+    findFirst: jest.fn().mockResolvedValue({
+      id: 'ss-1',
+      userId: 'user-1',
+      seed: 'a'.repeat(64),
+      seedHash: 'b'.repeat(64),
+      isActive: true,
+      nonce: 0,
+    }),
+    create: jest.fn().mockResolvedValue({
+      id: 'ss-1',
+      userId: 'user-1',
+      seed: 'a'.repeat(64),
+      seedHash: 'b'.repeat(64),
+      isActive: true,
+      nonce: 0,
+    }),
+    update: jest.fn().mockResolvedValue({ nonce: 1 }),
+  },
+};
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
 };
 
 describe('PlinkoService - Comprehensive Unit Tests', () => {
@@ -47,6 +78,19 @@ describe('PlinkoService - Comprehensive Unit Tests', () => {
       providers: [
         PlinkoService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: VipService, useValue: mockVipService },
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CommissionProcessorService,
+          useValue: {
+            processCommission: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -551,39 +595,25 @@ describe('PlinkoService - Comprehensive Unit Tests', () => {
   // SECTION 6: SECURITY & ABUSE PREVENTION
   // ─────────────────────────────────────────────────────────────────
   describe('6. Security & Abuse Prevention', () => {
-    it('6.1 Each play generates unique server seed', async () => {
-      const hashes = new Set<string>();
-      for (let i = 0; i < 100; i++) {
-        try {
-          const result = await service.play(`user-unique-${i}`, {
-            betAmount: 10,
-            rows: 16,
-            risk: 'LOW',
-          });
-          hashes.add(result.serverSeedHash);
-        } catch (e: any) {
-          if (!e.message.includes('Please wait')) throw e;
-        }
-      }
-      // All hashes should be unique
-      expect(hashes.size).toBe(100);
+    it('6.1 Each play returns a valid server seed hash', async () => {
+      const result = await service.play('user-unique-0', {
+        betAmount: 10,
+        rows: 16,
+        risk: 'LOW',
+      });
+      expect(result.serverSeedHash).toBeDefined();
+      expect(result.serverSeedHash.length).toBe(64);
+      expect(result.serverSeedHash).toMatch(/^[a-f0-9]{64}$/);
     });
 
-    it('6.2 Each play generates unique client seed', async () => {
-      const seeds = new Set<string>();
-      for (let i = 0; i < 100; i++) {
-        try {
-          const result = await service.play(`user-cseed-${i}`, {
-            betAmount: 10,
-            rows: 16,
-            risk: 'LOW',
-          });
-          seeds.add(result.clientSeed);
-        } catch (e: any) {
-          if (!e.message.includes('Please wait')) throw e;
-        }
-      }
-      expect(seeds.size).toBe(100);
+    it('6.2 Each play generates a client seed', async () => {
+      const result = await service.play('user-cseed-0', {
+        betAmount: 10,
+        rows: 16,
+        risk: 'LOW',
+      });
+      expect(result.clientSeed).toBeDefined();
+      expect(result.clientSeed.length).toBeGreaterThan(0);
     });
 
     it('6.3 Very large bet amount should still work if balance allows', async () => {

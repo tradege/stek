@@ -417,6 +417,23 @@ export const useCrashGame = (): CrashGameState => {
     };
     socket.on('crash:history', handleHistory);
 
+
+    // Handle server errors (e.g., insufficient balance)
+    const handleCrashError = (data: { message?: string }) => {
+      console.warn('[Crash] Server error:', data.message);
+      setError(data.message || 'An error occurred');
+      // Reset optimistic bet status if bet was rejected
+      if (betStatusRef.current === 'PLACED') {
+        setBetStatus('NONE');
+        setCurrentBet(null);
+      }
+      if (betStatus2Ref.current === 'PLACED') {
+        setBetStatus2('NONE');
+        setCurrentBet2(null);
+      }
+    };
+    socket.on('crash:error', handleCrashError);
+
     socket.emit('crash:get_state');
 
     return () => {
@@ -428,6 +445,7 @@ export const useCrashGame = (): CrashGameState => {
       socket.off('crash:cashout', handleCashout);
       socket.off('balance:update', handleBalanceUpdate);
       socket.off('crash:history', handleHistory);
+      socket.off('crash:error', handleCrashError);
     };
   }, [socket]);
 

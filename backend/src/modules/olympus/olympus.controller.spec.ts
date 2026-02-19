@@ -9,6 +9,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OlympusController } from './olympus.controller';
 import { OlympusService } from './olympus.service';
 import { BadRequestException } from '@nestjs/common';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 describe('🏛️ OlympusController', () => {
   let controller: OlympusController;
@@ -49,6 +51,18 @@ describe('🏛️ OlympusController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OlympusController],
       providers: [
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CommissionProcessorService,
+          useValue: {
+            processCommission: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         {
           provide: OlympusService,
           useValue: {

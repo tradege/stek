@@ -1,3 +1,4 @@
+import { socketEventBus } from '../../gateway/socket.integration';
 'use strict';
 
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
@@ -27,6 +28,8 @@ export class VipService {
    * Update user wagering stats after every bet.
    * Called from the game service immediately after a bet is placed/settled.
    */
+
+
   async updateUserStats(userId: string, betAmount: number): Promise<void> {
     try {
       await this.prisma.user.update({
@@ -116,6 +119,24 @@ export class VipService {
       this.logger.debug(
         `💎 Rakeback: ${userId} earned $${rakebackAmount.toFixed(6)} (bet: $${betAmount.toFixed(2)}, edge: ${(houseEdge * 100).toFixed(1)}%, rate: ${(rakebackRate * 100).toFixed(0)}%)`,
       );
+
+      // Live Rakeback Stream: Emit event for real-time widget
+      try {
+        const rakeUser = await this.prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+        socketEventBus.emit('rakeback:earned', {
+          userId,
+          amount: rakebackAmount,
+          betAmount,
+          rakebackRate: houseEdge,
+        });
+        socketEventBus.emit('live:feed', {
+          username: rakeUser?.username || 'Player',
+          type: 'rakeback',
+          amount: rakebackAmount,
+          message: 'earned rakeback',
+        });
+      } catch (emitErr) { /* silent */ }
+
     } catch (error) {
       this.logger.error(`Failed to process rakeback for ${userId}: ${error.message}`);
     }
@@ -165,10 +186,27 @@ export class VipService {
           throw new BadRequestException('No USDT wallet found');
         }
 
+        const balanceBefore = new Decimal(wallet.balance);
+        const balanceAfter = balanceBefore.plus(claimable);
+
         await tx.wallet.update({
           where: { id: wallet.id },
           data: {
             balance: { increment: claimable },
+          },
+        });
+
+        // Create RAKEBACK Transaction record for audit trail
+        await tx.transaction.create({
+          data: {
+            userId,
+            walletId: wallet.id,
+            type: 'WIN',
+            status: 'CONFIRMED',
+            amount: new Decimal(claimable),
+            balanceBefore: balanceBefore,
+            balanceAfter: balanceAfter,
+            metadata: { source: 'VIP_RAKEBACK', type: 'RAKEBACK_CLAIM', siteId: effectiveSiteId },
           },
         });
       });
@@ -198,6 +236,7 @@ export class VipService {
         totalWagered: true,
         totalBets: true,
         claimableRakeback: true,
+        wallets: { select: { bonusBalance: true } },
       },
     });
 
@@ -209,8 +248,10 @@ export class VipService {
     const nextTier = user.vipLevel < VIP_TIERS.length - 1 ? VIP_TIERS[user.vipLevel + 1] : null;
     const totalWagered = Number(user.totalWagered);
 
+    const bonusBalance = user.wallets?.[0] ? Number(user.wallets[0].bonusBalance) : 0;
     return {
       level: user.vipLevel,
+      bonusBalance,
       tierName: currentTier.name,
       icon: currentTier.icon,
       rakebackRate: `${(currentTier.rakebackRate * 100).toFixed(0)}%`,

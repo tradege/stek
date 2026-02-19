@@ -20,6 +20,7 @@ import { Trophy,
   Wallet,
   ScrollText,
   Palette,
+  Gift,
 } from 'lucide-react';
 
 // ============================================
@@ -92,6 +93,13 @@ const adminNavItems: NavItem[] = [
     href: '/admin/affiliate-settings',
   },
   {
+    id: 'reward-pool',
+    label: 'Reward Pool',
+    icon: <Gift className="w-5 h-5" />,
+    href: '/admin/reward-pool',
+    badge: 'NEW',
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: <Settings className="w-5 h-5" />,
@@ -130,7 +138,7 @@ export default function AdminSidebar({ isOpen, onClose, onOpen }: AdminSidebarPr
   const pathname = usePathname();
   const { user } = useAuth();
   const { branding } = useBranding();
-  const isSuperAdmin = user?.email === "marketedgepros@gmail.com";
+  const isSuperAdmin = user?.role === 'ADMIN' && user?.email === 'marketedgepros@gmail.com';
 
   const handleNavClick = () => {
     if (onClose) {

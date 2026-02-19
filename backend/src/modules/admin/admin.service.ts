@@ -1,3 +1,4 @@
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { invalidateSiteCache } from '../../common/helpers/game-tenant.helper';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,7 +9,10 @@ const SUPER_ADMIN_EMAIL = 'marketedgepros@gmail.com';
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly rewardPoolService: RewardPoolService,
+  ) {}
 
   // Helper: standard filter to exclude bots and super admin from financial stats
   private realUserFilter() {
@@ -341,6 +345,15 @@ export class AdminService {
     const deposits = Number(transactions.find(t => t.type === 'DEPOSIT')?._sum.amount || 0);
     const withdrawals = Number(transactions.find(t => t.type === 'WITHDRAWAL')?._sum.amount || 0);
 
+    // Build perGameStats for frontend Game Control page
+    const perGameStats = games.map(g => ({
+      gameType: g.game,
+      totalBets: g.count,
+      totalWagered: g.bets,
+      totalPayout: g.wins,
+      ggr: g.ggr,
+    }));
+
     return {
       totalBets,
       totalWins,
@@ -354,6 +367,7 @@ export class AdminService {
       withdrawals,
       netDeposits: deposits - withdrawals,
       gameBreakdown: games,
+      perGameStats,
       providerBreakdown: Object.values(providerBreakdown).filter(p => p.ggr !== 0 || p.fee !== 0),
     };
   }
@@ -462,13 +476,21 @@ export class AdminService {
     return { success: true, message: 'Transaction approved' };
   }
 
-  async simulateDeposit(userId: string, amount: number, currency: string) {
-    const wallet = await this.prisma.wallet.findFirst({ where: { userId } });
+  async simulateDeposit(userId: string, amount: number, currency: string, userEmail?: string) {
+    // If userId not provided but userEmail is, look up user by email
+    let targetUserId = userId;
+    if (!targetUserId && userEmail) {
+      const user = await this.prisma.user.findUnique({ where: { email: userEmail } });
+      if (!user) throw new NotFoundException('User not found with email: ' + userEmail);
+      targetUserId = user.id;
+    }
+    if (!targetUserId) throw new NotFoundException('userId or userEmail is required');
+    const wallet = await this.prisma.wallet.findFirst({ where: { userId: targetUserId } });
     if (!wallet) throw new NotFoundException('Wallet not found for user');
     const currentBalance = Number(wallet.balance);
     const newBalance = currentBalance + amount;
     const txData: any = {
-      user: { connect: { id: userId } },
+      user: { connect: { id: targetUserId } },
       wallet: { connect: { id: wallet.id } },
       type: 'DEPOSIT',
       amount,
@@ -622,7 +644,7 @@ export class AdminService {
         id: true, username: true, email: true, status: true, role: true,
         createdAt: true, lastLoginAt: true, isBot: true, siteId: true,
         vipLevel: true, totalWagered: true,
-        wallets: { select: { balance: true, currency: true } },
+        wallets: { select: { balance: true, bonusBalance: true, currency: true } },
       },
     });
 
@@ -656,7 +678,7 @@ export class AdminService {
       return {
         ...u,
         totalWagered: Number(u.totalWagered || 0),
-        wallets: u.wallets.map((w) => ({ balance: w.balance.toString(), currency: w.currency })),
+        wallets: u.wallets.map((w) => ({ balance: (Number(w.balance) + Number(w.bonusBalance || 0)).toString(), realBalance: Number(w.balance).toString(), bonusBalance: (w.bonusBalance || 0).toString(), currency: w.currency })),
         stats: {
           totalBets: bs?._count || 0,
           totalWagered: Number(bs?._sum.betAmount || 0),
@@ -778,7 +800,7 @@ export class AdminService {
         twoFactorEnabled: true, lastLoginAt: true, lastLoginIp: true,
         vipLevel: true, totalWagered: true, xp: true, isBot: true,
         createdAt: true, updatedAt: true, siteId: true,
-        wallets: { select: { id: true, balance: true, currency: true } },
+        wallets: { select: { id: true, balance: true, bonusBalance: true, currency: true } },
       },
     });
     if (!user) throw new NotFoundException('User not found');
@@ -801,7 +823,7 @@ export class AdminService {
     return {
       ...user,
       totalWagered: user.totalWagered.toString(),
-      wallets: user.wallets.map(w => ({ ...w, balance: w.balance.toString() })),
+      wallets: user.wallets.map(w => ({ ...w, balance: (Number(w.balance) + Number(w.bonusBalance || 0)).toString(), bonusBalance: (w.bonusBalance || 0).toString() })),
       stats: {
         totalBets: betStats._count,
         totalWagered: Number(betStats._sum.betAmount || 0),
@@ -863,6 +885,67 @@ export class AdminService {
 
     this.logger.log(`Admin ${adminId} adjusted balance for user ${userId}: ${amount > 0 ? '+' : ''}${amount} (${reason})`);
     return { success: true, message: `Balance adjusted by ${amount > 0 ? '+' : ''}$${Math.abs(amount)}`, newBalance, reason };
+  }
+
+
+  /**
+   * Delete a user and all related data
+   * Cascades: UserSession, Wallet -> Transaction, Bet, ServerSeed, GameSession, ChatMessage, etc.
+   */
+  async deleteUser(userId: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, email: true, role: true, isBot: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === 'ADMIN' && !user.isBot) {
+      throw new ForbiddenException('Cannot delete admin users');
+    }
+
+    // Delete ALL related records in correct order (respecting FK constraints)
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Delete auth/verification tokens
+      await tx.emailVerificationToken.deleteMany({ where: { userId } });
+      await tx.passwordResetToken.deleteMany({ where: { userId } });
+      
+      // 2. Delete game-related records
+      await tx.bet.deleteMany({ where: { userId } });
+      await tx.sportBet.deleteMany({ where: { userId } });
+      await tx.gameSession.deleteMany({ where: { userId } });
+      await tx.serverSeed.deleteMany({ where: { userId } });
+      
+      // 3. Delete financial records
+      await tx.transaction.deleteMany({ where: { userId } });
+      await tx.vaultDeposit.deleteMany({ where: { userId } });
+      await tx.rewardHistory.deleteMany({ where: { userId } });
+      await tx.rewardPoolContribution.deleteMany({ where: { userId } });
+      
+      // 4. Delete social/stats/support records
+      await tx.chatMessage.deleteMany({ where: { userId } });
+      await tx.statistic.deleteMany({ where: { userId } });
+      await tx.rainParticipant.deleteMany({ where: { userId } });
+      await tx.supportTicket.deleteMany({ where: { userId } });
+      
+      // 5. Delete alerts and audit logs
+      await tx.betAlert.deleteMany({ where: { userId } });
+      await tx.fraudAlert.deleteMany({ where: { userId } });
+      await tx.auditLog.deleteMany({ where: { userId } });
+      
+      // 6. Delete wallet and sessions
+      await tx.wallet.deleteMany({ where: { userId } });
+      await tx.userSession.deleteMany({ where: { userId } });
+      
+      // 7. Finally delete the user
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    this.logger.warn(`ADMIN ${adminId} DELETED user ${user.username} (${user.email}) [${userId}]`);
+    
+    return {
+      success: true,
+      message: `User ${user.username} (${user.email}) has been permanently deleted`,
+      deletedUser: { id: userId, username: user.username, email: user.email },
+    };
   }
 
   // ============ WITHDRAWAL MANAGEMENT ============
@@ -1056,5 +1139,29 @@ export class AdminService {
     this.logger.log(`Affiliate config updated for site ${targetSiteId}`);
 
     return { success: true, data: config };
+  }
+
+  // ============================================
+  // REWARD POOL ADMIN METHODS
+  // ============================================
+
+  async getUserRewards(userId: string) {
+    return this.rewardPoolService.getUserRewardHistory(userId);
+  }
+
+  async getUserBonusStats(userId: string) {
+    return this.rewardPoolService.getUserBonusStats(userId);
+  }
+
+  async getRewardPoolStatus(siteId?: string) {
+    return this.rewardPoolService.getPoolStatus();
+  }
+
+  async distributeWeekly(siteId?: string) {
+    return this.rewardPoolService.distributeWeeklyBonus();
+  }
+
+  async distributeMonthly(siteId?: string) {
+    return this.rewardPoolService.distributeMonthlyBonus();
   }
 }

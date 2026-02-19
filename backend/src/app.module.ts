@@ -29,6 +29,17 @@ import { LimboModule } from './modules/limbo/limbo.module';
 import { PenaltyModule } from './modules/penalty/penalty.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { SportsModule } from './modules/sports/sports.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { RaceModule } from './modules/race/race.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { EmailModule } from './modules/email/email.module';
+import { NowPaymentsModule } from './modules/nowpayments/nowpayments.module';
+import { SupportModule } from './modules/support/support.module';
+import { PromotionsModule } from './modules/promotions/promotions.module';
+import { RewardPoolModule } from './modules/reward-pool/reward-pool.module';
+import { SlotsModule } from './modules/games/slots/slots.module';
+import { ProvablyFairModule } from './modules/fairness/provably-fair.module';
+import { VaultModule } from './modules/vault/vault.module';
 import { StuckSessionsCleanupService } from './modules/shared/stuck-sessions-cleanup.service';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 
@@ -68,7 +79,18 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
     PenaltyModule,
     SuperAdminModule,
     SportsModule,
+    ChatModule,
+    RaceModule,
+    AuditModule,
+    EmailModule,
+    NowPaymentsModule,
+    SupportModule,
+    PromotionsModule,
+    RewardPoolModule,
+    SlotsModule,
     HealthModule,
+    ProvablyFairModule,
+    VaultModule,
   ],
   controllers: [],
   providers: [

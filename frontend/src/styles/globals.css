@@ -455,3 +455,57 @@
 .animate-slide-up {
   animation: slideUp 0.3s ease-out;
 }
+
+/* Global input text visibility fix */
+input, textarea, select {
+  color: white !important;
+  caret-color: white;
+}
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0px 1000px #0A0E17 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+input::placeholder, textarea::placeholder {
+  color: rgba(148, 163, 184, 0.6) !important;
+}
+
+/* Force dark background on ALL input fields to prevent white-on-white */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  background-color: #0A0E17 !important;
+  color: white !important;
+  caret-color: white !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  border-color: #00E5FF !important;
+  outline: none !important;
+}
+
+/* Ensure number input spinners are visible */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  filter: invert(1);
+}

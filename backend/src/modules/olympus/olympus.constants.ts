@@ -19,8 +19,20 @@ export const MIN_BET = 0.1;
 export const MAX_BET = 1000;
 
 // House edge
-export const HOUSE_EDGE = 0.04; // 4%
-export const RTP = 0.96; // 96%
+// Base RTP that paytables are calibrated for (DO NOT CHANGE)
+export const BASE_RTP = 0.96;
+// Default house edge (overridden by DB config per brand)
+export const DEFAULT_HOUSE_EDGE = 0.04;
+
+/**
+ * Calculate scale factor to adjust paytable for dynamic house edge.
+ * All paytables are calibrated for BASE_RTP (0.96).
+ * Scale = (1 - houseEdge) / BASE_RTP
+ */
+export function getOlympusScaleFactor(houseEdge: number): number {
+  const targetRTP = 1 - houseEdge;
+  return targetRTP / BASE_RTP;
+}
 
 // Max win cap
 export const MAX_WIN_MULTIPLIER = 5000; // 5000x

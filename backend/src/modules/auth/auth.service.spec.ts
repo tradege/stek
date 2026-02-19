@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { UserRole, UserStatus, Currency } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import * as bcrypt from 'bcrypt';
 import * as argon2 from 'argon2';
@@ -61,6 +62,10 @@ describe('🔐 AuthService - Unit Tests', () => {
     vipLevel: 0,
     totalWagered: new Decimal(0),
     xp: 0,
+    emailVerificationToken: null,
+    affiliateCarryover: new Decimal(0),
+    totalBets: 0,
+    claimableRakeback: new Decimal(0),
   };
 
   const mockWallet = {
@@ -85,6 +90,9 @@ describe('🔐 AuthService - Unit Tests', () => {
               update: jest.fn(),
             },
             wallet: {
+            create: jest.fn().mockResolvedValue(mockWallet),
+          },
+          emailVerificationToken: {
               create: jest.fn(),
             },
             $transaction: jest.fn(),
@@ -95,6 +103,14 @@ describe('🔐 AuthService - Unit Tests', () => {
           useValue: {
             sign: jest.fn().mockReturnValue('mock-jwt-token'),
             verify: jest.fn(),
+          },
+        },
+        {
+          provide: EmailService,
+          useValue: {
+            sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+            sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+            sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -239,6 +255,9 @@ describe('🔐 AuthService - Unit Tests', () => {
               return mockWallet;
             }),
           },
+          emailVerificationToken: {
+            create: jest.fn().mockResolvedValue({ id: 'evt-1', token: '123456' }),
+          },
         };
         await callback(tx as any);
         return mockUser;
@@ -378,7 +397,7 @@ describe('🔐 AuthService - Unit Tests', () => {
 
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: mockUser.id },
-        data: { lastLoginAt: expect.any(Date) },
+        data: { lastLoginAt: expect.any(Date), lastLoginIp: null },
       });
     });
 

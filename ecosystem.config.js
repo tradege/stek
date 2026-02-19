@@ -10,7 +10,7 @@ module.exports = {
         PORT: 3000,
         DATABASE_URL: process.env.DATABASE_URL,
         JWT_SECRET: process.env.JWT_SECRET,
-        INTEGRATION_API_KEY: process.env.INTEGRATION_API_KEY
+        INTEGRATION_API_KEY: '1de51fcb05661780cd7f41a5313b9513042c837d5e88372be452851b8c45b657'
       }
     },
     {
@@ -21,8 +21,8 @@ module.exports = {
       instances: 1,
       env: {
         NODE_ENV: 'production',
-        NEXT_PUBLIC_API_URL: 'http://146.190.21.113:3000',
-        NEXT_PUBLIC_SOCKET_URL: 'http://146.190.21.113:3000'
+        NEXT_PUBLIC_API_URL: 'http://167.172.174.75',
+        NEXT_PUBLIC_SOCKET_URL: 'http://167.172.174.75'
       }
     }
   ]

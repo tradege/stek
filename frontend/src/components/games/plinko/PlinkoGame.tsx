@@ -5,37 +5,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSoundContextSafe } from '@/contexts/SoundContext';
 import config from '@/config/api';
 
-// ============ PHYSICS CONSTANTS (Bulletproof anti-stuck) ============
-const PHYSICS = {
-  GRAVITY: 0.55,
-  BOUNCE_FACTOR: 0.5,       // Lower bounce = less chance of trapping
-  FRICTION: 0.99,
+// ============ ANIMATION CONSTANTS ============
+const ANIM = {
   BALL_RADIUS: 10,
   PIN_RADIUS: 5,
   TRAIL_LENGTH: 14,
-  JITTER: 1.8,
-  TERMINAL_VELOCITY: 12,
-  // Bulletproof anti-stuck parameters
-  MIN_DOWN_SPEED: 0.8,      // Minimum downward velocity at all times
-  STUCK_SPEED_THRESHOLD: 1.0, // Speed below which we count stuck frames
-  STUCK_MOVE_THRESHOLD: 0.5,  // Movement below which we count stuck frames
-  STUCK_FRAMES_SOFT: 8,     // Soft rescue: gentle push after 8 frames
-  STUCK_FRAMES_HARD: 20,    // Hard rescue: teleport past current row after 20 frames
-  MAX_FALL_TIME: 4000,      // Force-land after 4 seconds (was 6)
-  RESCUE_FORCE: 4.0,        // Strong rescue push
-  PIN_SEPARATION: 3,        // Extra pixels to push ball away from pin
+  // Deterministic animation timing
+  STEP_DURATION: 80,        // ms per peg row step
+  EASING: 'smooth',         // smooth interpolation between waypoints
 };
 
 // ============ VISUAL CONSTANTS ============
 const VISUALS = {
-  BUCKET_GRADIENTS: {
-    LOW: { high: '#00ff88', mid: '#ffcc00', low: '#666666' },
-    MEDIUM: { high: '#ff6600', mid: '#ffcc00', low: '#444444' },
-    HIGH: { high: '#ff0055', mid: '#ff6600', low: '#333333' },
-  },
   GLOW_INTENSITY: 20,
   PIN_GLOW: '#00ffff',
-  BALL_COLORS: ['#ffcc00', '#ff9900', '#ff6600'],
 };
 
 // ============ SOUND SYSTEM ============
@@ -191,28 +174,29 @@ const soundManager = new SoundManager();
 
 type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
+// ============ DETERMINISTIC BALL TYPE ============
 interface Ball {
+  // Waypoints: pre-calculated positions the ball must pass through
+  waypoints: { x: number; y: number }[];
+  currentWaypointIndex: number;
+  // Current interpolated position
   x: number;
   y: number;
-  vx: number;
-  vy: number;
+  // Animation timing
+  startTime: number;
+  stepDuration: number;
+  // Trail for visual effect
   trail: { x: number; y: number; time: number }[];
-  pathIndex: number;
-  path: number[];
+  // Result data
   landed: boolean;
   bucketIndex: number;
   targetBucketIndex: number;
   multiplier: number;
   payout: number;
   profit: number;
-  startTime: number;
-  lastPinHit: number;
   resultRevealed: boolean;
-  // Anti-stuck tracking
-  stuckFrames: number;
-  lastY: number;
-  lastX: number;
-  rescueCount: number;  // Track how many times we rescued this ball
+  // Track last pin hit for sound throttling
+  lastSoundStep: number;
 }
 
 interface AutoBetConfig {
@@ -224,6 +208,12 @@ interface AutoBetConfig {
   stopOnWinAmount: number;
   stopOnLossAmount: number;
   totalProfit: number;
+}
+
+// ============ EASING FUNCTION ============
+// Smooth ease-in-out for natural-looking movement
+function easeInOutQuad(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
 // ============ MAIN COMPONENT ============
@@ -364,6 +354,69 @@ const PlinkoGame: React.FC = () => {
     return pins;
   }, [rows]);
 
+  // ============ CALCULATE DETERMINISTIC WAYPOINTS ============
+  // Given a path array from the backend (array of 0=Left, 1=Right),
+  // compute exact X,Y coordinates for each peg the ball passes through.
+  const calculateWaypoints = useCallback((path: number[]): { x: number; y: number }[] => {
+    const centerX = CANVAS_WIDTH / 2;
+    const startY = 60;
+    const totalWidth = rows * PIN_GAP + 40;
+    const bucketWidth = totalWidth / numBuckets;
+    const bucketStartX = CANVAS_WIDTH / 2 - totalWidth / 2;
+    const bucketY = startY + rows * PIN_GAP + 25;
+
+    const waypoints: { x: number; y: number }[] = [];
+
+    // Starting position: top center (drop point)
+    waypoints.push({ x: centerX, y: 25 });
+
+    // Track the ball's horizontal slot position.
+    // At each row, the ball is between two pegs. 
+    // We track which "slot" (gap between pegs) the ball is in.
+    // Row 0 has 3 pegs, so 2 gaps above it. The ball starts in the middle.
+    // Actually, the ball drops from above row 0, hitting a peg in row 0.
+    // 
+    // For row r, there are (r+3) pegs.
+    // The ball enters from above and hits one of the pegs.
+    // Path[r] = 0 means go left, 1 means go right of the peg it hits.
+    //
+    // Simpler model: track a cumulative offset.
+    // The ball starts centered. Each L/R shifts it by half a PIN_GAP.
+    
+    let xOffset = 0; // cumulative offset from center in units of PIN_GAP/2
+
+    for (let row = 0; row < rows && row < path.length; row++) {
+      const direction = path[row]; // 0 = left, 1 = right
+      
+      // After bouncing off the peg at this row, the ball shifts left or right
+      if (direction === 1) {
+        xOffset += 1; // shift right by half PIN_GAP
+      } else {
+        xOffset -= 1; // shift left by half PIN_GAP
+      }
+
+      // The ball's X position after this row's bounce
+      const ballX = centerX + xOffset * (PIN_GAP / 2);
+      // The ball's Y position: midway between this row and the next row
+      const ballY = startY + row * PIN_GAP + PIN_GAP * 0.65;
+
+      waypoints.push({ x: ballX, y: ballY });
+    }
+
+    // Final waypoint: the bucket landing position
+    // Calculate which bucket the ball lands in from the path
+    let rightCount = 0;
+    for (let i = 0; i < Math.min(rows, path.length); i++) {
+      if (path[i] === 1) rightCount++;
+    }
+    const bucketIndex = rightCount;
+    const finalX = bucketStartX + (bucketIndex + 0.5) * bucketWidth;
+    const finalY = bucketY;
+    waypoints.push({ x: finalX, y: finalY });
+
+    return waypoints;
+  }, [rows, numBuckets]);
+
   // ============ DRAW FUNCTION ============
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -384,8 +437,8 @@ const PlinkoGame: React.FC = () => {
       ctx.shadowColor = VISUALS.PIN_GLOW;
       ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(pin.x, pin.y, PHYSICS.PIN_RADIUS, 0, Math.PI * 2);
-      const pinGrad = ctx.createRadialGradient(pin.x - 1, pin.y - 1, 0, pin.x, pin.y, PHYSICS.PIN_RADIUS);
+      ctx.arc(pin.x, pin.y, ANIM.PIN_RADIUS, 0, Math.PI * 2);
+      const pinGrad = ctx.createRadialGradient(pin.x - 1, pin.y - 1, 0, pin.x, pin.y, ANIM.PIN_RADIUS);
       pinGrad.addColorStop(0, '#ffffff');
       pinGrad.addColorStop(0.5, '#88ccff');
       pinGrad.addColorStop(1, '#4488aa');
@@ -427,10 +480,12 @@ const PlinkoGame: React.FC = () => {
       ctx.fillText(`${mult}x`, x + bucketWidth / 2, bucketY + 22);
     });
 
+    // Draw balls
     ballsRef.current.forEach(ball => {
+      // Trail
       ball.trail.forEach((point, i) => {
         const alpha = (i / ball.trail.length) * 0.4;
-        const radius = PHYSICS.BALL_RADIUS * (i / ball.trail.length) * 0.6;
+        const radius = ANIM.BALL_RADIUS * (i / ball.trail.length) * 0.6;
         ctx.beginPath();
         ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 170, 0, ${alpha})`;
@@ -441,8 +496,8 @@ const PlinkoGame: React.FC = () => {
       ctx.shadowBlur = 25;
 
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, PHYSICS.BALL_RADIUS, 0, Math.PI * 2);
-      const ballGrad = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, PHYSICS.BALL_RADIUS);
+      ctx.arc(ball.x, ball.y, ANIM.BALL_RADIUS, 0, Math.PI * 2);
+      const ballGrad = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, ANIM.BALL_RADIUS);
       ballGrad.addColorStop(0, '#ffee44');
       ballGrad.addColorStop(0.3, '#ffcc00');
       ballGrad.addColorStop(0.7, '#ff9900');
@@ -451,7 +506,7 @@ const PlinkoGame: React.FC = () => {
       ctx.fill();
 
       ctx.beginPath();
-      ctx.arc(ball.x - 2, ball.y - 2, PHYSICS.BALL_RADIUS * 0.4, 0, Math.PI * 2);
+      ctx.arc(ball.x - 2, ball.y - 2, ANIM.BALL_RADIUS * 0.4, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.fill();
       ctx.shadowBlur = 0;
@@ -459,10 +514,11 @@ const PlinkoGame: React.FC = () => {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, PHYSICS.BALL_RADIUS, 0, Math.PI * 2);
+      ctx.arc(ball.x, ball.y, ANIM.BALL_RADIUS, 0, Math.PI * 2);
       ctx.stroke();
     });
 
+    // Result display
     if (lastResult) {
       const resultColor = lastResult.payout > betAmount ? '#00ff66' : '#ff4444';
       const isWin = lastResult.payout > betAmount;
@@ -487,11 +543,10 @@ const PlinkoGame: React.FC = () => {
     }
   }, [getPinPositions, multipliers, numBuckets, rows, highlightedBucket, lastResult, betAmount, risk, getBucketColor, getBucketGlow]);
 
-  // ============ FORCE LAND BALL ============
-  const forceLandBall = useCallback((ball: Ball, startX: number, bucketWidth: number) => {
+  // ============ LAND BALL (reveal result) ============
+  const landBall = useCallback((ball: Ball) => {
     ball.landed = true;
-    ball.bucketIndex = ball.targetBucketIndex >= 0 ? ball.targetBucketIndex : Math.max(0, Math.min(numBuckets - 1, Math.floor((ball.x - startX) / bucketWidth)));
-    ball.x = startX + (ball.bucketIndex + 0.5) * bucketWidth;
+    ball.bucketIndex = ball.targetBucketIndex;
 
     soundManager.playBucketLand(ball.multiplier);
     setHighlightedBucket(ball.bucketIndex);
@@ -537,193 +592,62 @@ const PlinkoGame: React.FC = () => {
     }
   }, [numBuckets, betAmount, refreshUser]);
 
-  // ============ BULLETPROOF PHYSICS UPDATE ============
-  const updatePhysics = useCallback(() => {
-    const pins = getPinPositions();
-    const bucketY = 60 + rows * PIN_GAP + 25;
-    const totalWidth = rows * PIN_GAP + 40;
-    const bucketWidth = totalWidth / numBuckets;
-    const startX = CANVAS_WIDTH / 2 - totalWidth / 2;
-    const centerX = CANVAS_WIDTH / 2;
-    const startY = 60;
+  // ============ DETERMINISTIC ANIMATION UPDATE ============
+  const updateAnimation = useCallback(() => {
     const now = Date.now();
 
     ballsRef.current = ballsRef.current.filter(ball => {
       if (ball.landed) return false;
 
-      // ===== TIMEOUT SAFETY: Force-land after MAX_FALL_TIME (4 seconds) =====
       const elapsed = now - ball.startTime;
-      if (elapsed > PHYSICS.MAX_FALL_TIME) {
-        forceLandBall(ball, startX, bucketWidth);
-        return false;
-      }
+      const totalSteps = ball.waypoints.length - 1;
+      const totalDuration = totalSteps * ball.stepDuration;
 
-      // Trail
+      // Calculate which step we're on and the progress within that step
+      const rawProgress = Math.min(elapsed / totalDuration, 1.0);
+      const currentStepFloat = rawProgress * totalSteps;
+      const currentStep = Math.min(Math.floor(currentStepFloat), totalSteps - 1);
+      const stepProgress = currentStepFloat - currentStep;
+
+      // Get the two waypoints we're interpolating between
+      const from = ball.waypoints[currentStep];
+      const to = ball.waypoints[Math.min(currentStep + 1, totalSteps)];
+
+      // Apply easing for smooth movement
+      const easedProgress = easeInOutQuad(stepProgress);
+
+      // Interpolate position
+      ball.x = from.x + (to.x - from.x) * easedProgress;
+      ball.y = from.y + (to.y - from.y) * easedProgress;
+
+      // Update trail
       ball.trail.push({ x: ball.x, y: ball.y, time: now });
-      if (ball.trail.length > PHYSICS.TRAIL_LENGTH) ball.trail.shift();
+      if (ball.trail.length > ANIM.TRAIL_LENGTH) ball.trail.shift();
 
-      // Gravity
-      ball.vy = Math.min(ball.vy + PHYSICS.GRAVITY, PHYSICS.TERMINAL_VELOCITY);
-
-      // Friction
-      ball.vx *= PHYSICS.FRICTION;
-
-      // ===== BULLETPROOF ANTI-STUCK: 3-tier detection =====
-      const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-      const movedY = Math.abs(ball.y - ball.lastY);
-      const movedX = Math.abs(ball.x - ball.lastX);
-      const totalMoved = movedX + movedY;
-
-      if (speed < PHYSICS.STUCK_SPEED_THRESHOLD || totalMoved < PHYSICS.STUCK_MOVE_THRESHOLD) {
-        ball.stuckFrames++;
-      } else {
-        ball.stuckFrames = Math.max(0, ball.stuckFrames - 2); // Decay stuck counter faster
+      // Play pin hit sound at each new step (each peg row)
+      if (currentStep > ball.lastSoundStep && currentStep > 0 && currentStep < totalSteps) {
+        ball.lastSoundStep = currentStep;
+        soundManager.playPinHit();
       }
 
-      // TIER 1: Soft rescue — push ball down and sideways
-      if (ball.stuckFrames >= PHYSICS.STUCK_FRAMES_SOFT && ball.stuckFrames < PHYSICS.STUCK_FRAMES_HARD) {
-        ball.vy = Math.max(ball.vy, PHYSICS.RESCUE_FORCE);
-        ball.vx += (Math.random() - 0.5) * PHYSICS.RESCUE_FORCE * 2;
-        // Push away from ALL nearby pins
-        pins.forEach(pin => {
-          const dx = ball.x - pin.x;
-          const dy = ball.y - pin.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < PHYSICS.BALL_RADIUS + PHYSICS.PIN_RADIUS + 10) {
-            const pushForce = 10 / Math.max(dist, 1);
-            ball.x += (dx / Math.max(dist, 0.1)) * pushForce;
-            ball.y += (dy / Math.max(dist, 0.1)) * pushForce;
-          }
-        });
-        ball.rescueCount++;
-      }
-
-      // TIER 2: Hard rescue — teleport ball past current row
-      if (ball.stuckFrames >= PHYSICS.STUCK_FRAMES_HARD) {
-        // Find which row the ball is near
-        const currentRow = Math.floor((ball.y - startY) / PIN_GAP);
-        // Teleport ball to 1.5 rows below current position
-        ball.y = startY + (currentRow + 1.5) * PIN_GAP;
-        // Give it strong downward velocity
-        ball.vy = PHYSICS.RESCUE_FORCE * 1.5;
-        ball.vx = (Math.random() - 0.5) * 4;
-        // Make sure ball is not inside any pin
-        pins.forEach(pin => {
-          const dx = ball.x - pin.x;
-          const dy = ball.y - pin.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const minDist = PHYSICS.BALL_RADIUS + PHYSICS.PIN_RADIUS + PHYSICS.PIN_SEPARATION;
-          if (dist < minDist) {
-            ball.x += (dx / Math.max(dist, 0.1)) * (minDist - dist + 5);
-            ball.y += (dy / Math.max(dist, 0.1)) * (minDist - dist + 5);
-          }
-        });
-        ball.stuckFrames = 0;
-        ball.rescueCount++;
-      }
-
-      // TIER 3: If rescued too many times (5+), just force land
-      if (ball.rescueCount >= 5) {
-        forceLandBall(ball, startX, bucketWidth);
-        return false;
-      }
-
-      ball.lastX = ball.x;
-      ball.lastY = ball.y;
-
-      // ===== PIN COLLISIONS (improved separation) =====
-      pins.forEach(pin => {
-        const dx = ball.x - pin.x;
-        const dy = ball.y - pin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const minDist = PHYSICS.BALL_RADIUS + PHYSICS.PIN_RADIUS;
-
-        if (dist < minDist && dist > 0) {
-          const angle = Math.atan2(dy, dx);
-          const overlap = minDist - dist;
-          
-          // Push ball out with extra separation margin
-          ball.x += Math.cos(angle) * (overlap + PHYSICS.PIN_SEPARATION);
-          ball.y += Math.sin(angle) * (overlap + PHYSICS.PIN_SEPARATION);
-
-          // Reflect velocity
-          const normalX = Math.cos(angle);
-          const normalY = Math.sin(angle);
-          const dotProduct = ball.vx * normalX + ball.vy * normalY;
-          ball.vx -= 2 * dotProduct * normalX * PHYSICS.BOUNCE_FACTOR;
-          ball.vy -= 2 * dotProduct * normalY * PHYSICS.BOUNCE_FACTOR;
-
-          // CRITICAL: Always ensure minimum downward velocity after ANY pin hit
-          if (ball.vy < PHYSICS.MIN_DOWN_SPEED) {
-            ball.vy = PHYSICS.MIN_DOWN_SPEED;
-          }
-
-          // Jitter
-          ball.vx += (Math.random() - 0.5) * PHYSICS.JITTER;
-
-          // Path-based direction bias
-          if (ball.pathIndex < ball.path.length && pin.row === ball.pathIndex) {
-            const direction = ball.path[ball.pathIndex];
-            ball.vx += direction === 1 ? 2.5 : -2.5;
-            ball.pathIndex++;
-          }
-
-          // Throttled pin hit sound
-          if (now - ball.lastPinHit > 50) {
-            soundManager.playPinHit();
-            ball.lastPinHit = now;
-          }
-        }
-      });
-
-      // ALWAYS enforce minimum downward velocity (even without pin hit)
-      if (ball.vy < PHYSICS.MIN_DOWN_SPEED && ball.y > startY) {
-        ball.vy = PHYSICS.MIN_DOWN_SPEED;
-      }
-
-      // Update position
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-
-      // ===== TRIANGULAR BOUNDARY COLLISION =====
-      const progress = Math.max(0, (ball.y - startY) / (bucketY - startY));
-      const topHalfWidth = PIN_GAP * 1.5;
-      const bottomHalfWidth = totalWidth / 2 + PHYSICS.BALL_RADIUS;
-      const currentHalfWidth = topHalfWidth + (bottomHalfWidth - topHalfWidth) * progress;
-
-      if (ball.x < centerX - currentHalfWidth) {
-        ball.x = centerX - currentHalfWidth;
-        ball.vx = Math.abs(ball.vx) * 0.5;
-        ball.x += 2;
-      }
-      if (ball.x > centerX + currentHalfWidth) {
-        ball.x = centerX + currentHalfWidth;
-        ball.vx = -Math.abs(ball.vx) * 0.5;
-        ball.x -= 2;
-      }
-
-      // ===== MAGNET GUIDANCE =====
-      if (progress > 0.7 && ball.targetBucketIndex >= 0) {
-        const targetX = startX + (ball.targetBucketIndex + 0.5) * bucketWidth;
-        const dx = targetX - ball.x;
-        const magnetStrength = (progress - 0.7) / 0.3;
-        ball.vx += dx * 0.08 * magnetStrength;
-      }
-
-      // ===== BUCKET LANDING =====
-      if (ball.y >= bucketY - PHYSICS.BALL_RADIUS) {
-        forceLandBall(ball, startX, bucketWidth);
+      // Check if animation is complete
+      if (elapsed >= totalDuration) {
+        // Snap to final position
+        const finalWp = ball.waypoints[totalSteps];
+        ball.x = finalWp.x;
+        ball.y = finalWp.y;
+        landBall(ball);
         return false;
       }
 
       return true;
     });
-  }, [getPinPositions, rows, numBuckets, betAmount, refreshUser, forceLandBall]);
+  }, [landBall]);
 
   // Animation loop
   useEffect(() => {
     const animate = () => {
-      updatePhysics();
+      updateAnimation();
       draw();
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -731,7 +655,7 @@ const PlinkoGame: React.FC = () => {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [updatePhysics, draw]);
+  }, [updateAnimation, draw]);
 
   // ============ PLACE BET ============
   const placeBetInternal = async () => {
@@ -769,27 +693,31 @@ const PlinkoGame: React.FC = () => {
       setLastGameData(result);
       soundManager.playBallDrop();
 
+      // Calculate deterministic waypoints from the backend path
+      const waypoints = calculateWaypoints(result.path);
+
+      // Calculate bucket index from path
+      let rightCount = 0;
+      for (let i = 0; i < Math.min(rows, result.path.length); i++) {
+        if (result.path[i] === 1) rightCount++;
+      }
+
       const newBall: Ball = {
-        x: CANVAS_WIDTH / 2 + (Math.random() - 0.5) * 10,
-        y: 30,
-        vx: (Math.random() - 0.5) * 2,
-        vy: 0,
+        waypoints,
+        currentWaypointIndex: 0,
+        x: waypoints[0].x,
+        y: waypoints[0].y,
+        startTime: Date.now(),
+        stepDuration: ANIM.STEP_DURATION,
         trail: [],
-        pathIndex: 0,
-        path: result.path,
         landed: false,
         bucketIndex: -1,
-        targetBucketIndex: result.bucketIndex,
+        targetBucketIndex: result.bucketIndex ?? rightCount,
         multiplier: result.multiplier,
         payout: result.payout,
         profit: result.profit,
-        startTime: Date.now(),
-        lastPinHit: 0,
         resultRevealed: false,
-        stuckFrames: 0,
-        lastY: 30,
-        lastX: CANVAS_WIDTH / 2,
-        rescueCount: 0,
+        lastSoundStep: 0,
       };
 
       ballsRef.current.push(newBall);

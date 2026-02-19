@@ -145,7 +145,7 @@ export default function AdminFinance() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-12 h-12 border-4 border-[#1475e1] border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-12 h-12 border-4 border-accent-primary border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
@@ -153,7 +153,7 @@ export default function AdminFinance() {
     <div className="flex items-center justify-center h-64">
       <div className="text-center">
         <p className="text-red-400 mb-4">{error || 'No data available'}</p>
-        <button onClick={fetchFinanceStats} className="px-4 py-2 bg-[#1475e1] text-[#0f212e] rounded-lg hover:bg-[#1475e1]/90">Retry</button>
+        <button onClick={fetchFinanceStats} className="px-4 py-2 bg-accent-primary text-black rounded-lg hover:bg-accent-primary/90">Retry</button>
       </div>
     </div>
   );
@@ -164,63 +164,63 @@ export default function AdminFinance() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Finance & GGR</h1>
-          <p className="text-gray-400">Complete financial overview with per-provider breakdown</p>
+          <p className="text-text-secondary">Complete financial overview with per-provider breakdown</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchFinanceStats} className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-text-secondary hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
-          <button onClick={exportCSV} className="px-4 py-2 bg-[#1475e1] text-[#0f212e] rounded-lg hover:bg-[#1475e1]/90 font-medium flex items-center gap-2">
+          <button onClick={exportCSV} className="px-4 py-2 bg-accent-primary text-black rounded-lg hover:bg-accent-primary/90 font-medium flex items-center gap-2">
             <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
       </div>
 
       {/* ===== MONEY FLOW SECTION ===== */}
-      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+      <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-bold text-white mb-4">Money Flow</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-gray-400">Deposits</span>
+              <span className="text-xs text-text-secondary">Deposits</span>
             </div>
             <p className="text-2xl font-bold text-emerald-400">{fmt(financeData.deposits)}</p>
-            <p className="text-xs text-gray-500 mt-1">Money in from players</p>
+            <p className="text-xs text-text-tertiary mt-1">Money in from players</p>
           </div>
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <ArrowUpRight className="w-4 h-4 text-orange-400" />
-              <span className="text-xs text-gray-400">Withdrawals</span>
+              <span className="text-xs text-text-secondary">Withdrawals</span>
             </div>
             <p className="text-2xl font-bold text-orange-400">{fmt(financeData.withdrawals)}</p>
-            <p className="text-xs text-gray-500 mt-1">Money out to players</p>
+            <p className="text-xs text-text-tertiary mt-1">Money out to players</p>
           </div>
           <div className={`${financeData.netDeposits >= 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-4`}>
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className={`w-4 h-4 ${financeData.netDeposits >= 0 ? 'text-green-400' : 'text-red-400'}`} />
-              <span className="text-xs text-gray-400">Net Deposits</span>
+              <span className="text-xs text-text-secondary">Net Deposits</span>
             </div>
             <p className={`text-2xl font-bold ${financeData.netDeposits >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {financeData.netDeposits >= 0 ? '+' : ''}{fmt(financeData.netDeposits)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Deposits - Withdrawals</p>
+            <p className="text-xs text-text-tertiary mt-1">Deposits - Withdrawals</p>
           </div>
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-blue-400" />
-              <span className="text-xs text-gray-400">Total Wagered</span>
+              <span className="text-xs text-text-secondary">Total Wagered</span>
             </div>
             <p className="text-2xl font-bold text-blue-400">{fmt(financeData.totalBets)}</p>
-            <p className="text-xs text-gray-500 mt-1">{financeData.betCount.toLocaleString()} bets placed</p>
+            <p className="text-xs text-text-tertiary mt-1">{financeData.betCount.toLocaleString()} bets placed</p>
           </div>
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="w-4 h-4 text-purple-400" />
-              <span className="text-xs text-gray-400">Total Payouts</span>
+              <span className="text-xs text-text-secondary">Total Payouts</span>
             </div>
             <p className="text-2xl font-bold text-purple-400">{fmt(financeData.totalWins)}</p>
-            <p className="text-xs text-gray-500 mt-1">Returned to players</p>
+            <p className="text-xs text-text-tertiary mt-1">Returned to players</p>
           </div>
         </div>
       </div>
@@ -235,72 +235,72 @@ export default function AdminFinance() {
               <h3 className="text-3xl font-bold text-green-400">{fmt(financeData.ggr)}</h3>
             </div>
           </div>
-          <p className="text-xs text-gray-500">Total Bets - Total Payouts</p>
+          <p className="text-xs text-text-tertiary">Total Bets - Total Payouts</p>
           <p className="text-xs text-gray-600 mt-1">Full: {fmtFull(financeData.ggr)}</p>
         </div>
 
         <div className={`bg-gradient-to-br ${financeData.providerFee > 0 ? 'from-red-500/20 to-red-600/10 border-red-500/30' : 'from-gray-500/10 to-gray-600/5 border-gray-500/30'} border rounded-xl p-6`}>
           <div className="flex items-center gap-3 mb-3">
             <div className={`p-3 ${financeData.providerFee > 0 ? 'bg-red-500/30' : 'bg-gray-500/20'} rounded-lg`}>
-              <Package className={`w-6 h-6 ${financeData.providerFee > 0 ? 'text-red-400' : 'text-gray-400'}`} />
+              <Package className={`w-6 h-6 ${financeData.providerFee > 0 ? 'text-red-400' : 'text-text-secondary'}`} />
             </div>
             <div>
               <p className="text-gray-300 text-sm">Provider Fees</p>
-              <h3 className={`text-3xl font-bold ${financeData.providerFee > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+              <h3 className={`text-3xl font-bold ${financeData.providerFee > 0 ? 'text-red-400' : 'text-text-secondary'}`}>
                 {fmt(financeData.providerFee)}
               </h3>
             </div>
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-text-tertiary">
             {financeData.providerFee > 0 ? 'Per-provider fees on external games' : 'No external provider fees — all games in-house'}
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-[#1475e1]/20 to-[#1475e1]/5 border border-[#1475e1]/30 rounded-xl p-6">
+        <div className="bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 border border-accent-primary/30 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-[#1475e1]/30 rounded-lg"><DollarSign className="w-6 h-6 text-[#1475e1]" /></div>
+            <div className="p-3 bg-accent-primary/30 rounded-lg"><DollarSign className="w-6 h-6 text-accent-primary" /></div>
             <div>
               <p className="text-gray-300 text-sm">Net Profit (House)</p>
-              <h3 className="text-3xl font-bold text-[#1475e1]">{fmt(financeData.netProfit)}</h3>
+              <h3 className="text-3xl font-bold text-accent-primary">{fmt(financeData.netProfit)}</h3>
             </div>
           </div>
-          <p className="text-xs text-gray-500">GGR - Provider Fees</p>
+          <p className="text-xs text-text-tertiary">GGR - Provider Fees</p>
           <p className="text-xs text-gray-600 mt-1">Full: {fmtFull(financeData.netProfit)}</p>
         </div>
       </div>
 
       {/* ===== METRICS ROW ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-5">
-          <p className="text-gray-400 text-xs mb-1">House Edge</p>
+        <div className="bg-bg-card border border-white/10 rounded-lg p-5">
+          <p className="text-text-secondary text-xs mb-1">House Edge</p>
           <p className="text-2xl font-bold text-white">{financeData.houseEdge}%</p>
-          <p className="text-xs text-gray-500 mt-1">Your advantage per bet</p>
+          <p className="text-xs text-text-tertiary mt-1">Your advantage per bet</p>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-5">
-          <p className="text-gray-400 text-xs mb-1">RTP (Return to Player)</p>
+        <div className="bg-bg-card border border-white/10 rounded-lg p-5">
+          <p className="text-text-secondary text-xs mb-1">RTP (Return to Player)</p>
           <p className="text-2xl font-bold text-white">{financeData.rtp}%</p>
-          <p className="text-xs text-gray-500 mt-1">% returned to players</p>
+          <p className="text-xs text-text-tertiary mt-1">% returned to players</p>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-5">
-          <p className="text-gray-400 text-xs mb-1">Total Bet Count</p>
+        <div className="bg-bg-card border border-white/10 rounded-lg p-5">
+          <p className="text-text-secondary text-xs mb-1">Total Bet Count</p>
           <p className="text-2xl font-bold text-white">{financeData.betCount.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">Number of bets placed</p>
+          <p className="text-xs text-text-tertiary mt-1">Number of bets placed</p>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-lg p-5">
-          <p className="text-gray-400 text-xs mb-1">Avg Bet Size</p>
+        <div className="bg-bg-card border border-white/10 rounded-lg p-5">
+          <p className="text-text-secondary text-xs mb-1">Avg Bet Size</p>
           <p className="text-2xl font-bold text-white">
             {financeData.betCount > 0 ? fmt(financeData.totalBets / financeData.betCount) : '$0.00'}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Average per bet</p>
+          <p className="text-xs text-text-tertiary mt-1">Average per bet</p>
         </div>
       </div>
 
       {/* ===== SECTION TABS ===== */}
-      <div className="flex gap-2 border-b border-[#2f4553] pb-0">
+      <div className="flex gap-2 border-b border-white/10 pb-0">
         {(['overview', 'games', 'calculator'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveSection(tab)}
             className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-              activeSection === tab ? 'text-[#1475e1] border-[#1475e1]' : 'text-gray-400 border-transparent hover:text-white'
+              activeSection === tab ? 'text-accent-primary border-accent-primary' : 'text-text-secondary border-transparent hover:text-white'
             }`}>
             {tab === 'overview' ? 'Provider Breakdown' : tab === 'games' ? 'Per-Game Analysis' : 'GGR Calculator'}
           </button>
@@ -311,25 +311,25 @@ export default function AdminFinance() {
       {activeSection === 'overview' && (
         <div className="space-y-6">
           {financeData.providerBreakdown && financeData.providerBreakdown.length > 0 && (
-            <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+            <div className="bg-bg-card border border-white/10 rounded-xl p-6">
               <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Package className="w-5 h-5 text-[#1475e1]" /> Provider Fee Breakdown
+                <Package className="w-5 h-5 text-accent-primary" /> Provider Fee Breakdown
               </h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-[#2f4553]">
-                      <th className="py-3 px-4 text-gray-400 text-sm font-medium">PROVIDER</th>
-                      <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">FEE %</th>
-                      <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">GGR</th>
-                      <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">FEE AMOUNT</th>
-                      <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">NET PROFIT</th>
-                      <th className="py-3 px-4 text-gray-400 text-sm font-medium">GAMES</th>
+                    <tr className="border-b border-white/10">
+                      <th className="py-3 px-4 text-text-secondary text-sm font-medium">PROVIDER</th>
+                      <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">FEE %</th>
+                      <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">GGR</th>
+                      <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">FEE AMOUNT</th>
+                      <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">NET PROFIT</th>
+                      <th className="py-3 px-4 text-text-secondary text-sm font-medium">GAMES</th>
                     </tr>
                   </thead>
                   <tbody>
                     {financeData.providerBreakdown.map((p, i) => (
-                      <tr key={i} className="border-b border-[#2f4553]/50 hover:bg-[#0f212e]/50">
+                      <tr key={i} className="border-b border-white/10/50 hover:bg-bg-main/50">
                         <td className="py-3 px-4 text-white font-medium">{p.name}</td>
                         <td className="py-3 px-4 text-right">
                           <span className={`px-2 py-1 rounded text-xs font-bold ${p.feePercent > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
@@ -339,26 +339,26 @@ export default function AdminFinance() {
                         <td className={`py-3 px-4 text-right font-medium ${p.ggr >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {fmt(p.ggr)}
                         </td>
-                        <td className={`py-3 px-4 text-right font-medium ${p.fee > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                        <td className={`py-3 px-4 text-right font-medium ${p.fee > 0 ? 'text-red-400' : 'text-text-secondary'}`}>
                           {p.fee > 0 ? '-' + fmt(p.fee) : '$0.00'}
                         </td>
-                        <td className="py-3 px-4 text-right font-medium text-[#1475e1]">
+                        <td className="py-3 px-4 text-right font-medium text-accent-primary">
                           {fmt(p.ggr - p.fee)}
                         </td>
-                        <td className="py-3 px-4 text-gray-400 text-sm">
+                        <td className="py-3 px-4 text-text-secondary text-sm">
                           {p.games.map(formatGameName).join(', ')}
                         </td>
                       </tr>
                     ))}
                     {/* Totals row */}
-                    <tr className="bg-[#0f212e]/50 font-bold">
+                    <tr className="bg-bg-main/50 font-bold">
                       <td className="py-3 px-4 text-white">TOTAL</td>
                       <td className="py-3 px-4"></td>
                       <td className="py-3 px-4 text-right text-green-400">{fmt(financeData.ggr)}</td>
                       <td className="py-3 px-4 text-right text-red-400">
                         {financeData.providerFee > 0 ? '-' + fmt(financeData.providerFee) : '$0.00'}
                       </td>
-                      <td className="py-3 px-4 text-right text-[#1475e1]">{fmt(financeData.netProfit)}</td>
+                      <td className="py-3 px-4 text-right text-accent-primary">{fmt(financeData.netProfit)}</td>
                       <td className="py-3 px-4"></td>
                     </tr>
                   </tbody>
@@ -368,7 +368,7 @@ export default function AdminFinance() {
           )}
 
           {/* Formula Reference */}
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-6">
             <h3 className="text-lg font-bold text-white mb-4">Financial Formulas</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3 text-gray-300 text-sm">
@@ -381,8 +381,8 @@ export default function AdminFinance() {
                   <p><span className="text-red-400 font-bold">Provider Fee</span> = Per-game GGR x Provider Fee %</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-[#1475e1] rounded-full"></div>
-                  <p><span className="text-[#1475e1] font-bold">Net Profit</span> = GGR - Total Provider Fees</p>
+                  <div className="w-2 h-2 bg-accent-primary rounded-full"></div>
+                  <p><span className="text-accent-primary font-bold">Net Profit</span> = GGR - Total Provider Fees</p>
                 </div>
               </div>
               <div className="space-y-3 text-gray-300 text-sm">
@@ -400,10 +400,10 @@ export default function AdminFinance() {
                 </div>
               </div>
             </div>
-            <div className="mt-4 p-3 bg-[#0f212e] rounded-lg border border-[#2f4553]">
-              <p className="text-xs text-gray-400">
-                <span className="text-[#1475e1] font-bold">Note:</span> Provider fees are calculated per-game based on each provider's fee percentage.
-                In-house games (StakePro Originals) have 0% fee. External providers (Pragmatic Play, Evolution Gaming) have their own rates.
+            <div className="mt-4 p-3 bg-bg-main rounded-lg border border-white/10">
+              <p className="text-xs text-text-secondary">
+                <span className="text-accent-primary font-bold">Note:</span> Provider fees are calculated per-game based on each provider's fee percentage.
+                In-house games (Platform Originals) have 0% fee. External providers (Pragmatic Play, Evolution Gaming) have their own rates.
                 Fees are only charged on games with positive GGR.
               </p>
             </div>
@@ -413,33 +413,33 @@ export default function AdminFinance() {
 
       {/* ===== PER-GAME ANALYSIS ===== */}
       {activeSection === 'games' && financeData.gameBreakdown.length > 0 && (
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+        <div className="bg-bg-card border border-white/10 rounded-xl p-6">
           <h2 className="text-lg font-bold text-white mb-4">Per-Game Performance</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-[#2f4553]">
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium">GAME</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium">PROVIDER</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">BETS</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">PAYOUTS</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">GGR</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right"># BETS</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">RTP</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">FEE %</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">FEE</th>
-                  <th className="py-3 px-4 text-gray-400 text-sm font-medium text-right">NET</th>
+                <tr className="border-b border-white/10">
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">GAME</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">PROVIDER</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">BETS</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">PAYOUTS</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">GGR</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right"># BETS</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">RTP</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">FEE %</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">FEE</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium text-right">NET</th>
                 </tr>
               </thead>
               <tbody>
                 {financeData.gameBreakdown
                   .sort((a, b) => b.ggr - a.ggr)
                   .map((g, i) => (
-                  <tr key={i} className="border-b border-[#2f4553]/50 hover:bg-[#0f212e]/50">
+                  <tr key={i} className="border-b border-white/10/50 hover:bg-bg-main/50">
                     <td className="py-3 px-4 text-white font-medium">{formatGameName(g.game)}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        g.provider === 'internal' || g.provider === 'stakepro-originals' ? 'bg-green-500/20 text-green-400' :
+                        g.provider === 'internal' || g.provider === 'platform-originals' ? 'bg-green-500/20 text-green-400' :
                         g.provider === 'pragmatic-play' ? 'bg-blue-500/20 text-blue-400' :
                         'bg-purple-500/20 text-purple-400'
                       }`}>{g.provider}</span>
@@ -449,35 +449,35 @@ export default function AdminFinance() {
                     <td className={`py-3 px-4 text-right font-bold ${g.ggr >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {fmt(g.ggr)}
                     </td>
-                    <td className="py-3 px-4 text-right text-gray-400">{g.count.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-text-secondary">{g.count.toLocaleString()}</td>
                     <td className="py-3 px-4 text-right text-white">{g.rtp}%</td>
                     <td className="py-3 px-4 text-right">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${g.feePercent > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
                         {g.feePercent}%
                       </span>
                     </td>
-                    <td className={`py-3 px-4 text-right font-medium ${g.fee > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                    <td className={`py-3 px-4 text-right font-medium ${g.fee > 0 ? 'text-red-400' : 'text-text-secondary'}`}>
                       {g.fee > 0 ? '-' + fmt(g.fee) : '$0.00'}
                     </td>
-                    <td className="py-3 px-4 text-right font-medium text-[#1475e1]">
+                    <td className="py-3 px-4 text-right font-medium text-accent-primary">
                       {fmt(g.ggr - g.fee)}
                     </td>
                   </tr>
                 ))}
                 {/* Totals */}
-                <tr className="bg-[#0f212e]/50 font-bold border-t-2 border-[#2f4553]">
+                <tr className="bg-bg-main/50 font-bold border-t-2 border-white/10">
                   <td className="py-3 px-4 text-white">TOTAL</td>
                   <td className="py-3 px-4"></td>
                   <td className="py-3 px-4 text-right text-white">{fmt(financeData.totalBets)}</td>
                   <td className="py-3 px-4 text-right text-white">{fmt(financeData.totalWins)}</td>
                   <td className="py-3 px-4 text-right text-green-400">{fmt(financeData.ggr)}</td>
-                  <td className="py-3 px-4 text-right text-gray-400">{financeData.betCount.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right text-text-secondary">{financeData.betCount.toLocaleString()}</td>
                   <td className="py-3 px-4 text-right text-white">{financeData.rtp}%</td>
                   <td className="py-3 px-4"></td>
                   <td className="py-3 px-4 text-right text-red-400">
                     {financeData.providerFee > 0 ? '-' + fmt(financeData.providerFee) : '$0.00'}
                   </td>
-                  <td className="py-3 px-4 text-right text-[#1475e1]">{fmt(financeData.netProfit)}</td>
+                  <td className="py-3 px-4 text-right text-accent-primary">{fmt(financeData.netProfit)}</td>
                 </tr>
               </tbody>
             </table>
@@ -487,54 +487,54 @@ export default function AdminFinance() {
 
       {/* ===== GGR CALCULATOR ===== */}
       {activeSection === 'calculator' && (
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+        <div className="bg-bg-card border border-white/10 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-6">
-            <Calculator className="w-6 h-6 text-[#1475e1]" />
+            <Calculator className="w-6 h-6 text-accent-primary" />
             <h2 className="text-xl font-bold text-white">GGR Calculator</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Total Bets ($)</label>
+              <label className="block text-sm text-text-secondary mb-2">Total Bets ($)</label>
               <input type="number" value={customCalc.bets} onChange={e => setCustomCalc({ ...customCalc, bets: e.target.value })}
-                className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#1475e1]"
+                className="w-full bg-bg-main border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent-primary"
                 placeholder="Enter total bets amount" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Total Wins ($)</label>
+              <label className="block text-sm text-text-secondary mb-2">Total Wins ($)</label>
               <input type="number" value={customCalc.wins} onChange={e => setCustomCalc({ ...customCalc, wins: e.target.value })}
-                className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#1475e1]"
+                className="w-full bg-bg-main border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent-primary"
                 placeholder="Enter total wins amount" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Provider Fee (%)</label>
+              <label className="block text-sm text-text-secondary mb-2">Provider Fee (%)</label>
               <input type="number" value={customCalc.feePercent} onChange={e => setCustomCalc({ ...customCalc, feePercent: e.target.value })}
-                className="w-full bg-[#0f212e] border border-[#2f4553] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#1475e1]"
+                className="w-full bg-bg-main border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent-primary"
                 placeholder="e.g., 8 for 8%" />
             </div>
           </div>
 
           <button onClick={calculateGGR}
-            className="w-full bg-[#1475e1] hover:bg-[#1475e1]/90 text-[#0f212e] font-bold py-3 rounded-lg transition-colors">
+            className="w-full bg-accent-primary hover:bg-accent-primary/90 text-black font-bold py-3 rounded-lg transition-colors">
             Calculate GGR & Fees
           </button>
 
           {customCalc.result && (
             <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-[#0f212e] border border-green-500/30 rounded-lg p-4">
-                <p className="text-gray-400 text-sm mb-1">GGR</p>
+              <div className="bg-bg-main border border-green-500/30 rounded-lg p-4">
+                <p className="text-text-secondary text-sm mb-1">GGR</p>
                 <p className="text-2xl font-bold text-green-400">{fmtFull(customCalc.result.ggr)}</p>
               </div>
-              <div className="bg-[#0f212e] border border-red-500/30 rounded-lg p-4">
-                <p className="text-gray-400 text-sm mb-1">Provider Fee ({customCalc.feePercent || 0}%)</p>
+              <div className="bg-bg-main border border-red-500/30 rounded-lg p-4">
+                <p className="text-text-secondary text-sm mb-1">Provider Fee ({customCalc.feePercent || 0}%)</p>
                 <p className="text-2xl font-bold text-red-400">{fmtFull(customCalc.result.providerFee)}</p>
               </div>
-              <div className="bg-[#0f212e] border border-[#1475e1]/30 rounded-lg p-4">
-                <p className="text-gray-400 text-sm mb-1">Net Profit</p>
-                <p className="text-2xl font-bold text-[#1475e1]">{fmtFull(customCalc.result.netProfit)}</p>
+              <div className="bg-bg-main border border-accent-primary/30 rounded-lg p-4">
+                <p className="text-text-secondary text-sm mb-1">Net Profit</p>
+                <p className="text-2xl font-bold text-accent-primary">{fmtFull(customCalc.result.netProfit)}</p>
               </div>
-              <div className="bg-[#0f212e] border border-blue-500/30 rounded-lg p-4">
-                <p className="text-gray-400 text-sm mb-1">House Edge</p>
+              <div className="bg-bg-main border border-blue-500/30 rounded-lg p-4">
+                <p className="text-text-secondary text-sm mb-1">House Edge</p>
                 <p className="text-2xl font-bold text-blue-400">{customCalc.result.houseEdge}%</p>
               </div>
             </div>

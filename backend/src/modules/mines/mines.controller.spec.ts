@@ -9,6 +9,18 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MinesController } from './mines.controller';
 import { MinesService } from './mines.service';
 import { BadRequestException } from '@nestjs/common';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
 
 describe('MinesController', () => {
   let controller: MinesController;
@@ -46,6 +58,18 @@ describe('MinesController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MinesController],
       providers: [
+        {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CommissionProcessorService,
+          useValue: {
+            processCommission: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         {
           provide: MinesService,
           useValue: {

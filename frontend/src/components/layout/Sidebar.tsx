@@ -1,20 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
-import VIPModal from '@/components/modals/VIPModal';
 import { useModal } from '@/contexts/ModalContext';
 import { useProtectedNav } from '@/hooks/useProtectedNav';
-// StatisticsModal removed - now a full page
-import SettingsModal from '@/components/modals/SettingsModal';
 
 // ============================================
 // ICONS
 // ============================================
 const icons: Record<string, JSX.Element> = {
+  race: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
   home: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -54,6 +56,26 @@ const icons: Record<string, JSX.Element> = {
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+    </svg>
+  ),
+  'sweet-bonanza': (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  'book-of-dead': (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  ),
+  'starburst': (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+    </svg>
+  ),
+  'big-bass': (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
     </svg>
   ),
   wallet: (
@@ -122,7 +144,6 @@ const icons: Record<string, JSX.Element> = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
-  // Sports-specific icons
   football: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="10" strokeWidth={2} />
@@ -179,7 +200,6 @@ interface NavItem {
   badge?: string;
 }
 
-// Casino navigation items - visible to ALL roles
 const casinoNavItems: NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', href: '/' },
   { id: 'crash', label: 'Crash', icon: 'crash', href: '/games/crash', badge: 'HOT' },
@@ -192,9 +212,12 @@ const casinoNavItems: NavItem[] = [
   { id: "card-rush", label: "Card Rush", icon: "card-rush", href: "/games/card-rush", badge: "NEW" },
   { id: "limbo", label: "Limbo", icon: "limbo", href: "/games/limbo", badge: "NEW" },
   { id: "penalty", label: "Penalty", icon: "penalty", href: "/games/penalty", badge: "NEW" },
+  { id: "sweet-bonanza", label: "Bonanza", icon: "sweet-bonanza", href: "/games/slots/sweet-bonanza", badge: "NEW" },
+  { id: "book-of-dead", label: "Book of Dead", icon: "book-of-dead", href: "/games/slots/book-of-dead", badge: "NEW" },
+  { id: "starburst", label: "Starburst", icon: "starburst", href: "/games/slots/starburst", badge: "NEW" },
+  { id: "big-bass", label: "Big Bass", icon: "big-bass", href: "/games/slots/big-bass-bonanza", badge: "NEW" },
 ];
 
-// Sports navigation items
 const sportsNavItems: NavItem[] = [
   { id: 'sports-home', label: 'Sports Home', icon: 'sports', href: '/sports' },
   { id: 'my-bets', label: 'My Bets', icon: 'sports', href: '/sports/my-bets', badge: 'NEW' },
@@ -274,16 +297,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
-  const { openWallet } = useModal();
+  const { openWallet, openProfile, openStatistics, openVIP, openPromotions, openNetwork, openWagerRaces, openSettings } = useModal();
   const { handleProtectedNav } = useProtectedNav();
   const [activeSection, setActiveSection] = React.useState<'casino' | 'sports'>(
     pathname?.startsWith('/sports') ? 'sports' : 'casino'
   );
-  const [isVIPModalOpen, setIsVIPModalOpen] = useState(false);
-  // Stats modal state removed - now a full page
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const handleNavClick = () => {
+    if (onClose) onClose();
+  };
+
+  const handleModalOpen = (openFn: () => void) => {
+    openFn();
     if (onClose) onClose();
   };
 
@@ -300,10 +325,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const currentNavItems = activeSection === 'casino' ? casinoNavItems : sportsNavItems;
   const sectionLabel = activeSection === 'casino' ? 'Games' : 'Sports';
 
-  // Get the role panel config for current user
   const userRole = user?.role || 'USER';
   const panelConfig = rolePanelConfig[userRole];
-  const isSuperAdmin = user?.email === 'marketedgepros@gmail.com';
+  const isSuperAdmin = user?.role === 'ADMIN';
   const isSystemOwner = isSuperAdmin;
   const { branding } = useBranding();
 
@@ -317,7 +341,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </div>
           <div>
             <h1 data-testid="logo-text" className="text-xl font-bold text-white">{branding?.brandName || 'Casino'}</h1>
-            <p className="text-xs text-text-secondary">Crypto Casino</p>
+            <p className="text-xs text-text-secondary">{branding?.brandName || 'Casino'}</p>
           </div>
         </div>
         {onClose && (
@@ -361,7 +385,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </div>
       </div>
 
-      {/* Management Panel Button - Fixed, always visible for management roles */}
+      {/* Management Panel Button */}
       {panelConfig && (
         <div className="px-4 py-3 border-b border-white/10">
           <Link
@@ -378,6 +402,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </Link>
         </div>
       )}
+
       {/* Scrollable Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         {/* Games/Sports Section */}
@@ -390,6 +415,25 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         <ul data-testid="nav-main-list" className="space-y-1 px-2">
           {currentNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
+            if (item.id === 'races') {
+              return (
+                <li key={item.id}>
+                  <button
+                    data-testid={`nav-${item.id}`}
+                    onClick={() => handleModalOpen(openWagerRaces)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5 w-full text-left"
+                  >
+                    {icons[item.icon]}
+                    <span className="flex-1 font-medium">{item.label}</span>
+                    {item.badge && (
+                      <span data-testid={`badge-${item.id}`} className="px-2 py-0.5 text-[10px] rounded-full font-semibold bg-accent-primary/20 text-accent-primary">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            }
             return (
               <li key={item.id}>
                 <Link
@@ -422,7 +466,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {/* Divider */}
         <div className="my-4 mx-4 border-t border-white/10" />
 
-        {/* Account Section - visible to ALL authenticated users */}
+        {/* Account Section */}
         <div className="px-4 mb-2">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
             Account
@@ -430,52 +474,40 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </div>
 
         <ul data-testid="nav-account-list" className="space-y-1 px-2">
-          {/* Profile - Link to profile page */}
           <li>
             <button
               data-testid="nav-profile"
-              onClick={() => { handleProtectedNav('/profile', onClose); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                pathname === '/profile'
-                  ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
-                  : 'text-text-secondary hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleModalOpen(openProfile)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.profile}
               <span className="font-medium">Profile</span>
             </button>
           </li>
-          {/* Wallet - Modal */}
           <li>
             <button
               data-testid="nav-wallet"
-              onClick={() => { openWallet(); if (onClose) onClose(); }}
+              onClick={() => handleModalOpen(openWallet)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.wallet}
               <span className="font-medium">Wallet</span>
             </button>
           </li>
-          {/* Statistics - Full Page */}
           <li>
-            <Link
-              href="/statistics"
+            <button
               data-testid="nav-stats"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                pathname === '/statistics'
-                  ? 'text-white bg-white/10'
-                  : 'text-text-secondary hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleModalOpen(openStatistics)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.stats}
               <span className="font-medium">Statistics</span>
-            </Link>
+            </button>
           </li>
-          {/* Settings - Modal */}
           <li>
             <button
               data-testid="nav-settings"
-              onClick={() => setIsSettingsModalOpen(true)}
+              onClick={() => handleModalOpen(openSettings)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.settings}
@@ -487,7 +519,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {/* Divider */}
         <div className="my-4 mx-4 border-t border-white/10" />
 
-        {/* Explore Section - visible to ALL */}
+        {/* Explore Section */}
         <div className="px-4 mb-2">
           <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
             Explore
@@ -496,45 +528,31 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
         <ul data-testid="nav-explore-list" className="space-y-1 px-2">
           <li>
-            <Link
-              href="/vip"
+            <button
               data-testid="nav-vip"
-              onClick={handleNavClick}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                pathname === '/vip'
-                  ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
-                  : 'text-text-secondary hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleModalOpen(openVIP)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.vip}
               <span className="font-medium">VIP Program</span>
               <span className="px-2 py-0.5 text-[10px] bg-yellow-500/20 text-yellow-400 rounded-full font-semibold">VIP</span>
-            </Link>
+            </button>
           </li>
           <li>
-            <Link
-              href="/promotions"
+            <button
               data-testid="nav-promotions"
-              onClick={handleNavClick}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                pathname === '/promotions'
-                  ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
-                  : 'text-text-secondary hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleModalOpen(openPromotions)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.promotions}
               <span className="font-medium">Promotions</span>
-            </Link>
+            </button>
           </li>
           <li>
             <button
               data-testid="nav-affiliates"
-              onClick={() => { handleProtectedNav('/affiliates', onClose); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                pathname === '/affiliates'
-                  ? 'bg-accent-primary/20 text-accent-primary shadow-glow-cyan-sm'
-                  : 'text-text-secondary hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleModalOpen(openNetwork)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-text-secondary hover:text-white hover:bg-white/5"
             >
               {icons.affiliates}
               <span className="font-medium">
@@ -547,59 +565,53 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           </li>
         </ul>
 
-
-      {/* VIP / System Owner / Admin Banner */}
-      <div className="p-4 border-t border-white/10">
-        {isSuperAdmin ? (
-          <div data-testid="system-owner-banner" className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/30 rounded-xl p-4 text-center">
-            <div className="text-2xl mb-2">🛡️</div>
-            <p className="text-sm font-bold bg-gradient-to-r from-yellow-400 to-amber-300 bg-clip-text text-transparent">SYSTEM OWNER</p>
-            <p className="text-xs text-yellow-400/70 mt-1">Full platform control</p>
-            <Link
-              href="/admin/dashboard"
-              data-testid="admin-quick-access"
-              onClick={handleNavClick}
-              className="block w-full mt-3 px-4 py-2 border border-yellow-500/50 text-yellow-400 text-sm rounded-lg hover:bg-yellow-500/10 transition-colors text-center"
-            >
-              Admin Dashboard
-            </Link>
-          </div>
-        ) : panelConfig ? (
-          <div data-testid="admin-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
-            <div className="text-2xl mb-2">⚙️</div>
-            <p className="text-sm font-semibold text-accent-primary">{panelConfig.label}</p>
-            <p className="text-xs text-text-secondary mt-1">Manage your platform</p>
-            <Link
-              href={panelConfig.href}
-              data-testid="admin-panel-access"
-              onClick={handleNavClick}
-              className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
-            >
-              {panelConfig.label}
-            </Link>
-          </div>
-        ) : (
-          <div data-testid="vip-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
-            <div className="text-2xl mb-2">👑</div>
-            <p className="text-sm font-semibold text-accent-primary">VIP Program</p>
-            <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
-            <Link
-              href="/vip"
-              data-testid="vip-learn-more"
-              onClick={handleNavClick}
-              className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
-            >
-              Learn More
-            </Link>
-          </div>
-        )}
-      </div>
-
+        {/* VIP / System Owner / Admin Banner */}
+        <div className="p-4 border-t border-white/10">
+          {isSuperAdmin ? (
+            <div data-testid="system-owner-banner" className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/30 rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">🛡️</div>
+              <p className="text-sm font-bold bg-gradient-to-r from-yellow-400 to-amber-300 bg-clip-text text-transparent">SYSTEM OWNER</p>
+              <p className="text-xs text-yellow-400/70 mt-1">Full platform control</p>
+              <Link
+                href="/admin/dashboard"
+                data-testid="admin-quick-access"
+                onClick={handleNavClick}
+                className="block w-full mt-3 px-4 py-2 border border-yellow-500/50 text-yellow-400 text-sm rounded-lg hover:bg-yellow-500/10 transition-colors text-center"
+              >
+                Admin Dashboard
+              </Link>
+            </div>
+          ) : panelConfig ? (
+            <div data-testid="admin-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">⚙️</div>
+              <p className="text-sm font-semibold text-accent-primary">{panelConfig.label}</p>
+              <p className="text-xs text-text-secondary mt-1">Manage your platform</p>
+              <Link
+                href={panelConfig.href}
+                data-testid="admin-panel-access"
+                onClick={handleNavClick}
+                className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
+              >
+                {panelConfig.label}
+              </Link>
+            </div>
+          ) : (
+            <div data-testid="vip-banner" className="bg-gradient-to-br from-accent-primary/10 to-accent-primary/5 border border-accent-primary/20 rounded-xl p-4 text-center">
+              <div className="text-2xl mb-2">👑</div>
+              <p className="text-sm font-semibold text-accent-primary">VIP Program</p>
+              <p className="text-xs text-text-secondary mt-1">Unlock exclusive rewards</p>
+              <button
+                data-testid="vip-learn-more"
+                onClick={() => handleModalOpen(openVIP)}
+                className="block w-full mt-3 px-4 py-2 border border-accent-primary/50 text-accent-primary text-sm rounded-lg hover:bg-accent-primary/10 transition-colors text-center"
+              >
+                Learn More
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
-      {/* Modals */}
-      <VIPModal isOpen={isVIPModalOpen} onClose={() => setIsVIPModalOpen(false)} />
-      
-      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
+      {/* NO modals rendered here - they are all in GlobalModals at root level */}
     </aside>
   );
 };

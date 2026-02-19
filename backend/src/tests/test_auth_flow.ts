@@ -13,7 +13,7 @@ const WS_URL = process.env.WS_URL || 'http://localhost:3000';
 // Test user data
 const testUser = {
   username: `testuser_${Date.now()}`,
-  email: `test_${Date.now()}@stakepro.com`,
+  email: `test_${Date.now()}@betworkss.com`,
   password: 'TestPassword123!',
 };
 
@@ -338,7 +338,7 @@ function printSummary(): void {
  */
 async function runTests(): Promise<void> {
   console.log('='.repeat(60));
-  console.log('🧪 STAKEPRO AUTH FLOW TEST');
+  console.log('🧪 BETWORKSS AUTH FLOW TEST');
   console.log('='.repeat(60));
   console.log(`API URL: ${API_URL}`);
   console.log(`WS URL: ${WS_URL}`);

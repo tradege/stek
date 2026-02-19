@@ -4,6 +4,7 @@
  * FIXED: Method names match actual CashierService implementation
  */
 import { Test, TestingModule } from '@nestjs/testing';
+import { NowPaymentsService } from '../nowpayments/nowpayments.service';
 import { CashierService } from './cashier.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -49,6 +50,13 @@ describe('💰 CashierService - Unit Tests', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        {
+          provide: NowPaymentsService,
+          useValue: {
+            createPayment: jest.fn(),
+            getPaymentStatus: jest.fn(),
+          },
+        },
         CashierService,
         {
           provide: PrismaService,
@@ -65,6 +73,7 @@ describe('💰 CashierService - Unit Tests', () => {
             },
             transaction: {
               create: jest.fn(),
+              aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
               findMany: jest.fn(),
               findUnique: jest.fn(),
               findFirst: jest.fn(),

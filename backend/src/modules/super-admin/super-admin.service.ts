@@ -32,11 +32,11 @@ export class SuperAdminService {
       this.prisma.siteConfiguration.count({ where: { active: true } }),
     ]);
 
-    // --- Real Players Stats (isBot: false) ---
+    // --- Real Players Stats (isBot: false, platform only) ---
     const [realPlayerCount, realBetsAgg] = await Promise.all([
-      this.prisma.user.count({ where: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
+      this.prisma.user.count({ where: { siteId: '1', isBot: false, email: { not: SUPER_ADMIN_EMAIL } } }),
       this.prisma.bet.aggregate({
-        where: { user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
+        where: { siteId: '1', user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } } },
         _sum: { betAmount: true, payout: true },
         _count: true,
       }),
@@ -131,8 +131,11 @@ export class SuperAdminService {
           : 12;
         const commission = ggr * (ggrFee / 100);
 
+        // Mark the first-created brand as the platform brand (not a WL client)
+        const isPlatform = tenant.id === '1';
         return {
           ...tenant,
+          isPlatform,
           stats: {
             totalPlayers: realPlayerCount,
             totalBets: betsAgg._count,
@@ -161,7 +164,6 @@ export class SuperAdminService {
             transactions: true,
           },
         },
-        bots: true,
       },
     });
 
@@ -549,6 +551,7 @@ export class SuperAdminService {
         const betsAgg = await this.prisma.bet.aggregate({
           where: {
             siteId: tenant.id,
+            user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } },
             ...(dateFilter ? { createdAt: dateFilter } : {}),
           },
           _sum: { betAmount: true, payout: true },
@@ -562,20 +565,56 @@ export class SuperAdminService {
         const ggrFee = config.ggrFee || 12;
         const commission = ggr * (ggrFee / 100);
 
+        const realPlayerCount = await this.prisma.user.count({
+          where: { siteId: tenant.id, isBot: false, email: { not: SUPER_ADMIN_EMAIL } },
+        });
+        // Get deposits and withdrawals for this brand
+        const txAgg = await this.prisma.transaction.groupBy({
+          by: ['type'],
+          where: {
+            siteId: tenant.id,
+            status: 'CONFIRMED',
+            user: { isBot: false, email: { not: SUPER_ADMIN_EMAIL } },
+          },
+          _sum: { amount: true },
+        });
+        let totalDeposits = 0;
+        let totalWithdrawals = 0;
+        let totalBonuses = 0;
+        for (const tx of txAgg) {
+          if (tx.type === 'DEPOSIT') totalDeposits = Number(tx._sum.amount || 0);
+          if (tx.type === 'WITHDRAWAL') totalWithdrawals = Number(tx._sum.amount || 0);
+          if (tx.type === 'BONUS' || tx.type === 'WEEKLY_BONUS' || tx.type === 'RACE_PRIZE' || tx.type === 'RAKEBACK') totalBonuses += Number(tx._sum.amount || 0);
+        }
+        // Get real wallet balances for all non-bot users in this brand
+        const walletAgg = await this.prisma.wallet.aggregate({
+          where: {
+            user: { siteId: tenant.id, isBot: false, email: { not: SUPER_ADMIN_EMAIL } },
+          },
+          _sum: { balance: true, bonusBalance: true },
+        });
+        const playersRealBalance = Number(walletAgg._sum.balance || 0);
+        const playersBonusBalance = Number(walletAgg._sum.bonusBalance || 0);
         return {
           tenantId: tenant.id,
           brandName: tenant.brandName,
           domain: tenant.domain,
           active: tenant.active,
-          totalPlayers: tenant._count.users,
+          totalPlayers: realPlayerCount,
           totalBets: betsAgg._count,
           totalWagered: wagered,
           totalPayout: payout,
           ggr,
           ggrFee,
           commission,
+          totalDeposits,
+          totalWithdrawals,
+          totalBonuses,
+          playersRealBalance,
+          playersBonusBalance,
           houseBalance: config.houseWalletBalance || 0,
           allowedGames: config.allowedGames || [],
+          isPlatform: tenant.isPlatform || false,
         };
       }),
     );
@@ -589,11 +628,19 @@ export class SuperAdminService {
         totalPayout: acc.totalPayout + r.totalPayout,
         totalGGR: acc.totalGGR + r.ggr,
         totalCommission: acc.totalCommission + r.commission,
+        totalDeposits: acc.totalDeposits + r.totalDeposits,
+        totalWithdrawals: acc.totalWithdrawals + r.totalWithdrawals,
+        totalBonuses: acc.totalBonuses + r.totalBonuses,
+        totalPlayersBalance: acc.totalPlayersBalance + r.playersRealBalance,
       }),
-      { totalPlayers: 0, totalBets: 0, totalWagered: 0, totalPayout: 0, totalGGR: 0, totalCommission: 0 },
+      { totalPlayers: 0, totalBets: 0, totalWagered: 0, totalPayout: 0, totalGGR: 0, totalCommission: 0, totalDeposits: 0, totalWithdrawals: 0, totalBonuses: 0, totalPlayersBalance: 0 },
     );
 
-    return { period, brands: report, totals };
+    const totalBrandsCount = report.filter(r => !r.isPlatform).length;
+    (totals as any).totalBrands = totalBrandsCount;
+    const platformBrands = report.filter(r => r.isPlatform);
+    const wlBrands = report.filter(r => !r.isPlatform);
+    return { period, brands: wlBrands, platformStats: platformBrands[0] || null, totals };
   }
 
   async getTenantReport(tenantId: string, period: string = 'all') {
@@ -831,7 +878,7 @@ export class SuperAdminService {
       hasAdmin: true,
       admin: {
         ...admin,
-        balance: wallet ? Number(wallet.balance) : 0,
+        balance: wallet ? Number(wallet.balance) + Number(wallet.bonusBalance || 0) : 0,
       },
     };
   }
@@ -882,6 +929,60 @@ export class SuperAdminService {
       success: true,
       newBalance: Number(updated.balance),
       added: amount,
+    };
+  }
+
+
+  /**
+   * Withdraw credits from tenant admin wallet (Root only)
+   */
+  async withdrawCreditsFromAdmin(tenantId: string, amount: number, note?: string) {
+    if (amount <= 0) {
+      throw new BadRequestException('Withdrawal amount must be positive');
+    }
+    const tenant = await this.prisma.siteConfiguration.findUnique({
+      where: { id: tenantId },
+    });
+    if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
+    if (!tenant.adminUserId) {
+      throw new NotFoundException('No admin user linked to this tenant');
+    }
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { userId: tenant.adminUserId, siteId: tenantId },
+    });
+    if (!wallet) {
+      throw new NotFoundException('Admin wallet not found');
+    }
+    const currentBalance = Number(wallet.balance);
+    if (currentBalance < amount) {
+      throw new BadRequestException(`Insufficient credits. Current balance: $${currentBalance.toFixed(2)}, requested: $${amount.toFixed(2)}`);
+    }
+    const updated = await this.prisma.wallet.update({
+      where: { id: wallet.id },
+      data: {
+        balance: { decrement: amount },
+      },
+    });
+    // Log the withdrawal transaction
+    await this.prisma.transaction.create({
+      data: {
+        userId: tenant.adminUserId,
+        walletId: wallet.id,
+        type: 'WITHDRAWAL',
+        amount: amount,
+        status: 'CONFIRMED',
+        balanceBefore: currentBalance,
+        balanceAfter: Number(updated.balance),
+        metadata: { note: note || `Root withdrawal: -$${amount}`, source: 'SUPER_ADMIN_WITHDRAW' },
+        siteId: tenantId,
+        confirmedAt: new Date(),
+      },
+    });
+    return {
+      success: true,
+      newBalance: Number(updated.balance),
+      withdrawn: amount,
+      brandName: tenant.brandName,
     };
   }
 

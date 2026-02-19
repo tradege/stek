@@ -1,3 +1,4 @@
+import { VaultService } from '../vault/vault.service';
 /**
  * ============================================
  * DICE SERVICE - Multi-Tenant Provably Fair
@@ -5,8 +6,11 @@
  * Dynamic houseEdge from SiteConfiguration per brand.
  * All bets validated against user's siteId.
  */
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from "../reward-pool/reward-pool.service";
+import { CommissionProcessorService } from "../affiliate/commission-processor.service";
 import { getGameConfig, checkRiskLimits, recordPayout } from '../../common/helpers/game-tenant.helper';
 import * as crypto from 'crypto';
 import Decimal from 'decimal.js';
@@ -43,7 +47,15 @@ const userLastBetTime = new Map<string, number>();
 
 @Injectable()
 export class DiceService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(DiceService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private readonly vipService: VipService,
+    private readonly rewardPoolService: RewardPoolService,
+    private readonly commissionProcessor: CommissionProcessorService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   calculateWinChance(target: number, condition: 'OVER' | 'UNDER'): number {
     return condition === 'UNDER' ? target : (100 - target);
@@ -104,11 +116,31 @@ export class DiceService {
     }
     const multiplier = this.calculateMultiplier(winChance, gameConfig.houseEdge);
 
-    // Generate provably fair result
-    const serverSeed = crypto.randomBytes(32).toString('hex');
-    const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+    // Provably Fair: persistent server seed + sequential nonce
+    let serverSeedRecord = await this.prisma.serverSeed.findFirst({
+      where: { userId, isActive: true },
+    });
+    if (!serverSeedRecord) {
+      const seed = crypto.randomBytes(32).toString('hex');
+      serverSeedRecord = await this.prisma.serverSeed.create({
+        data: {
+          userId,
+          seed,
+          seedHash: crypto.createHash('sha256').update(seed).digest('hex'),
+          isActive: true,
+          nonce: 0,
+        },
+      });
+    }
+    const serverSeed = serverSeedRecord.seed;
+    const serverSeedHash = serverSeedRecord.seedHash;
     const clientSeed = crypto.randomBytes(16).toString('hex');
-    const nonce = Math.floor(Math.random() * 1000000);
+    const nonce = serverSeedRecord.nonce + 1;
+    // Update nonce atomically
+    await this.prisma.serverSeed.update({
+      where: { id: serverSeedRecord.id },
+      data: { nonce },
+    });
     const roll = this.generateRoll(serverSeed, clientSeed, nonce);
     const isWin = this.isWinningRoll(roll, target, condition);
     const payout = isWin ? betAmount * multiplier : 0;
@@ -196,6 +228,22 @@ export class DiceService {
     if (isWin && payout > 0) {
       await recordPayout(this.prisma, siteId, payout);
     }
+
+    // VIP Automation: Process rakeback and check for level-up
+    try {
+      await this.vipService.processRakeback(userId, betAmount, gameConfig.houseEdge);
+      const levelUpResult = await this.vipService.checkLevelUp(userId);
+      // RewardPool + Affiliate
+      await this.rewardPoolService.contributeToPool(userId, null, betAmount, gameConfig.houseEdge, "DICE");
+      await this.commissionProcessor.processCommission("", userId, betAmount, payout, "DICE" as any, siteId);
+      if (levelUpResult.leveledUp) {
+        this.logger.log(`🎉 User ${userId} leveled up to VIP ${levelUpResult.newLevel} (${levelUpResult.tierName})`);
+        // TODO: Emit WebSocket event for level-up notification
+      }
+    } catch (vipErr) {
+      this.logger.warn(`VIP automation failed for user ${userId}: ${vipErr.message}`);
+    }
+
 
     return { roll, target, condition, isWin, multiplier, winChance, payout, profit, serverSeedHash, clientSeed, nonce };
   }

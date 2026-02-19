@@ -1,16 +1,16 @@
 {
   "validUser": {
-    "email": "test@stakepro.com",
+    "email": "test@betworkss.com",
     "password": "Test123!@#",
     "username": "testuser"
   },
   "adminUser": {
-    "email": "admin@stakepro.com",
+    "email": "admin@betworkss.com",
     "password": "Admin123!@#",
     "username": "admin"
   },
   "newUser": {
-    "email": "newuser@stakepro.com",
+    "email": "newuser@betworkss.com",
     "password": "NewUser123!@#",
     "username": "newuser"
   }

@@ -1,3 +1,4 @@
+import { VaultModule } from '../vault/vault.module';
 /**
  * ============================================
  * CRASH MODULE
@@ -14,11 +15,14 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { AffiliateModule } from '../affiliate/affiliate.module';
 import { VipModule } from '../vip/vip.module';
 
+import { RewardPoolModule } from "../reward-pool/reward-pool.module";
 @Module({
   imports: [
+    VaultModule,
     PrismaModule,
     AffiliateModule,
     VipModule,
+    RewardPoolModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key',
       signOptions: { expiresIn: '7d' },

@@ -1,7 +1,11 @@
+import { VaultService } from '../vault/vault.service';
 import { getGameConfig, checkRiskLimits, recordPayout } from "../../common/helpers/game-tenant.helper";
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PLINKO_MULTIPLIERS, getMultiplier, calculateBucketFromPath, RiskLevel } from './plinko.constants';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from "../reward-pool/reward-pool.service";
+import { CommissionProcessorService } from "../affiliate/commission-processor.service";
+import { PLINKO_MULTIPLIERS, getMultiplier, getDynamicMultiplier, getDynamicMultiplierArray, calculateBucketFromPath, RiskLevel } from './plinko.constants';
 import * as crypto from 'crypto';
 import Decimal from 'decimal.js';
 
@@ -30,9 +34,17 @@ const RATE_LIMIT_MS = 500; // Minimum 500ms between bets
 
 @Injectable()
 export class PlinkoService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(PlinkoService.name);
 
-  async play(userId: string, dto: PlayPlinkoDto, siteId: string = "default-site-001"): Promise<PlinkoResult> {
+  constructor(
+    private prisma: PrismaService,
+    private readonly vipService: VipService,
+    private readonly rewardPoolService: RewardPoolService,
+    private readonly commissionProcessor: CommissionProcessorService,
+    private readonly vaultService: VaultService,
+  ) {}
+
+  async play(userId: string, dto: PlayPlinkoDto, siteId: string = "1"): Promise<PlinkoResult> {
     const { betAmount, rows, risk, currency = 'USDT' } = dto;
 
     // ===== RATE LIMITING =====
@@ -65,16 +77,39 @@ export class PlinkoService {
       throw new BadRequestException('Invalid risk level');
     }
 
-    // Generate provably fair seeds
-    const serverSeed = crypto.randomBytes(32).toString('hex');
-    const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+    // Provably Fair: persistent server seed + sequential nonce
+    let serverSeedRecord = await this.prisma.serverSeed.findFirst({
+      where: { userId, isActive: true },
+    });
+    if (!serverSeedRecord) {
+      const seed = crypto.randomBytes(32).toString('hex');
+      serverSeedRecord = await this.prisma.serverSeed.create({
+        data: {
+          userId,
+          seed,
+          seedHash: crypto.createHash('sha256').update(seed).digest('hex'),
+          isActive: true,
+          nonce: 0,
+        },
+      });
+    }
+    const serverSeed = serverSeedRecord.seed;
+    const serverSeedHash = serverSeedRecord.seedHash;
     const clientSeed = crypto.randomBytes(16).toString('hex');
-    const nonce = Math.floor(Math.random() * 1000000);
+    const nonce = serverSeedRecord.nonce + 1;
+    // Update nonce atomically
+    await this.prisma.serverSeed.update({
+      where: { id: serverSeedRecord.id },
+      data: { nonce },
+    });
+
+    // Get dynamic house edge from DB for this brand
+    const gameConfig = await getGameConfig(this.prisma, siteId, 'plinko');
 
     // Generate path and calculate result
     const path = this.generatePath(rows, serverSeed, clientSeed, nonce);
     const bucketIndex = calculateBucketFromPath(path);
-    const multiplier = getMultiplier(rows, risk, bucketIndex);
+    const multiplier = getDynamicMultiplier(rows, risk, bucketIndex, gameConfig.houseEdge);
     const payout = betAmount * multiplier;
     const profit = payout - betAmount;
 
@@ -123,7 +158,7 @@ export class PlinkoService {
           serverSeedHash,
           clientSeed,
           nonce,
-          gameData: { path, bucketIndex, rows, risk },
+          gameData: { path, bucketIndex, rows, risk, houseEdge: gameConfig.houseEdge },
           isWin: profit > 0,
         },
       });
@@ -151,6 +186,18 @@ export class PlinkoService {
       });
     });
 
+    // VIP + RewardPool + Affiliate processing
+    try {
+      await this.vipService.updateUserStats(userId, betAmount);
+      await this.vipService.checkLevelUp(userId);
+      await this.vipService.processRakeback(userId, betAmount, gameConfig.houseEdge);
+      await this.rewardPoolService.contributeToPool(userId, null, betAmount, gameConfig.houseEdge, "PLINKO");
+      await this.commissionProcessor.processCommission("", userId, betAmount, payout, "PLINKO" as any, siteId);
+      // The Vault: Global Progressive Jackpot contribution
+      try {
+        await this.vaultService.processBet(userId, betAmount, 'PLINKO', '', '', 0);
+      } catch (ve) { console.error("Vault error:", ve?.message); }
+    } catch (e) { console.error("Plinko post-bet error:", e?.message); }
     // Return result WITH provably fair data
     return {
       path,
@@ -184,7 +231,38 @@ export class PlinkoService {
     return path;
   }
 
-  getMultipliers(rows: number, risk: RiskLevel): number[] {
-    return PLINKO_MULTIPLIERS[rows]?.[risk] || [];
+  getMultipliers(rows: number, risk: RiskLevel, houseEdge: number = 0.04): number[] {
+    return getDynamicMultiplierArray(rows, risk, houseEdge);
   }
+
+
+  /**
+   * Verify a Plinko result - Visual Trust / Debug Mode
+   * Regenerates the path from seeds for client-side verification
+   */
+  verifyResult(dto: { serverSeed: string; clientSeed: string; nonce: number; rows: number; risk: string }) {
+    const { serverSeed, clientSeed, nonce, rows, risk } = dto;
+    const path = this.generatePath(rows, serverSeed, clientSeed, nonce);
+    const bucketIndex = calculateBucketFromPath(path);
+    const multiplier = getMultiplier(rows, risk as any, bucketIndex);
+
+    return {
+      verified: true,
+      path,
+      bucketIndex,
+      multiplier,
+      rows,
+      risk,
+      // Show the math
+      debug: {
+        serverSeed,
+        clientSeed,
+        nonce,
+        pathDescription: path.map((dir, i) => `Row ${i + 1}: ${dir === 0 ? 'LEFT' : 'RIGHT'}`),
+        finalBucket: bucketIndex,
+        multiplierFromTable: multiplier,
+      },
+    };
+  }
+
 }

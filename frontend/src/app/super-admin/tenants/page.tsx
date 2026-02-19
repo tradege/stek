@@ -50,6 +50,7 @@ interface Tenant {
   brandName: string;
   domain: string;
   active: boolean;
+  isPlatform?: boolean;
   locale: string;
   ggrFee: number;
   ownerEmail: string;
@@ -312,6 +313,29 @@ export default function TenantsPage() {
     }
   };
 
+  const handleWithdrawCredits = async () => {
+    if (!editTenant || !creditsAmount) return;
+    setActionMessage(null);
+    try {
+      const res = await fetch(`${API_URL}/api/super-admin/tenants/${editTenant.id}/admin/withdraw-credits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: parseFloat(creditsAmount), note: creditsNote || 'Root withdrawal' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: `Withdrawn $${creditsAmount}! New balance: $${data.newBalance?.toFixed(2)}` });
+        setCreditsAmount('');
+        setCreditsNote('');
+        fetchAdminInfo(editTenant.id);
+      } else {
+        setActionMessage({ type: 'error', text: data.message || 'Failed to withdraw credits' });
+      }
+    } catch (err) {
+      setActionMessage({ type: 'error', text: 'Network error' });
+    }
+  };
+
   const applyColorPreset = (preset: typeof COLOR_PRESETS[0]) => {
     setEditForm((prev) => ({
       ...prev,
@@ -327,7 +351,7 @@ export default function TenantsPage() {
     return `$${v.toFixed(2)}`;
   };
 
-  const filteredTenants = tenants.filter(
+  const filteredTenants = tenants.filter((t) => t.id !== "1").filter(
     (t) =>
       t.brandName.toLowerCase().includes(search.toLowerCase()) ||
       t.domain.toLowerCase().includes(search.toLowerCase()) ||
@@ -496,7 +520,7 @@ export default function TenantsPage() {
       {/* ==================== EDIT TENANT MODAL ==================== */}
       {editTenant && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#1a2c38] border border-white/10 rounded-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+          <div className="bg-bg-card border border-white/10 rounded-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-3">
@@ -512,7 +536,7 @@ export default function TenantsPage() {
                 </div>
               </div>
               <button onClick={closeEditModal} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-text-secondary" />
               </button>
             </div>
 
@@ -525,7 +549,7 @@ export default function TenantsPage() {
                   className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all border-b-2 ${
                     editTab === tab.id
                       ? 'border-cyan-500 text-cyan-400'
-                      : 'border-transparent text-gray-400 hover:text-white'
+                      : 'border-transparent text-text-secondary hover:text-white'
                   }`}
                 >
                   <tab.icon className="w-4 h-4" />
@@ -609,18 +633,18 @@ export default function TenantsPage() {
                   {/* Tenant Info */}
                   <div className="bg-white/5 rounded-lg p-3 space-y-1.5">
                     <p className="text-xs text-text-secondary">
-                      <span className="text-gray-400">ID:</span>{' '}
+                      <span className="text-text-secondary">ID:</span>{' '}
                       <span className="text-white font-mono text-[11px]">{editTenant.id}</span>
                     </p>
                     <p className="text-xs text-text-secondary">
-                      <span className="text-gray-400">Created:</span>{' '}
+                      <span className="text-text-secondary">Created:</span>{' '}
                       <span className="text-white">{new Date(editTenant.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                     </p>
                     <p className="text-xs text-text-secondary">
-                      <span className="text-gray-400">Players:</span>{' '}
+                      <span className="text-text-secondary">Players:</span>{' '}
                       <span className="text-white">{editTenant.stats.totalPlayers}</span>
                       <span className="mx-2 text-gray-600">|</span>
-                      <span className="text-gray-400">Total Bets:</span>{' '}
+                      <span className="text-text-secondary">Total Bets:</span>{' '}
                       <span className="text-white">{editTenant.stats.totalBets}</span>
                     </p>
                   </div>
@@ -690,11 +714,11 @@ export default function TenantsPage() {
                         </div>
                       </div>
 
-                      {/* Add Credits */}
+                      {/* Manage Credits */}
                       <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                         <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                           <Wallet className="w-4 h-4 text-green-400" />
-                          Add Credits
+                          Manage Credits
                         </h4>
                         <div className="space-y-2">
                           <div className="flex gap-2">
@@ -714,7 +738,14 @@ export default function TenantsPage() {
                               disabled={!creditsAmount || parseFloat(creditsAmount) <= 0}
                               className="px-4 py-2.5 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                              Add
+                              Deposit
+                            </button>
+                            <button
+                              onClick={handleWithdrawCredits}
+                              disabled={!creditsAmount || parseFloat(creditsAmount) <= 0}
+                              className="px-4 py-2.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              Withdraw
                             </button>
                           </div>
                           <input
@@ -741,7 +772,7 @@ export default function TenantsPage() {
                       </div>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1">Email</label>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">Email</label>
                           <input
                             type="email"
                             value={newAdminForm.email}
@@ -751,7 +782,7 @@ export default function TenantsPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1">Username</label>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">Username</label>
                           <input
                             type="text"
                             value={newAdminForm.username}
@@ -761,7 +792,7 @@ export default function TenantsPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-400 mb-1">Password</label>
+                          <label className="block text-xs font-medium text-text-secondary mb-1">Password</label>
                           <input
                             type="text"
                             value={newAdminForm.password}
@@ -818,7 +849,7 @@ export default function TenantsPage() {
                         <h3 className="text-white font-bold mb-2" style={{ color: editForm.primaryColor }}>
                           {editForm.brandName || 'Brand Name'}
                         </h3>
-                        <p className="text-sm text-gray-400 mb-3">This is how your brand will look</p>
+                        <p className="text-sm text-text-secondary mb-3">This is how your brand will look</p>
                         <div className="flex gap-2">
                           <button
                             className="px-4 py-2 rounded-lg text-sm font-medium text-white"
@@ -860,7 +891,7 @@ export default function TenantsPage() {
                       { key: 'dangerColor', label: 'Danger Color' },
                     ].map(({ key, label }) => (
                       <div key={key}>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">{label}</label>
+                        <label className="block text-xs font-medium text-text-secondary mb-1.5">{label}</label>
                         <div className="flex items-center gap-2">
                           <input
                             type="color"
@@ -894,7 +925,7 @@ export default function TenantsPage() {
                           className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all border ${
                             editForm.allowedGames.includes(game)
                               ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                              : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                              : 'bg-white/5 border-white/10 text-text-secondary hover:border-white/20'
                           }`}
                         >
                           <div
@@ -924,7 +955,7 @@ export default function TenantsPage() {
             <div className="flex items-center justify-end gap-3 p-5 border-t border-white/10 shrink-0">
               <button
                 onClick={closeEditModal}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-sm text-text-secondary hover:text-white transition-colors"
               >
                 Cancel
               </button>

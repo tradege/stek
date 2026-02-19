@@ -24,7 +24,7 @@ const GameCard: React.FC<GameCardProps> = ({
   isComingSoon = false,
   isHot = false,
   isNew = false,
-  gradient = "from-[#1475e1] via-[#1475e1] to-[#1475e1]",
+  gradient = "from-accent-primary via-accent-primary to-accent-primary",
   players,
 }) => {
   const [isHovered, setIsHovered] = useState(false);

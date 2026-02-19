@@ -1193,17 +1193,17 @@ const NovaRushGame: React.FC = () => {
           <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">Nova Rush</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={toggleGameSound} className={`p-2 rounded-lg transition-all ${isSoundActive ? 'bg-[#2f4553] text-[#00F0FF] border border-[#2f4553]' : 'bg-[#2f4553] text-gray-500 border border-[#2f4553]'}`}>
+          <button onClick={toggleGameSound} className={`p-2 rounded-lg transition-all ${isSoundActive ? 'bg-white/10 text-[#00F0FF] border border-white/10' : 'bg-white/10 text-gray-500 border border-white/10'}`}>
             {isSoundActive ? '🔊' : '🔇'}
           </button>
-          <button onClick={() => setShowFairPanel(!showFairPanel)} className="p-2 rounded-lg bg-[#2f4553] text-gray-400 border border-[#2f4553] hover:bg-[#3d5a6e] text-xs">🛡️</button>
+          <button onClick={() => setShowFairPanel(!showFairPanel)} className="p-2 rounded-lg bg-white/10 text-gray-400 border border-white/10 hover:bg-white/20 text-xs">🛡️</button>
           <span className="px-3 py-1.5 bg-green-500/20 text-green-400 text-xs font-bold rounded-full border border-green-500/30 animate-pulse">● LIVE</span>
         </div>
       </div>
 
       {/* Provably Fair Panel */}
       {showFairPanel && (
-        <div className="mb-4 p-4 bg-[#1a2c38] rounded-xl border border-[#2f4553]/50">
+        <div className="mb-4 p-4 bg-bg-card rounded-xl border border-white/10/50">
           <h3 className="text-white font-bold mb-3">🛡️ Provably Fair</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-gray-400">Server Seed Hash:</span><span className="text-blue-400 font-mono text-xs max-w-[200px] truncate">{lastServerSeedHash || 'N/A'}</span></div>
@@ -1214,7 +1214,7 @@ const NovaRushGame: React.FC = () => {
       )}
 
       {/* Game Canvas */}
-      <div ref={containerRef} className="relative w-full aspect-[16/9] max-h-[400px] rounded-xl overflow-hidden border border-[#2f4553]/50 mb-4">
+      <div ref={containerRef} className="relative w-full aspect-[16/9] max-h-[400px] rounded-xl overflow-hidden border border-white/10/50 mb-4">
         <canvas ref={canvasRef} className="w-full h-full" />
       </div>
 
@@ -1238,17 +1238,17 @@ const NovaRushGame: React.FC = () => {
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50" min="0.1" step="0.1" />
+                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50" min="0.1" step="0.1" />
               </div>
-              <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">2x</button>
-              <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">½</button>
+              <button onClick={() => setBetAmount(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-white/10 border border-white/10 rounded-xl text-white hover:bg-white/20">2x</button>
+              <button onClick={() => setBetAmount(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-white/10 border border-white/10 rounded-xl text-white hover:bg-white/20">½</button>
             </div>
           </div>
           {/* Auto Eject */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">AUTO EJECT AT</label>
             <div className="relative">
-              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50" min="1.01" step="0.01" />
+              <input type="number" value={autoCashout} onChange={(e) => setAutoCashout(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-accent-primary/50" min="1.01" step="0.01" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">x</span>
             </div>
           </div>
@@ -1271,17 +1271,17 @@ const NovaRushGame: React.FC = () => {
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input type="number" value={betAmount2} onChange={(e) => setBetAmount2(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50" min="0.1" step="0.1" />
+                <input type="number" value={betAmount2} onChange={(e) => setBetAmount2(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50" min="0.1" step="0.1" />
               </div>
-              <button onClick={() => setBetAmount2(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">2x</button>
-              <button onClick={() => setBetAmount2(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-[#2f4553] border border-[#2f4553] rounded-xl text-white hover:bg-[#3d5a6e]">½</button>
+              <button onClick={() => setBetAmount2(prev => String(Number(prev) * 2))} className="px-3 py-2 bg-white/10 border border-white/10 rounded-xl text-white hover:bg-white/20">2x</button>
+              <button onClick={() => setBetAmount2(prev => String(Math.max(0.1, Number(prev) / 2)))} className="px-3 py-2 bg-white/10 border border-white/10 rounded-xl text-white hover:bg-white/20">½</button>
             </div>
           </div>
           {/* Auto Eject */}
           <div>
             <label className="block text-xs text-gray-400 mb-1">AUTO EJECT AT</label>
             <div className="relative">
-              <input type="number" value={autoCashout2} onChange={(e) => setAutoCashout2(e.target.value)} className="w-full bg-[#2f4553] border border-[#2f4553] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50" min="1.01" step="0.01" />
+              <input type="number" value={autoCashout2} onChange={(e) => setAutoCashout2(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50" min="1.01" step="0.01" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">x</span>
             </div>
           </div>
