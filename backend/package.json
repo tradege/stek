@@ -1,8 +1,8 @@
 {
-  "name": "stakepro-backend",
+  "name": "betworkss-backend",
   "version": "1.0.0",
-  "description": "StakePro - High-Performance Crypto Casino Backend",
-  "author": "StakePro Team",
+  "description": "Betworkss - High-Performance Crypto Casino Backend",
+  "author": "Betworkss Team",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -39,19 +39,23 @@
     "@nestjs/throttler": "^5.0.0",
     "@nestjs/websockets": "^10.0.0",
     "@prisma/client": "^5.0.0",
+    "@sendgrid/mail": "^8.1.6",
     "@types/helmet": "^4.0.0",
+    "@types/nodemailer": "^7.0.10",
     "argon2": "^0.31.2",
     "bcrypt": "^5.1.0",
     "bullmq": "^4.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "helmet": "^8.1.0",
+    "nodemailer": "^8.0.1",
     "otplib": "^12.0.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
     "qrcode": "^1.5.0",
     "reflect-metadata": "^0.1.13",
+    "resend": "^6.9.2",
     "rxjs": "^7.8.0",
     "socket.io": "^4.6.0"
   },
@@ -59,6 +63,8 @@
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
+    "@swc/cli": "^0.5.2",
+    "@swc/core": "^1.15.11",
     "@types/bcrypt": "^5.0.0",
     "@types/express": "^4.17.0",
     "@types/jest": "^29.5.0",
@@ -109,6 +115,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/.*/__mocks__"
+    ],
+    "testTimeout": 600000
   }
 }

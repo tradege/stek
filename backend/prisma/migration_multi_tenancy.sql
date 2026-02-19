@@ -100,7 +100,7 @@ CREATE INDEX IF NOT EXISTS "ChatMessage_siteId_createdAt_idx" ON "ChatMessage"("
 INSERT INTO "SiteConfiguration" ("id", "brandName", "domain", "primaryColor", "secondaryColor", "accentColor", "dangerColor", "backgroundColor", "cardColor", "houseEdgeConfig", "active", "updatedAt")
 VALUES (
     'default-site-001',
-    'StakePro',
+    'Betworkss',
     'localhost',
     '#00F0FF',
     '#131B2C',

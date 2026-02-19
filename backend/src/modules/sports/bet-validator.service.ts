@@ -675,7 +675,7 @@ Then on a new line, provide a brief reason (max 50 words).`;
           { name: '📋 Details', value: details.substring(0, 1024) },
         ],
         timestamp: new Date().toISOString(),
-        footer: { text: 'StakePro AI Betting Guard' },
+        footer: { text: 'Betworkss AI Betting Guard' },
       }],
     };
 

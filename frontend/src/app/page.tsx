@@ -62,7 +62,7 @@ function AnimatedCounter({ target, prefix = '', suffix = '', color }: { target: 
 // Recent wins — fetched from real API data (no mock data)
 
 export default function Home() {
-  const { branding } = useBranding();
+  const { branding, siteId } = useBranding();
   const [isLoading, setIsLoading] = useState(true);
   const [platformStats, setPlatformStats] = useState({
     totalWagered: 0,
@@ -77,7 +77,7 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/v1/platform/stats`);
+        const response = await fetch(`${API_URL}/api/v1/platform/stats?siteId=${siteId}`);
         if (response.ok) {
           const data = await response.json();
           setPlatformStats({
@@ -98,7 +98,7 @@ export default function Home() {
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [siteId]);
 
   // Ticker animation
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function Home() {
           {/* Content */}
           <div className="relative px-8 py-12 md:py-16 text-center">
             <div className="inline-block px-4 py-1 mb-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full">
-              <span className="text-sm font-bold text-white">CRYPTO CASINO</span>
+              <span className="text-sm font-bold text-white">{branding.brandName?.toUpperCase() || "CASINO"}</span>
             </div>
             <h1 className="text-4xl md:text-6xl font-black text-white mb-2">
               Welcome to

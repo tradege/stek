@@ -193,7 +193,7 @@ export default function CrashGamePage() {
             <p className="text-sm text-text-secondary">Highest Win</p>
           </div>
           <div className="bg-bg-card border border-white/10 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-[#1475e1] tabular-nums">
+            <p className="text-2xl font-bold text-accent-primary tabular-nums">
               {gameStats.activePlayers.toLocaleString()}
             </p>
             <p className="text-sm text-text-secondary">Active Players</p>

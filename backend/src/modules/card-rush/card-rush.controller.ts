@@ -19,7 +19,7 @@ export class CardRushController {
 
   @Post('play')
   async play(@Req() req: any, @Body() dto: PlayCardRushDto) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.cardRushService.play(req.user.id, dto, siteId);
   }
 
@@ -30,13 +30,13 @@ export class CardRushController {
 
   @Get('history')
   async history(@Req() req: any, @Query('limit') limit?: string) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.cardRushService.getHistory(req.user.id, siteId, limit ? parseInt(limit) : 20);
   }
 
   @Get('odds')
   async getOdds(@Req() req: any) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.cardRushService.getOddsTable(siteId);
   }
 }

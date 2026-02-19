@@ -41,6 +41,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginDirect: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, referralCode?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -53,6 +54,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   error: null,
   login: async () => {},
+  loginDirect: async () => {},
   register: async () => {},
   logout: () => {},
   refreshUser: async () => {},
@@ -156,6 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Login with email and password
+   * Throws with { pendingVerification: true, email } if user needs verification
    */
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
@@ -176,6 +179,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(data.message || 'Login failed');
       }
 
+      // Check if user needs email verification
+      if (data.pendingVerification) {
+        const verificationError: any = new Error('PENDING_VERIFICATION');
+        verificationError.pendingVerification = true;
+        verificationError.email = data.email || email;
+        throw verificationError;
+      }
+
       // Save token
       localStorage.setItem('auth_token', data.token);
       setToken(data.token);
@@ -192,7 +203,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Register new user
+   * Direct login - used after email verification to auto-login
+   * Same as login but without the verification check (user just verified)
+   */
+  const loginDirect = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+        setToken(data.token);
+        await fetchUser(data.token);
+      }
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Register new user - does NOT auto-login since user must verify email first
    */
   const register = useCallback(async (
     username: string,
@@ -218,12 +265,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(data.message || 'Registration failed');
       }
 
-      // Save token
-      localStorage.setItem('auth_token', data.token);
-      setToken(data.token);
-      
-      // Fetch full user data with balance
-      await fetchUser(data.token);
+      // DO NOT auto-login - user must verify email first
+      // The register page will redirect to /verify-email?email=...
       
     } catch (err: any) {
       setError(err.message);
@@ -261,6 +304,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading,
         error,
         login,
+        loginDirect,
         register,
         logout,
         refreshUser,

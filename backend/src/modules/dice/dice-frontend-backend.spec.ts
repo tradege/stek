@@ -16,6 +16,9 @@
 
 import { DiceService } from './dice.service';
 import { BadRequestException } from '@nestjs/common';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 // Mock Date.now to bypass rate limiting
 let mockTime = 1000000;
@@ -29,6 +32,24 @@ beforeAll(() => {
 afterAll(() => {
   Date.now = originalDateNow;
 });
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
+
+const mockRewardPoolService = {
+  contributeToPool: jest.fn().mockResolvedValue(undefined),
+} as any;
+
+const mockCommissionProcessor = {
+  processCommission: jest.fn().mockResolvedValue(undefined),
+} as any;
 
 describe('Dice Frontend-Backend Consistency', () => {
   let service: DiceService;
@@ -55,9 +76,28 @@ describe('Dice Frontend-Backend Consistency', () => {
       riskLimit: {
         findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
       },
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
     };
 
-    service = new DiceService(mockPrisma);
+    service = new DiceService(mockPrisma, mockVipService as any, mockRewardPoolService, mockCommissionProcessor);
   });
 
   // ============================================
@@ -255,19 +295,31 @@ describe('Dice Frontend-Backend Consistency', () => {
       expect(typeof result.nonce).toBe('number');
     });
 
-    it('should have unique serverSeedHash for each spin', async () => {
-      const hashes = new Set<string>();
-
+    it('should have unique nonce for each spin (persistent seed model)', async () => {
+      const nonces = new Set<number>();
+      let nonceCounter = 0;
+      mockPrisma.serverSeed.update.mockImplementation(async () => {
+        nonceCounter++;
+        return { nonce: nonceCounter };
+      });
+      mockPrisma.serverSeed.findFirst.mockImplementation(async () => ({
+        id: 'seed-1',
+        userId: 'test-user',
+        seed: 'a'.repeat(64),
+        seedHash: 'b'.repeat(64),
+        isActive: true,
+        nonce: nonceCounter,
+      }));
       for (let i = 0; i < 50; i++) {
         const result = await service.play(testUserId, {
           betAmount: 1,
           target: 50,
           condition: 'UNDER',
         }, 'default-site-001');
-        hashes.add(result.serverSeedHash);
+        nonces.add(result.nonce);
       }
-
-      expect(hashes.size).toBe(50);
+      // With persistent seeds, nonce increments each spin
+      expect(nonces.size).toBe(50);
     });
 
     it('should produce consistent roll from verifyRoll', () => {

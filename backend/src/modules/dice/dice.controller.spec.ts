@@ -9,6 +9,18 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DiceController } from './dice.controller';
 import { DiceService } from './dice.service';
 import { BadRequestException } from '@nestjs/common';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
 
 describe('DiceController', () => {
   let controller: DiceController;
@@ -34,6 +46,18 @@ describe('DiceController', () => {
       controllers: [DiceController],
       providers: [
         {
+          provide: RewardPoolService,
+          useValue: {
+            contributeToPool: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CommissionProcessorService,
+          useValue: {
+            processCommission: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
           provide: DiceService,
           useValue: {
             play: jest.fn().mockResolvedValue(mockPlayResult),
@@ -57,7 +81,7 @@ describe('DiceController', () => {
 
       await controller.play(req, dto as any);
 
-      expect(service.play).toHaveBeenCalledWith('user-123', dto, 'default-site-001');
+      expect(service.play).toHaveBeenCalledWith('user-123', dto, '1');
     });
 
     it('should use req.user.id as fallback for userId', async () => {
@@ -66,14 +90,14 @@ describe('DiceController', () => {
 
       await controller.play(req, dto as any);
 
-      expect(service.play).toHaveBeenCalledWith('user-456', dto, 'default-site-001');
+      expect(service.play).toHaveBeenCalledWith('user-456', dto, '1');
     });
 
     it('should pass undefined userId when user has no id', async () => {
       const req = { user: {}, tenant: {} };
       const dto = { betAmount: 5, target: 50, condition: 'UNDER' };
       await controller.play(req, dto as any);
-      expect(service.play).toHaveBeenCalledWith(undefined, dto, 'default-site-001');
+      expect(service.play).toHaveBeenCalledWith(undefined, dto, '1');
     });
 
     it('should return play result with all required fields', async () => {
@@ -108,7 +132,7 @@ describe('DiceController', () => {
 
       await controller.history(req);
 
-      expect(service.getHistory).toHaveBeenCalledWith('user-123', 'default-site-001', 20);
+      expect(service.getHistory).toHaveBeenCalledWith('user-123', '1', 20);
     });
 
     it('should return history array', async () => {
@@ -124,7 +148,7 @@ describe('DiceController', () => {
 
       await controller.history(req, '50');
 
-      expect(service.getHistory).toHaveBeenCalledWith('user-123', 'default-site-001', 50);
+      expect(service.getHistory).toHaveBeenCalledWith('user-123', '1', 50);
     });
   });
 

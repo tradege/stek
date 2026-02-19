@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   // Fetch real stats
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/admin/stats/real`, {
+      const response = await fetch(`${API_URL}/api/admin/real-stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -109,91 +109,91 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0f1923]">
+      <div className="flex items-center justify-center min-h-screen bg-bg-main">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00ff88]"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1923] text-white p-6">
+    <div className="min-h-screen bg-bg-main text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#00ff88]">🎮 God Mode Dashboard</h1>
-          <p className="text-gray-400 mt-2">Real-time casino analytics and game controls</p>
+          <p className="text-text-secondary mt-2">Real-time casino analytics and game controls</p>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Real Profit Card */}
-          <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
+          <div className="bg-gradient-to-br from-bg-card to-bg-main rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-400 text-sm">Real Profit</span>
+              <span className="text-text-secondary text-sm">Real Profit</span>
               <span className="text-[#00ff88] text-xs px-2 py-1 bg-[#00ff88]/10 rounded">LIVE</span>
             </div>
             <div className={`text-3xl font-bold ${(stats?.houseProfit || 0) >= 0 ? 'text-[#00ff88]' : 'text-red-500'}`}>
               ${(stats?.houseProfit || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-gray-500 text-xs mt-2">House wallet from real users</p>
+            <p className="text-text-tertiary text-xs mt-2">House wallet from real users</p>
           </div>
 
           {/* Total Wagered Card */}
-          <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
+          <div className="bg-gradient-to-br from-bg-card to-bg-main rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-400 text-sm">Total Wagered</span>
+              <span className="text-text-secondary text-sm">Total Wagered</span>
               <span className="text-blue-400 text-xs px-2 py-1 bg-blue-400/10 rounded">REAL</span>
             </div>
             <div className="text-3xl font-bold text-white">
               ${(stats?.totalWagered || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-gray-500 text-xs mt-2">{stats?.totalBets || 0} total bets</p>
+            <p className="text-text-tertiary text-xs mt-2">{stats?.totalBets || 0} total bets</p>
           </div>
 
           {/* Bot Volume Card */}
-          <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
+          <div className="bg-gradient-to-br from-bg-card to-bg-main rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-400 text-sm">Bot Volume</span>
-              <span className="text-gray-500 text-xs px-2 py-1 bg-gray-500/10 rounded">SIMULATED</span>
+              <span className="text-text-secondary text-sm">Bot Volume</span>
+              <span className="text-text-tertiary text-xs px-2 py-1 bg-gray-500/10 rounded">SIMULATED</span>
             </div>
-            <div className="text-3xl font-bold text-gray-400">
+            <div className="text-3xl font-bold text-text-secondary">
               ${(stats?.botVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-gray-500 text-xs mt-2">{stats?.activeBots || 0} active bots</p>
+            <p className="text-text-tertiary text-xs mt-2">{stats?.activeBots || 0} active bots</p>
           </div>
 
           {/* Real Users Card */}
-          <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
+          <div className="bg-gradient-to-br from-bg-card to-bg-main rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-gray-400 text-sm">Real Users</span>
-              <span className="text-[#1475e1] text-xs px-2 py-1 bg-purple-400/10 rounded">USERS</span>
+              <span className="text-text-secondary text-sm">Real Users</span>
+              <span className="text-accent-primary text-xs px-2 py-1 bg-purple-400/10 rounded">USERS</span>
             </div>
             <div className="text-3xl font-bold text-white">
               {stats?.totalRealUsers || 0}
             </div>
-            <p className="text-gray-500 text-xs mt-2">{stats?.activeRealUsers || 0} active (24h)</p>
+            <p className="text-text-tertiary text-xs mt-2">{stats?.activeRealUsers || 0} active (24h)</p>
           </div>
         </div>
 
         {/* Financial Summary */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
+          <div className="bg-gradient-to-br from-bg-card to-bg-main rounded-xl p-6 border border-white/10">
             <h3 className="text-lg font-semibold mb-4 text-white">💰 Financial Summary</h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b border-[#2a3f4d]">
-                <span className="text-gray-400">Total Deposits</span>
+              <div className="flex justify-between items-center py-2 border-b border-white/10">
+                <span className="text-text-secondary">Total Deposits</span>
                 <span className="text-[#00ff88] font-semibold">
                   ${(stats?.totalDeposits || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-[#2a3f4d]">
-                <span className="text-gray-400">Total Withdrawals</span>
+              <div className="flex justify-between items-center py-2 border-b border-white/10">
+                <span className="text-text-secondary">Total Withdrawals</span>
                 <span className="text-red-400 font-semibold">
                   ${(stats?.totalWithdrawals || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">
-                <span className="text-gray-400">Net Deposits</span>
+                <span className="text-text-secondary">Net Deposits</span>
                 <span className={`font-semibold ${(stats?.netDeposits || 0) >= 0 ? 'text-[#00ff88]' : 'text-red-400'}`}>
                   ${(stats?.netDeposits || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
@@ -202,7 +202,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Game Controls */}
-          <div className="bg-gradient-to-br from-[#1a2c38] to-[#0d1b24] rounded-xl p-6 border border-[#2a3f4d]">
+          <div className="bg-gradient-to-br from-bg-card to-bg-main rounded-xl p-6 border border-white/10">
             <h3 className="text-lg font-semibold mb-4 text-white">🎮 Game Controls</h3>
             
             {config && (
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
                 {/* House Edge Slider */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-gray-400 text-sm">House Edge</label>
+                    <label className="text-text-secondary text-sm">House Edge</label>
                     <span className="text-[#00ff88] font-semibold">{config.houseEdge.toFixed(1)}%</span>
                   </div>
                   <input
@@ -220,10 +220,10 @@ export default function AdminDashboard() {
                     step="0.5"
                     value={config.houseEdge}
                     onChange={(e) => updateConfig({ houseEdge: parseFloat(e.target.value) })}
-                    className="w-full h-2 bg-[#2a3f4d] rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#00ff88]"
                     disabled={saving}
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-text-tertiary mt-1">
                     <span>1%</span>
                     <span>10%</span>
                   </div>
@@ -232,7 +232,7 @@ export default function AdminDashboard() {
                 {/* Instant Bust Slider */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-gray-400 text-sm">Instant Bust Chance</label>
+                    <label className="text-text-secondary text-sm">Instant Bust Chance</label>
                     <span className="text-orange-400 font-semibold">{config.instantBust.toFixed(1)}%</span>
                   </div>
                   <input
@@ -242,20 +242,20 @@ export default function AdminDashboard() {
                     step="0.5"
                     value={config.instantBust}
                     onChange={(e) => updateConfig({ instantBust: parseFloat(e.target.value) })}
-                    className="w-full h-2 bg-[#2a3f4d] rounded-lg appearance-none cursor-pointer accent-orange-400"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-400"
                     disabled={saving}
                   />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <div className="flex justify-between text-xs text-text-tertiary mt-1">
                     <span>0%</span>
                     <span>5%</span>
                   </div>
                 </div>
 
                 {/* Bots Toggle */}
-                <div className="flex justify-between items-center py-3 border-t border-[#2a3f4d]">
+                <div className="flex justify-between items-center py-3 border-t border-white/10">
                   <div>
-                    <span className="text-gray-400 text-sm">Ghost Bots</span>
-                    <p className="text-gray-500 text-xs">Simulated players in Live Bets</p>
+                    <span className="text-text-secondary text-sm">Ghost Bots</span>
+                    <p className="text-text-tertiary text-xs">Simulated players in Live Bets</p>
                   </div>
                   <button
                     onClick={() => updateConfig({ botsEnabled: !config.botsEnabled })}
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                 {/* Max Bots Per Round */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-gray-400 text-sm">Max Bots Per Round</label>
+                    <label className="text-text-secondary text-sm">Max Bots Per Round</label>
                     <span className="text-blue-400 font-semibold">{config.maxBotsPerRound}</span>
                   </div>
                   <input
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
                     step="5"
                     value={config.maxBotsPerRound}
                     onChange={(e) => updateConfig({ maxBotsPerRound: parseInt(e.target.value) })}
-                    className="w-full h-2 bg-[#2a3f4d] rounded-lg appearance-none cursor-pointer accent-blue-400"
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-400"
                     disabled={saving || !config.botsEnabled}
                   />
                 </div>
@@ -295,14 +295,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Status Bar */}
-        <div className="bg-[#1a2c38] rounded-xl p-4 border border-[#2a3f4d] flex items-center justify-between">
+        <div className="bg-bg-card rounded-xl p-4 border border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
-              <span className="text-gray-400 text-sm">System Online</span>
+              <span className="text-text-secondary text-sm">System Online</span>
             </div>
-            <div className="text-gray-500 text-sm">|</div>
-            <span className="text-gray-400 text-sm">
+            <div className="text-text-tertiary text-sm">|</div>
+            <span className="text-text-secondary text-sm">
               Last updated: {new Date().toLocaleTimeString()}
             </span>
           </div>

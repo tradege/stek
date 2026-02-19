@@ -28,6 +28,11 @@ interface BrandReport {
   ggr: number;
   ggrFee: number;
   commission: number;
+  totalDeposits: number;
+  totalWithdrawals: number;
+  totalBonuses: number;
+  playersRealBalance: number;
+  playersBonusBalance: number;
   houseBalance: number;
 }
 
@@ -37,6 +42,10 @@ interface MasterStats {
   totalWagered: number;
   totalGGR: number;
   totalCommission: number;
+  totalDeposits: number;
+  totalWithdrawals: number;
+  totalBonuses: number;
+  totalPlayersBalance: number;
 }
 
 export default function MasterReportsPage() {
@@ -144,19 +153,19 @@ export default function MasterReportsPage() {
             </div>
             <p className="text-2xl font-bold text-cyan-400">{(stats.totalPlayers || 0).toLocaleString()}</p>
           </div>
-          <div className="bg-bg-card border border-blue-500/20 rounded-xl p-5">
+          <div className="bg-bg-card border border-emerald-500/20 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className="w-5 h-5 text-blue-400" />
-              <span className="text-sm text-text-secondary">Total Wagered</span>
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              <span className="text-sm text-text-secondary">Total Deposits</span>
             </div>
-            <p className="text-2xl font-bold text-blue-400">{formatCurrency(stats.totalWagered)}</p>
+            <p className="text-2xl font-bold text-emerald-400">{formatCurrency(stats.totalDeposits)}</p>
           </div>
           <div className="bg-bg-card border border-green-500/20 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-5 h-5 text-green-400" />
               <span className="text-sm text-text-secondary">Total GGR</span>
             </div>
-            <p className={`text-2xl font-bold ${stats.totalGGR >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-2xl font-bold ${(stats.totalGGR || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {formatCurrency(stats.totalGGR)}
             </p>
           </div>
@@ -165,7 +174,7 @@ export default function MasterReportsPage() {
               <DollarSign className="w-5 h-5 text-yellow-400" />
               <span className="text-sm text-text-secondary">Your Commission</span>
             </div>
-            <p className={`text-2xl font-bold ${stats.totalCommission >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+            <p className={`text-2xl font-bold ${(stats.totalCommission || 0) >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
               {formatCurrency(stats.totalCommission)}
             </p>
           </div>
@@ -183,55 +192,73 @@ export default function MasterReportsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/5">
-                <th className="text-left px-6 py-3 text-xs font-semibold text-text-secondary uppercase">Brand</th>
-                <th className="text-center px-6 py-3 text-xs font-semibold text-text-secondary uppercase">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-text-secondary uppercase">Brand</th>
+                <th className="text-center px-3 py-3 text-xs font-semibold text-text-secondary uppercase">Status</th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
+                  className="text-right px-3 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
                   onClick={() => handleSort('totalPlayers')}
                 >
                   Players <SortIcon field="totalPlayers" />
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
+                  className="text-right px-3 py-3 text-xs font-semibold text-emerald-400 uppercase cursor-pointer hover:text-white"
+                  onClick={() => handleSort('totalDeposits')}
+                >
+                  Deposits <SortIcon field="totalDeposits" />
+                </th>
+                <th
+                  className="text-right px-3 py-3 text-xs font-semibold text-yellow-400 uppercase cursor-pointer hover:text-white"
+                  onClick={() => handleSort('totalBonuses')}
+                >
+                  Bonuses <SortIcon field="totalBonuses" />
+                </th>
+                <th
+                  className="text-right px-3 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
                   onClick={() => handleSort('totalBets')}
                 >
                   Bets <SortIcon field="totalBets" />
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
+                  className="text-right px-3 py-3 text-xs font-semibold text-blue-400 uppercase cursor-pointer hover:text-white"
                   onClick={() => handleSort('totalWagered')}
                 >
                   Wagered <SortIcon field="totalWagered" />
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
+                  className="text-right px-3 py-3 text-xs font-semibold text-green-400 uppercase cursor-pointer hover:text-white"
                   onClick={() => handleSort('ggr')}
                 >
-                  GGR (Profit) <SortIcon field="ggr" />
+                  GGR <SortIcon field="ggr" />
                 </th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase">Fee %</th>
+                <th className="text-right px-3 py-3 text-xs font-semibold text-text-secondary uppercase">Fee %</th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
+                  className="text-right px-3 py-3 text-xs font-semibold text-yellow-400 uppercase cursor-pointer hover:text-white"
                   onClick={() => handleSort('commission')}
                 >
                   Commission <SortIcon field="commission" />
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-text-secondary uppercase cursor-pointer hover:text-white"
-                  onClick={() => handleSort('houseBalance')}
+                  className="text-right px-3 py-3 text-xs font-semibold text-orange-400 uppercase cursor-pointer hover:text-white"
+                  onClick={() => handleSort('totalWithdrawals')}
                 >
-                  House Balance <SortIcon field="houseBalance" />
+                  Withdrawals <SortIcon field="totalWithdrawals" />
+                </th>
+                <th
+                  className="text-right px-3 py-3 text-xs font-semibold text-cyan-400 uppercase cursor-pointer hover:text-white"
+                  onClick={() => handleSort('playersRealBalance')}
+                >
+                  Players Balance <SortIcon field="playersRealBalance" />
                 </th>
               </tr>
             </thead>
             <tbody>
               {sortedReports.map((brand) => (
                 <tr key={brand.tenantId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <p className="font-medium text-white">{brand.brandName}</p>
                     <p className="text-xs text-text-secondary">{brand.domain}</p>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-3 py-4 text-center">
                     <span
                       className={`px-2 py-1 text-xs rounded-full font-medium ${
                         brand.active
@@ -242,38 +269,45 @@ export default function MasterReportsPage() {
                       {brand.active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right text-sm text-white">
+                  <td className="px-3 py-4 text-right text-sm text-white">
                     {(brand.totalPlayers || 0).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right text-sm text-white">
+                  <td className="px-3 py-4 text-right text-sm font-medium text-emerald-400">
+                    {formatCurrency(brand.totalDeposits)}
+                  </td>
+                  <td className="px-3 py-4 text-right text-sm font-medium text-yellow-400">
+                    {formatCurrency(brand.totalBonuses)}
+                  </td>
+                  <td className="px-3 py-4 text-right text-sm text-white">
                     {(brand.totalBets || 0).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right text-sm text-white">
+                  <td className="px-3 py-4 text-right text-sm font-medium text-blue-400">
                     {formatCurrency(brand.totalWagered)}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 py-4 text-right">
                     <span className={`text-sm font-medium ${(brand.ggr || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatCurrency(brand.ggr)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right text-sm text-yellow-400 font-medium">
+                  <td className="px-3 py-4 text-right text-sm text-text-secondary font-medium">
                     {brand.ggrFee}%
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 py-4 text-right">
                     <span className={`text-sm font-bold ${(brand.commission || 0) >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
                       {formatCurrency(brand.commission)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`text-sm ${(brand.houseBalance || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(brand.houseBalance)}
-                    </span>
+                  <td className="px-3 py-4 text-right text-sm font-medium text-orange-400">
+                    {formatCurrency(brand.totalWithdrawals)}
+                  </td>
+                  <td className="px-3 py-4 text-right text-sm font-medium text-cyan-400">
+                    {formatCurrency(brand.playersRealBalance)}
                   </td>
                 </tr>
               ))}
               {sortedReports.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-text-secondary">
+                  <td colSpan={12} className="px-6 py-12 text-center text-text-secondary">
                     No brand data available yet.
                   </td>
                 </tr>
@@ -284,27 +318,36 @@ export default function MasterReportsPage() {
             {sortedReports.length > 0 && (
               <tfoot>
                 <tr className="bg-white/5 border-t-2 border-cyan-500/30">
-                  <td className="px-6 py-4 font-bold text-cyan-400" colSpan={2}>
+                  <td className="px-4 py-4 font-bold text-cyan-400" colSpan={2}>
                     TOTALS
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-white">
+                  <td className="px-3 py-4 text-right font-bold text-white">
                     {reports.reduce((s, b) => s + (b.totalPlayers || 0), 0).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-white">
+                  <td className="px-3 py-4 text-right font-bold text-emerald-400">
+                    {formatCurrency(reports.reduce((s, b) => s + (b.totalDeposits || 0), 0))}
+                  </td>
+                  <td className="px-3 py-4 text-right font-bold text-yellow-400">
+                    {formatCurrency(reports.reduce((s, b) => s + (b.totalBonuses || 0), 0))}
+                  </td>
+                  <td className="px-3 py-4 text-right font-bold text-white">
                     {reports.reduce((s, b) => s + (b.totalBets || 0), 0).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-white">
+                  <td className="px-3 py-4 text-right font-bold text-blue-400">
                     {formatCurrency(reports.reduce((s, b) => s + (b.totalWagered || 0), 0))}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-green-400">
+                  <td className="px-3 py-4 text-right font-bold text-green-400">
                     {formatCurrency(reports.reduce((s, b) => s + (b.ggr || 0), 0))}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-text-secondary">—</td>
-                  <td className="px-6 py-4 text-right font-bold text-yellow-400">
+                  <td className="px-3 py-4 text-right font-bold text-text-secondary">—</td>
+                  <td className="px-3 py-4 text-right font-bold text-yellow-400">
                     {formatCurrency(reports.reduce((s, b) => s + (b.commission || 0), 0))}
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-green-400">
-                    {formatCurrency(reports.reduce((s, b) => s + (b.houseBalance || 0), 0))}
+                  <td className="px-3 py-4 text-right font-bold text-orange-400">
+                    {formatCurrency(reports.reduce((s, b) => s + (b.totalWithdrawals || 0), 0))}
+                  </td>
+                  <td className="px-3 py-4 text-right font-bold text-cyan-400">
+                    {formatCurrency(reports.reduce((s, b) => s + (b.playersRealBalance || 0), 0))}
                   </td>
                 </tr>
               </tfoot>

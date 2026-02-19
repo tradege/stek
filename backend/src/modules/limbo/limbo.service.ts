@@ -1,3 +1,4 @@
+import { VaultService } from '../vault/vault.service';
 /**
  * ============================================
  * LIMBO SERVICE - Target Multiplier Game
@@ -48,7 +49,9 @@ const userLastBetTime = new Map<string, number>();
 
 @Injectable()
 export class LimboService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,
+    private readonly vaultService: VaultService,
+  ) {}
 
   // ============================================
   // PROVABLY FAIR RNG
@@ -178,21 +181,32 @@ export class LimboService {
       }
     }
 
-    // Atomic wallet transaction
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { userId, currency: currency as any },
-    });
-    if (!wallet) {
-      throw new BadRequestException(`No ${currency} wallet found`);
-    }
-    const currentBalance = new Decimal(wallet.balance.toString());
-    if (currentBalance.lt(betAmount)) {
-      throw new BadRequestException('Insufficient balance');
-    }
-
-    const newBalance = currentBalance.minus(betAmount).plus(payout);
-
+    // Atomic wallet transaction with row-level locking (prevents race conditions)
     await this.prisma.$transaction(async (tx) => {
+      // Lock wallet row with FOR UPDATE to prevent concurrent bet race conditions
+      const lockedWallets = await tx.$queryRaw<any[]>`
+        SELECT id, balance FROM "Wallet"
+        WHERE "userId" = ${userId} AND currency = ${currency}::"Currency" AND "siteId" = ${siteId}
+        FOR UPDATE
+      `;
+      if (!lockedWallets || lockedWallets.length === 0) {
+        const fallbackWallets = await tx.$queryRaw<any[]>`
+          SELECT id, balance FROM "Wallet"
+          WHERE "userId" = ${userId} AND currency = ${currency}::"Currency"
+          FOR UPDATE
+        `;
+        if (!fallbackWallets || fallbackWallets.length === 0) {
+          throw new BadRequestException(`No ${currency} wallet found`);
+        }
+        var wallet = fallbackWallets[0];
+      } else {
+        var wallet = lockedWallets[0];
+      }
+      const currentBalance = new Decimal(wallet.balance);
+      if (currentBalance.lt(betAmount)) {
+        throw new BadRequestException('Insufficient balance');
+      }
+      const newBalance = currentBalance.minus(betAmount).plus(payout);
       await tx.wallet.update({
         where: { id: wallet.id },
         data: { balance: newBalance.toNumber() },

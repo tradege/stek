@@ -188,7 +188,7 @@ export default function AdminSportsPage() {
       LOST: 'bg-red-500/10 text-red-400',
       REFUNDED: 'bg-blue-500/10 text-blue-400',
     };
-    return <span className={`${styles[status] || 'bg-gray-500/10 text-gray-400'} px-2 py-0.5 rounded text-xs font-medium`}>{status}</span>;
+    return <span className={`${styles[status] || 'bg-gray-500/10 text-text-secondary'} px-2 py-0.5 rounded text-xs font-medium`}>{status}</span>;
   };
 
   return (
@@ -199,7 +199,7 @@ export default function AdminSportsPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <span className="text-2xl">⚽</span> Sports Betting
           </h1>
-          <p className="text-sm text-gray-400 mt-1">Monitor sports bets, odds, and settlements</p>
+          <p className="text-sm text-text-secondary mt-1">Monitor sports bets, odds, and settlements</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -248,33 +248,33 @@ export default function AdminSportsPage() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">Total Bets</p>
+            <p className="text-xs text-text-secondary mb-1">Total Bets</p>
             <p className="text-xl font-bold text-white">{stats.totalBets}</p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">Pending</p>
+            <p className="text-xs text-text-secondary mb-1">Pending</p>
             <p className="text-xl font-bold text-yellow-400">{stats.pendingBets}</p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">Total Staked</p>
+            <p className="text-xs text-text-secondary mb-1">Total Staked</p>
             <p className="text-xl font-bold text-white">${stats.totalStaked.toFixed(0)}</p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">Paid Out</p>
+            <p className="text-xs text-text-secondary mb-1">Paid Out</p>
             <p className="text-xl font-bold text-green-400">${stats.totalPaidOut.toFixed(0)}</p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">GGR</p>
+            <p className="text-xs text-text-secondary mb-1">GGR</p>
             <p className={`text-xl font-bold ${stats.ggr >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${stats.ggr.toFixed(0)}
             </p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">Events</p>
+            <p className="text-xs text-text-secondary mb-1">Events</p>
             <p className="text-xl font-bold text-accent-primary">{stats.totalEvents}</p>
           </div>
           <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
-            <p className="text-xs text-gray-400 mb-1">API Calls</p>
+            <p className="text-xs text-text-secondary mb-1">API Calls</p>
             <p className="text-xl font-bold text-white">
               {stats.apiStatus.apiCallsThisMonth}/{stats.apiStatus.maxMonthlyCallsLimit}
             </p>
@@ -287,17 +287,17 @@ export default function AdminSportsPage() {
         <div className="bg-[#131B2C] rounded-xl border border-gray-700/30 p-4">
           <h3 className="text-sm font-semibold text-white mb-2">API Status</h3>
           <div className="flex items-center gap-6 text-sm">
-            <span className="text-gray-400">
+            <span className="text-text-secondary">
               Key: {stats.apiStatus.apiKeyConfigured 
                 ? <span className="text-green-400">Configured</span> 
                 : <span className="text-red-400">Missing</span>}
             </span>
-            <span className="text-gray-400">
+            <span className="text-text-secondary">
               Last Fetch: {stats.apiStatus.lastFetchTime 
                 ? <span className="text-white">{new Date(stats.apiStatus.lastFetchTime).toLocaleString()}</span>
                 : <span className="text-yellow-400">Never</span>}
             </span>
-            <span className="text-gray-400">
+            <span className="text-text-secondary">
               Quota: <span className="text-white">{stats.apiStatus.apiCallsThisMonth}</span>/{stats.apiStatus.maxMonthlyCallsLimit} calls/month
             </span>
           </div>
@@ -319,7 +319,7 @@ export default function AdminSportsPage() {
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               statusFilter === f.key
                 ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30'
-                : 'bg-[#0A0E17] text-gray-400 border border-gray-700/30 hover:border-gray-600/50'
+                : 'bg-[#0A0E17] text-text-secondary border border-gray-700/30 hover:border-gray-600/50'
             }`}
           >
             {f.label}
@@ -333,14 +333,14 @@ export default function AdminSportsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700/30">
-                <th className="text-left text-gray-400 text-xs font-medium py-3 px-4">User</th>
-                <th className="text-left text-gray-400 text-xs font-medium py-3 px-4">Match</th>
-                <th className="text-left text-gray-400 text-xs font-medium py-3 px-4">Pick</th>
-                <th className="text-right text-gray-400 text-xs font-medium py-3 px-4">Odds</th>
-                <th className="text-right text-gray-400 text-xs font-medium py-3 px-4">Stake</th>
-                <th className="text-right text-gray-400 text-xs font-medium py-3 px-4">Potential</th>
-                <th className="text-center text-gray-400 text-xs font-medium py-3 px-4">Status</th>
-                <th className="text-right text-gray-400 text-xs font-medium py-3 px-4">Time</th>
+                <th className="text-left text-text-secondary text-xs font-medium py-3 px-4">User</th>
+                <th className="text-left text-text-secondary text-xs font-medium py-3 px-4">Match</th>
+                <th className="text-left text-text-secondary text-xs font-medium py-3 px-4">Pick</th>
+                <th className="text-right text-text-secondary text-xs font-medium py-3 px-4">Odds</th>
+                <th className="text-right text-text-secondary text-xs font-medium py-3 px-4">Stake</th>
+                <th className="text-right text-text-secondary text-xs font-medium py-3 px-4">Potential</th>
+                <th className="text-center text-text-secondary text-xs font-medium py-3 px-4">Status</th>
+                <th className="text-right text-text-secondary text-xs font-medium py-3 px-4">Time</th>
               </tr>
             </thead>
             <tbody>
@@ -352,7 +352,7 @@ export default function AdminSportsPage() {
                 </tr>
               ) : bets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-gray-400">
+                  <td colSpan={8} className="text-center py-12 text-text-secondary">
                     No sports bets found
                   </td>
                 </tr>
@@ -361,11 +361,11 @@ export default function AdminSportsPage() {
                   <tr key={bet.id} className="border-b border-gray-700/10 hover:bg-white/5 transition-colors">
                     <td className="py-3 px-4">
                       <p className="text-white text-sm font-medium">{bet.user.username}</p>
-                      <p className="text-gray-500 text-xs">{bet.user.email}</p>
+                      <p className="text-text-tertiary text-xs">{bet.user.email}</p>
                     </td>
                     <td className="py-3 px-4">
                       <p className="text-white text-sm">{bet.event.homeTeam} vs {bet.event.awayTeam}</p>
-                      <p className="text-gray-500 text-xs">{bet.event.sportTitle}</p>
+                      <p className="text-text-tertiary text-xs">{bet.event.sportTitle}</p>
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-accent-primary text-sm font-medium">{bet.selectionName}</span>
@@ -382,7 +382,7 @@ export default function AdminSportsPage() {
                     <td className="py-3 px-4 text-center">
                       {getStatusBadge(bet.status)}
                     </td>
-                    <td className="py-3 px-4 text-right text-gray-400 text-xs">
+                    <td className="py-3 px-4 text-right text-text-secondary text-xs">
                       {new Date(bet.createdAt).toLocaleString()}
                     </td>
                   </tr>
@@ -392,7 +392,7 @@ export default function AdminSportsPage() {
           </table>
         </div>
         {totalBets > 50 && (
-          <div className="p-4 border-t border-gray-700/30 text-center text-gray-400 text-sm">
+          <div className="p-4 border-t border-gray-700/30 text-center text-text-secondary text-sm">
             Showing 50 of {totalBets} bets
           </div>
         )}
@@ -405,13 +405,13 @@ export default function AdminSportsPage() {
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <span>🔧</span> Force Settle Event
             </h3>
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-text-secondary mb-4">
               Manually set the final score for an event. This will settle all pending bets.
             </p>
             
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Event ID</label>
+                <label className="text-xs text-text-secondary mb-1 block">Event ID</label>
                 <input
                   type="text"
                   value={settleEventId}
@@ -422,7 +422,7 @@ export default function AdminSportsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Home Score</label>
+                  <label className="text-xs text-text-secondary mb-1 block">Home Score</label>
                   <input
                     type="number"
                     value={settleHomeScore}
@@ -433,7 +433,7 @@ export default function AdminSportsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Away Score</label>
+                  <label className="text-xs text-text-secondary mb-1 block">Away Score</label>
                   <input
                     type="number"
                     value={settleAwayScore}

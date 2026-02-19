@@ -166,3 +166,34 @@ export function verifyHouseEdge(rows: number, risk: RiskLevel): { ev: number; ho
   
   return { ev, houseEdge: (1 - ev) * 100 };
 }
+
+/**
+ * Get dynamically scaled multiplier based on configured house edge.
+ * The base tables are calibrated for 4% HE (96% RTP).
+ * Scaling factor = (1 - houseEdge) / 0.96
+ * This preserves multiplier distribution while adjusting overall RTP.
+ */
+export function getDynamicMultiplier(rows: number, risk: RiskLevel, bucketIndex: number, houseEdge: number = 0.04): number {
+  const baseMultiplier = getMultiplier(rows, risk, bucketIndex);
+  if (baseMultiplier === 0) return 0;
+  
+  const BASE_RTP = 0.96; // Tables are calibrated for this
+  const targetRTP = 1 - houseEdge;
+  const scaleFactor = targetRTP / BASE_RTP;
+  
+  return parseFloat((baseMultiplier * scaleFactor).toFixed(4));
+}
+
+/**
+ * Get all dynamically scaled multipliers for display
+ */
+export function getDynamicMultiplierArray(rows: number, risk: RiskLevel, houseEdge: number = 0.04): number[] {
+  const baseMultipliers = getMultiplierArray(rows, risk);
+  if (!baseMultipliers.length) return [];
+  
+  const BASE_RTP = 0.96;
+  const targetRTP = 1 - houseEdge;
+  const scaleFactor = targetRTP / BASE_RTP;
+  
+  return baseMultipliers.map(m => parseFloat((m * scaleFactor).toFixed(4)));
+}

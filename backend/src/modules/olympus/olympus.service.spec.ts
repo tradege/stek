@@ -13,6 +13,8 @@
 import { OlympusService } from './olympus.service';
 import { BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 import {
   GRID_COLS,
   GRID_ROWS,
@@ -59,7 +61,7 @@ describe('🏛️ OlympusService - Comprehensive Unit Tests', () => {
       },
     };
 
-    service = new OlympusService(mockPrisma);
+    service = new OlympusService(mockPrisma, { updateUserStats: jest.fn().mockResolvedValue(undefined), checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false }), processRakeback: jest.fn().mockResolvedValue(undefined) } as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
   });
 
   // ============================================

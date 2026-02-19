@@ -53,7 +53,7 @@ export class IntegrationService {
 
       return {
         status: 'OK',
-        balance: Number(new Decimal(wallet.balance.toString()).toFixed(2)),
+        balance: Number(new Decimal(wallet.balance.toString()).plus(wallet.bonusBalance || 0).toFixed(2)),
         currency: dto.currency || 'USDT',
       };
     } catch (error) {
@@ -72,7 +72,20 @@ export class IntegrationService {
     dto: TransactionRequestDto,
   ): Promise<TransactionResponseDto> {
     try {
-      // 1. Idempotency check - if transaction already exists, return success
+      
+    // PRODUCTION SAFEGUARD: Block test transactions in production
+    if (process.env.NODE_ENV === 'production') {
+      if (dto.gameId?.startsWith('test-') || dto.gameId === 'test-game' || 
+          dto.gameId === 'consistency-test' ||
+          dto.transactionId?.startsWith('test-') || 
+          dto.transactionId?.startsWith('decimal-test') ||
+          dto.transactionId?.startsWith('consistency-')) {
+        this.logger.warn(`BLOCKED test transaction in production: ${dto.transactionId}`);
+        return { status: 'ERROR', error: 'Test transactions are not allowed in production' };
+      }
+    }
+
+    // 1. Idempotency check - if transaction already exists, return success
       const existingTx = await this.prisma.transaction.findFirst({
         where: { externalRef: dto.transactionId },
       });

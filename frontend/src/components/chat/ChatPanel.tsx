@@ -1,4 +1,5 @@
 'use client';
+import TipModal from './TipModal';
 
 import { useState, useEffect, useRef } from 'react';
 
@@ -18,6 +19,7 @@ interface ChatPanelProps {
 export default function ChatPanel({ onClose }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [tipModalOpen, setTipModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -89,7 +91,18 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
           </div>
           <div>
             <h3 className="font-bold text-white text-sm tracking-tight">Live Chat</h3>
-            <div className="flex items-center gap-1.5">
+            
+          <button 
+            onClick={() => setTipModalOpen(true)}
+            className="p-1.5 hover:bg-white/5 rounded-lg transition-all text-accent-primary"
+            title="Send Tip"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+    
+<div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[11px] text-text-secondary">
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
@@ -176,6 +189,12 @@ export default function ChatPanel({ onClose }: ChatPanelProps) {
           </button>
         </div>
       </div>
-    </div>
+    
+      {/* Tip Modal */}
+      <TipModal 
+        isOpen={tipModalOpen} 
+        onClose={() => setTipModalOpen(false)} 
+      />
+</div>
   );
 }

@@ -26,6 +26,15 @@ function binomial(n: number, k: number): number {
   return r;
 }
 
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
 describe('Plinko Constants - Mathematical Verification', () => {
   const ALL_RISKS: RiskLevel[] = ['LOW', 'MEDIUM', 'HIGH'];
 

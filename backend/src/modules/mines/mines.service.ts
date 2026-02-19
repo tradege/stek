@@ -1,3 +1,4 @@
+import { VaultService } from '../vault/vault.service';
 import { getGameConfig, checkRiskLimits, recordPayout } from "../../common/helpers/game-tenant.helper";
 /**
  * ============================================
@@ -12,8 +13,11 @@ import { getGameConfig, checkRiskLimits, recordPayout } from "../../common/helpe
  * Simplified: Each reveal increases multiplier based on remaining safe probability
  */
 
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from "../reward-pool/reward-pool.service";
+import { CommissionProcessorService } from "../affiliate/commission-processor.service";
 import { registerGameSessionProvider } from '../shared/stuck-sessions-cleanup.service';
 import * as crypto from 'crypto';
 import Decimal from 'decimal.js';
@@ -56,6 +60,7 @@ const MAX_MINES = 24;
 // HOUSE_EDGE is now dynamic per brand - see getGameConfig
 const MIN_BET = 0.01;
 const MAX_BET = 10000;
+const MAX_MULTIPLIER = 10000; // 10,000x cap to prevent extreme volatility
 const RATE_LIMIT_MS = 500;
 
 // Active games map (in-memory for speed)
@@ -70,6 +75,7 @@ const activeGames = new Map<string, {
   clientSeed: string;
   nonce: number;
   currency: string;
+  siteId: string;
   createdAt: number;
 }>();
 
@@ -78,7 +84,15 @@ const userLastBetTime = new Map<string, number>();
 
 @Injectable()
 export class MinesService {
-  constructor(private prisma: PrismaService) {
+  private readonly logger = new Logger(MinesService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private readonly vipService: VipService,
+    private readonly rewardPoolService: RewardPoolService,
+    private readonly commissionProcessor: CommissionProcessorService,
+    private readonly vaultService: VaultService,
+  ) {
     // Register with stuck sessions cleanup service
     registerGameSessionProvider('MINES', () => {
       const sessions: any[] = [];
@@ -136,13 +150,15 @@ export class MinesService {
 
     // Multiplier = (1 - houseEdge) / probability
     const multiplier = ((1 - houseEdge) / probability); // House edge from admin panel config
-    return Math.floor(multiplier * 10000) / 10000; // Floor to 4 decimals
+    // Cap multiplier to prevent extreme volatility
+    const cappedMultiplier = Math.min(multiplier, MAX_MULTIPLIER);
+    return Math.floor(cappedMultiplier * 10000) / 10000; // Floor to 4 decimals
   }
 
   /**
    * Start a new mines game
    */
-  async startGame(userId: string, dto: StartGameDto, siteId: string = "default-site-001"): Promise<MinesGameState> {
+  async startGame(userId: string, dto: StartGameDto, siteId: string = "1"): Promise<MinesGameState> {
     const { betAmount, mineCount, currency = 'USDT' } = dto;
 
     // Rate limiting
@@ -180,10 +196,31 @@ export class MinesService {
     }
 
     // Generate provably fair seeds
-    const serverSeed = crypto.randomBytes(32).toString('hex');
-    const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+    // Provably Fair: persistent server seed + sequential nonce
+    let serverSeedRecord = await this.prisma.serverSeed.findFirst({
+      where: { userId, isActive: true },
+    });
+    if (!serverSeedRecord) {
+      const seed = crypto.randomBytes(32).toString('hex');
+      serverSeedRecord = await this.prisma.serverSeed.create({
+        data: {
+          userId,
+          seed,
+          seedHash: crypto.createHash('sha256').update(seed).digest('hex'),
+          isActive: true,
+          nonce: 0,
+        },
+      });
+    }
+    const serverSeed = serverSeedRecord.seed;
+    const serverSeedHash = serverSeedRecord.seedHash;
     const clientSeed = crypto.randomBytes(16).toString('hex');
-    const nonce = Math.floor(Math.random() * 1000000);
+    const nonce = serverSeedRecord.nonce + 1;
+    // Update nonce atomically
+    await this.prisma.serverSeed.update({
+      where: { id: serverSeedRecord.id },
+      data: { nonce },
+    });
 
     // Generate mine positions
     const minePositions = this.generateMinePositions(serverSeed, clientSeed, nonce, mineCount);
@@ -207,9 +244,23 @@ export class MinesService {
         throw new BadRequestException('Insufficient balance');
       }
 
+      const newBalance = currentBalance.minus(betAmount);
       await tx.wallet.update({
         where: { id: wallet.id },
-        data: { balance: currentBalance.minus(betAmount).toNumber() },
+        data: { balance: newBalance.toNumber() },
+      });
+      // Create BET Transaction record for audit trail
+      await tx.transaction.create({
+        data: {
+          userId,
+          walletId: wallet.id,
+          type: 'BET' as any,
+          status: 'CONFIRMED',
+          amount: new Decimal(betAmount),
+          balanceBefore: currentBalance,
+          balanceAfter: newBalance,
+          metadata: { game: 'MINES', siteId: siteId || '1' },
+        },
       });
     });
 
@@ -226,6 +277,7 @@ export class MinesService {
       clientSeed,
       nonce,
       currency,
+      siteId: siteId || "default",
       createdAt: now,
     });
 
@@ -285,7 +337,7 @@ export class MinesService {
       activeGames.delete(gameId);
 
       // Save bet to database as loss
-      await this.saveBetToDatabase(userId, game, 0, -game.betAmount, false, 'default-site-001');
+      await this.saveBetToDatabase(userId, game, 0, -game.betAmount, false, '1');
 
       return {
         gameId,
@@ -317,7 +369,20 @@ export class MinesService {
 
       // Credit winnings
       await this.creditWinnings(userId, game.currency, currentPayout);
-      await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true, 'default-site-001');
+      await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true, '1');
+    // VIP + RewardPool + Affiliate processing
+    try {
+      await this.vipService.updateUserStats(userId, game.betAmount);
+      await this.vipService.checkLevelUp(userId);
+      const minesConfig = await getGameConfig(this.prisma, game.siteId || '1', 'mines');
+      await this.vipService.processRakeback(userId, game.betAmount, minesConfig.houseEdge);
+      await this.rewardPoolService.contributeToPool(userId, null, game.betAmount, minesConfig.houseEdge, "MINES");
+      await this.commissionProcessor.processCommission("", userId, game.betAmount, currentPayout, "MINES" as any, game.siteId || "default");
+      // The Vault: Global Progressive Jackpot contribution
+      try {
+        await this.vaultService.processBet(userId, game.betAmount, 'MINES', '', '', 0);
+      } catch (ve) { console.error("Vault error:", ve?.message); }
+    } catch (e) { console.error("Mines post-bet error:", e?.message); }
 
       return {
         gameId,
@@ -378,7 +443,16 @@ export class MinesService {
 
     // Credit winnings
     await this.creditWinnings(userId, game.currency, currentPayout);
-    await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true, 'default-site-001');
+    await this.saveBetToDatabase(userId, game, currentMultiplier, profit, true, '1');
+    // VIP + RewardPool + Affiliate processing
+    try {
+      await this.vipService.updateUserStats(userId, game.betAmount);
+      await this.vipService.checkLevelUp(userId);
+      const minesConfig = await getGameConfig(this.prisma, game.siteId || '1', 'mines');
+      await this.vipService.processRakeback(userId, game.betAmount, minesConfig.houseEdge);
+      await this.rewardPoolService.contributeToPool(userId, null, game.betAmount, minesConfig.houseEdge, "MINES");
+      await this.commissionProcessor.processCommission("", userId, game.betAmount, currentPayout, "MINES" as any, game.siteId || "default");
+    } catch (e) { console.error("Mines post-bet error:", e?.message); }
 
     return {
       gameId,
@@ -440,11 +514,25 @@ export class MinesService {
       if (!lockedWallets || lockedWallets.length === 0) return;
 
       const wallet = lockedWallets[0];
-      const newBalance = new Decimal(wallet.balance).plus(amount);
+      const balanceBefore = new Decimal(wallet.balance);
+      const newBalance = balanceBefore.plus(amount);
 
       await tx.wallet.update({
         where: { id: wallet.id },
         data: { balance: newBalance.toNumber() },
+      });
+      // Create WIN Transaction record for audit trail
+      await tx.transaction.create({
+        data: {
+          userId,
+          walletId: wallet.id,
+          type: 'WIN' as any,
+          status: 'CONFIRMED',
+          amount: new Decimal(amount),
+          balanceBefore: balanceBefore,
+          balanceAfter: newBalance,
+          metadata: { game: 'MINES' },
+        },
       });
     });
   }
@@ -458,7 +546,7 @@ export class MinesService {
     multiplier: number,
     profit: number,
     isWin: boolean,
-    siteId: string = 'default-site-001',
+    siteId: string = '1',
   ): Promise<void> {
     try {
       await this.prisma.bet.create({

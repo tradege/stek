@@ -1,0 +1,504 @@
+/**
+ * ============================================
+ * SLOT MATH ENGINE - Vegas-Grade Core
+ * ============================================
+ * Virtual Reel Mapping with 10,000 stops per reel
+ * Provably Fair via HMAC-SHA256
+ * Supports multiple game modes via strategy pattern
+ */
+import * as crypto from 'crypto';
+
+// ============================================
+// CONSTANTS
+// ============================================
+export const VIRTUAL_STOPS = 10000;
+// Base RTP that paytables are calibrated for (DO NOT CHANGE)
+export const BASE_RTP = 0.96;
+// Default house edge (overridden by DB config per brand)
+export const DEFAULT_HOUSE_EDGE = 0.04;
+
+/**
+ * Calculate scale factor to adjust paytable for dynamic house edge.
+ * All paytables are calibrated for BASE_RTP (0.96).
+ * Scale = targetRTP / BASE_RTP
+ */
+export function getPaytableScaleFactor(houseEdge: number): number {
+  const targetRTP = 1 - houseEdge;
+  return targetRTP / BASE_RTP;
+}
+
+/**
+ * Scale a single paytable value by the dynamic house edge
+ */
+export function scalePaytableValue(baseValue: number, houseEdge: number): number {
+  return parseFloat((baseValue * getPaytableScaleFactor(houseEdge)).toFixed(4));
+}
+
+// ============================================
+// SYMBOL DEFINITIONS (Shared across modes)
+// ============================================
+export enum SlotSymbol {
+  // Low-pay symbols
+  CHERRY = 'cherry',
+  LEMON = 'lemon',
+  ORANGE = 'orange',
+  PLUM = 'plum',
+  // Mid-pay symbols
+  BELL = 'bell',
+  BAR = 'bar',
+  SEVEN = 'seven',
+  // High-pay symbols
+  DIAMOND = 'diamond',
+  CROWN = 'crown',
+  // Special symbols
+  WILD = 'wild',
+  SCATTER = 'scatter',
+  BONUS = 'bonus',
+  // Bonanza-specific
+  BOMB = 'bomb',
+  // Bass-specific
+  FISHERMAN = 'fisherman',
+  FISH_SMALL = 'fish_small',
+  FISH_MEDIUM = 'fish_medium',
+  FISH_LARGE = 'fish_large',
+  FISH_MEGA = 'fish_mega',
+  // Book-specific
+  BOOK = 'book',
+  EXPLORER = 'explorer',
+  PHARAOH = 'pharaoh',
+  ANUBIS = 'anubis',
+  SCARAB = 'scarab',
+  ACE = 'ace',
+  KING = 'king',
+  QUEEN = 'queen',
+  JACK = 'jack',
+  TEN = 'ten',
+}
+
+// ============================================
+// VIRTUAL REEL MAP ENTRY
+// ============================================
+export interface VirtualReelEntry {
+  symbol: SlotSymbol;
+  startStop: number; // inclusive
+  endStop: number;   // exclusive
+  weight: number;    // endStop - startStop
+}
+
+export interface VirtualReelMap {
+  reels: VirtualReelEntry[][];
+}
+
+// ============================================
+// PROVABLY FAIR ENGINE
+// ============================================
+export class ProvablyFairEngine {
+  /**
+   * Generate HMAC-SHA256 hash
+   */
+  static hmacSha256(serverSeed: string, clientSeed: string, nonce: number, index: number = 0): string {
+    const message = `${clientSeed}:${nonce}:${index}`;
+    return crypto.createHmac('sha256', serverSeed).update(message).digest('hex');
+  }
+
+  /**
+   * Convert hash to virtual stop (0 to VIRTUAL_STOPS-1)
+   */
+  static hashToVirtualStop(hash: string, byteOffset: number = 0): number {
+    // Take 4 bytes from the hash at the given offset
+    const hex = hash.substring(byteOffset * 2, byteOffset * 2 + 8);
+    const value = parseInt(hex, 16) >>> 0; // unsigned 32-bit
+    return value % VIRTUAL_STOPS;
+  }
+
+  /**
+   * Generate a set of virtual stops for N reels
+   * Each reel gets a unique index to ensure independence
+   */
+  static generateReelStops(
+    serverSeed: string,
+    clientSeed: string,
+    nonce: number,
+    reelCount: number,
+  ): number[] {
+    const stops: number[] = [];
+    for (let i = 0; i < reelCount; i++) {
+      const hash = this.hmacSha256(serverSeed, clientSeed, nonce, i);
+      stops.push(this.hashToVirtualStop(hash));
+    }
+    return stops;
+  }
+
+  /**
+   * Generate multiple rows of stops (for multi-row grids)
+   * Returns a 2D array: [row][reel]
+   */
+  static generateGridStops(
+    serverSeed: string,
+    clientSeed: string,
+    nonce: number,
+    reelCount: number,
+    rowCount: number,
+  ): number[][] {
+    const grid: number[][] = [];
+    for (let row = 0; row < rowCount; row++) {
+      const rowStops: number[] = [];
+      for (let reel = 0; reel < reelCount; reel++) {
+        const index = row * reelCount + reel;
+        const hash = this.hmacSha256(serverSeed, clientSeed, nonce, index);
+        rowStops.push(this.hashToVirtualStop(hash));
+      }
+      grid.push(rowStops);
+    }
+    return grid;
+  }
+
+  /**
+   * Generate a single random value for bonus features
+   */
+  static generateBonusValue(
+    serverSeed: string,
+    clientSeed: string,
+    nonce: number,
+    featureId: string,
+    maxValue: number,
+  ): number {
+    const message = `${clientSeed}:${nonce}:bonus:${featureId}`;
+    const hash = crypto.createHmac('sha256', serverSeed).update(message).digest('hex');
+    const value = parseInt(hash.substring(0, 8), 16) >>> 0;
+    return value % maxValue;
+  }
+
+  /**
+   * Generate server seed
+   */
+  static generateServerSeed(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
+
+  /**
+   * Hash server seed for pre-commitment
+   */
+  static hashServerSeed(serverSeed: string): string {
+    return crypto.createHash('sha256').update(serverSeed).digest('hex');
+  }
+
+  /**
+   * Generate client seed
+   */
+  static generateClientSeed(): string {
+    return crypto.randomBytes(16).toString('hex');
+  }
+}
+
+// ============================================
+// VIRTUAL REEL MAPPER
+// ============================================
+export class VirtualReelMapper {
+  /**
+   * Build a virtual reel map from symbol weights
+   * Weights are normalized to VIRTUAL_STOPS
+   */
+  static buildReelMap(
+    symbolWeights: { symbol: SlotSymbol; weight: number }[],
+  ): VirtualReelEntry[] {
+    const totalWeight = symbolWeights.reduce((sum, sw) => sum + sw.weight, 0);
+    const entries: VirtualReelEntry[] = [];
+    let currentStop = 0;
+
+    for (const sw of symbolWeights) {
+      const stops = Math.round((sw.weight / totalWeight) * VIRTUAL_STOPS);
+      if (stops > 0) {
+        entries.push({
+          symbol: sw.symbol,
+          startStop: currentStop,
+          endStop: currentStop + stops,
+          weight: stops,
+        });
+        currentStop += stops;
+      }
+    }
+
+    // Adjust last entry to fill exactly VIRTUAL_STOPS
+    if (entries.length > 0 && currentStop !== VIRTUAL_STOPS) {
+      entries[entries.length - 1].endStop = VIRTUAL_STOPS;
+      entries[entries.length - 1].weight =
+        entries[entries.length - 1].endStop - entries[entries.length - 1].startStop;
+    }
+
+    return entries;
+  }
+
+  /**
+   * Resolve a virtual stop to a symbol
+   */
+  static resolveSymbol(reelMap: VirtualReelEntry[], virtualStop: number): SlotSymbol {
+    for (const entry of reelMap) {
+      if (virtualStop >= entry.startStop && virtualStop < entry.endStop) {
+        return entry.symbol;
+      }
+    }
+    // Fallback (should never happen)
+    return reelMap[reelMap.length - 1].symbol;
+  }
+
+  /**
+   * Resolve multiple virtual stops to symbols
+   */
+  static resolveGrid(
+    reelMaps: VirtualReelEntry[][],
+    gridStops: number[][],
+  ): SlotSymbol[][] {
+    const grid: SlotSymbol[][] = [];
+    for (let row = 0; row < gridStops.length; row++) {
+      const rowSymbols: SlotSymbol[] = [];
+      for (let reel = 0; reel < gridStops[row].length; reel++) {
+        const reelMap = reelMaps[reel % reelMaps.length];
+        rowSymbols.push(this.resolveSymbol(reelMap, gridStops[row][reel]));
+      }
+      grid.push(rowSymbols);
+    }
+    return grid;
+  }
+}
+
+// ============================================
+// WIN EVALUATOR - Line-based and Cluster-based
+// ============================================
+export interface WinLine {
+  lineIndex: number;
+  symbol: SlotSymbol;
+  count: number;
+  positions: number[][]; // [row, col] pairs
+  multiplier: number;    // Payout multiplier
+}
+
+export interface ClusterWin {
+  symbol: SlotSymbol;
+  count: number;
+  positions: number[][]; // [row, col] pairs
+  multiplier: number;
+}
+
+export class WinEvaluator {
+  /**
+   * Evaluate line wins (left-to-right)
+   */
+  static evaluateLines(
+    grid: SlotSymbol[][],
+    paylines: number[][],
+    paytable: Record<string, Record<number, number>>,
+    wildSymbol: SlotSymbol = SlotSymbol.WILD,
+  ): WinLine[] {
+    const wins: WinLine[] = [];
+    const rows = grid.length;
+    const cols = grid[0]?.length || 0;
+
+    for (let lineIdx = 0; lineIdx < paylines.length; lineIdx++) {
+      const line = paylines[lineIdx];
+      if (!line || line.length === 0) continue;
+
+      // Get symbols on this payline
+      const lineSymbols: { symbol: SlotSymbol; row: number; col: number }[] = [];
+      for (let col = 0; col < cols && col < line.length; col++) {
+        const row = line[col];
+        if (row >= 0 && row < rows) {
+          lineSymbols.push({ symbol: grid[row][col], row, col });
+        }
+      }
+
+      if (lineSymbols.length === 0) continue;
+
+      // Find the first non-wild symbol
+      let matchSymbol: SlotSymbol | null = null;
+      let matchCount = 0;
+      const matchPositions: number[][] = [];
+
+      for (const ls of lineSymbols) {
+        if (ls.symbol === wildSymbol) {
+          matchCount++;
+          matchPositions.push([ls.row, ls.col]);
+        } else if (matchSymbol === null) {
+          matchSymbol = ls.symbol;
+          matchCount++;
+          matchPositions.push([ls.row, ls.col]);
+        } else if (ls.symbol === matchSymbol) {
+          matchCount++;
+          matchPositions.push([ls.row, ls.col]);
+        } else {
+          break; // Chain broken
+        }
+      }
+
+      // Check if we have a winning combination
+      if (matchSymbol && matchCount >= 3 && paytable[matchSymbol]) {
+        const payout = paytable[matchSymbol][matchCount] || 0;
+        if (payout > 0) {
+          wins.push({
+            lineIndex: lineIdx,
+            symbol: matchSymbol,
+            count: matchCount,
+            positions: matchPositions,
+            multiplier: payout,
+          });
+        }
+      }
+    }
+
+    return wins;
+  }
+
+  /**
+   * Evaluate line wins both ways (left-to-right AND right-to-left)
+   */
+  static evaluateLinesBothWays(
+    grid: SlotSymbol[][],
+    paylines: number[][],
+    paytable: Record<string, Record<number, number>>,
+    wildSymbol: SlotSymbol = SlotSymbol.WILD,
+  ): WinLine[] {
+    // Left to right
+    const ltrWins = this.evaluateLines(grid, paylines, paytable, wildSymbol);
+
+    // Right to left - reverse the grid columns
+    const reversedGrid = grid.map(row => [...row].reverse());
+    const rtrWins = this.evaluateLines(reversedGrid, paylines, paytable, wildSymbol);
+
+    // Adjust positions for RTL wins
+    const cols = grid[0]?.length || 0;
+    for (const win of rtrWins) {
+      win.positions = win.positions.map(([row, col]) => [row, cols - 1 - col]);
+      win.lineIndex += paylines.length; // Offset line index for RTL
+    }
+
+    return [...ltrWins, ...rtrWins];
+  }
+
+  /**
+   * Evaluate cluster wins (for tumble/cascade games like Bonanza)
+   * Uses flood-fill to find connected groups of same symbols
+   */
+  static evaluateClusters(
+    grid: SlotSymbol[][],
+    paytable: Record<string, Record<number, number>>,
+    minClusterSize: number = 8,
+    wildSymbol: SlotSymbol = SlotSymbol.WILD,
+  ): ClusterWin[] {
+    const rows = grid.length;
+    const cols = grid[0]?.length || 0;
+    const visited: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+    const wins: ClusterWin[] = [];
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        if (visited[row][col]) continue;
+        const symbol = grid[row][col];
+        if (symbol === wildSymbol || symbol === SlotSymbol.SCATTER || symbol === SlotSymbol.BONUS) continue;
+
+        // Flood fill to find cluster
+        const cluster: number[][] = [];
+        const stack: number[][] = [[row, col]];
+        visited[row][col] = true;
+
+        while (stack.length > 0) {
+          const [r, c] = stack.pop()!;
+          cluster.push([r, c]);
+
+          // Check 4 neighbors
+          const neighbors = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+          for (const [nr, nc] of neighbors) {
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !visited[nr][nc]) {
+              if (grid[nr][nc] === symbol || grid[nr][nc] === wildSymbol) {
+                visited[nr][nc] = true;
+                stack.push([nr, nc]);
+              }
+            }
+          }
+        }
+
+        if (cluster.length >= minClusterSize && paytable[symbol]) {
+          // Find the closest matching count in paytable
+          const counts = Object.keys(paytable[symbol]).map(Number).sort((a, b) => a - b);
+          let matchCount = counts[0];
+          for (const c of counts) {
+            if (cluster.length >= c) matchCount = c;
+          }
+          const payout = paytable[symbol][matchCount] || 0;
+          if (payout > 0) {
+            wins.push({
+              symbol,
+              count: cluster.length,
+              positions: cluster,
+              multiplier: payout,
+            });
+          }
+        }
+      }
+    }
+
+    return wins;
+  }
+}
+
+// ============================================
+// PAYLINE DEFINITIONS
+// ============================================
+export const PAYLINES_10: number[][] = [
+  [1, 1, 1, 1, 1], // Line 1: Middle
+  [0, 0, 0, 0, 0], // Line 2: Top
+  [2, 2, 2, 2, 2], // Line 3: Bottom
+  [0, 1, 2, 1, 0], // Line 4: V-shape
+  [2, 1, 0, 1, 2], // Line 5: Inverted V
+  [0, 0, 1, 2, 2], // Line 6: Ascending
+  [2, 2, 1, 0, 0], // Line 7: Descending
+  [1, 0, 0, 0, 1], // Line 8: Top dip
+  [1, 2, 2, 2, 1], // Line 9: Bottom dip
+  [0, 1, 0, 1, 0], // Line 10: Zigzag top
+];
+
+// ============================================
+// GAME MODE INTERFACE (Strategy Pattern)
+// ============================================
+export interface SpinRequest {
+  betAmount: number;
+  currency?: string;
+  riskLevel?: 'normal' | 'extreme'; // For BookMode
+}
+
+export interface SpinResponse {
+  grid: SlotSymbol[][];
+  wins: (WinLine | ClusterWin)[];
+  totalWinMultiplier: number;
+  totalPayout: number;
+  features: GameFeature[];
+  freeSpinsAwarded: number;
+  freeSpinsRemaining?: number;
+  bonusData?: any;
+  // Provably fair
+  serverSeedHash: string;
+  clientSeed: string;
+  nonce: number;
+}
+
+export interface GameFeature {
+  type: 'tumble' | 'respin' | 'free_spins' | 'expanding_symbol' | 'multiplier' | 'bonus' | 'quantum_wild' | 'instant_hook' | 'combo_multiplier';
+  data: any;
+}
+
+export interface SlotGameMode {
+  readonly name: string;
+  readonly gridRows: number;
+  readonly gridCols: number;
+  readonly rtp: number;
+
+  spin(
+    serverSeed: string,
+    clientSeed: string,
+    nonce: number,
+    betAmount: number,
+    options?: any,
+  ): SpinResponse;
+
+  getPaytable(): Record<string, Record<number, number>>;
+  getSymbolWeights(): { symbol: SlotSymbol; weight: number }[];
+}

@@ -171,6 +171,21 @@ export class SuperAdminController {
     return this.superAdminService.addCreditsToAdmin(id, body.amount, body.note);
   }
 
+  /**
+   * Withdraw credits from tenant admin wallet
+   */
+  @Post('tenants/:id/admin/withdraw-credits')
+  async withdrawCreditsFromAdmin(
+    @Param('id') id: string,
+    @Body() body: { amount: number; note?: string },
+  ) {
+    if (!body.amount || body.amount <= 0) {
+      throw new BadRequestException('Amount must be positive');
+    }
+    return this.superAdminService.withdrawCreditsFromAdmin(id, body.amount, body.note);
+  }
+
+
   // ============================================
   // BANKROLL MANAGEMENT
   // ============================================

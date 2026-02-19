@@ -85,6 +85,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
   // Get primary balance (USDT)
   const primaryBalance = user?.balance?.find(b => b.currency === 'USDT');
   const balanceAmount = primaryBalance ? parseFloat(primaryBalance.available) : 0;
+  const bonusAmount = primaryBalance?.bonus ? parseFloat(primaryBalance.bonus) : 0;
 
   // Listen for real-time stats from socket
   useEffect(() => {
@@ -204,6 +205,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onChatClick, isMobile }) =
                     {balanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   <span className="text-text-secondary text-[10px] sm:text-sm">USDT</span>
+                  {bonusAmount > 0 && (
+                    <span className="text-yellow-400 text-[9px] sm:text-xs font-medium">+${bonusAmount.toFixed(2)} bonus</span>
+                  )}
                   <svg className={`w-4 h-4 text-text-secondary transition-transform ${isWalletOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>

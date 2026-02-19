@@ -46,6 +46,7 @@ interface TenantSummary {
   brandName: string;
   domain: string;
   active: boolean;
+  isPlatform?: boolean;
   stats: {
     totalPlayers: number;
     totalBets: number;
@@ -138,7 +139,7 @@ export default function SuperAdminDashboard() {
           </div>
           <div>
             <p className="text-2xl font-bold text-cyan-400">{stats?.totalBrands || 0}</p>
-            <p className="text-xs text-text-secondary">Total Brands ({stats?.activeBrands || 0} active)</p>
+            <p className="text-xs text-text-secondary">White Label Brands ({Math.max(0, (stats?.activeBrands || 0) - 1)} active)</p>
           </div>
         </div>
         <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center gap-4">
@@ -256,7 +257,7 @@ export default function SuperAdminDashboard() {
             <Globe className="w-5 h-5 text-cyan-400" />
             <div>
               <h2 className="text-lg font-semibold text-white">White Label Brands</h2>
-              <p className="text-sm text-text-secondary">{tenants.length} brands registered — real players only</p>
+              <p className="text-sm text-text-secondary">{tenants.filter(t => !t.isPlatform).length} brands registered — real players only</p>
             </div>
           </div>
           <Link
@@ -282,7 +283,7 @@ export default function SuperAdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {tenants.map((tenant) => (
+              {tenants.filter(t => !t.isPlatform).map((tenant) => (
                 <tr key={tenant.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4">
                     <Link href={`/super-admin/tenants`} className="flex items-center gap-3 hover:text-cyan-400 transition-colors">
@@ -319,7 +320,7 @@ export default function SuperAdminDashboard() {
                   </td>
                 </tr>
               ))}
-              {tenants.length === 0 && (
+              {tenants.filter(t => !t.isPlatform).length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-text-secondary">
                     No brands registered yet. Create your first brand to get started.

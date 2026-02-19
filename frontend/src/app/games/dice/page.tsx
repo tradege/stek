@@ -206,7 +206,7 @@ export default function DicePage() {
       transition={{ duration: 0.4 }}
     >
       {/* Premium Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-[#0a0e17] via-[#0f1923] to-[#0d1520] -z-10" />
+      <div className="fixed inset-0 bg-gradient-to-br from-bg-main via-bg-main to-bg-main -z-10" />
       <div className="fixed inset-0 -z-10 opacity-30">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-primary/10 rounded-full blur-[120px]" />
@@ -229,7 +229,7 @@ export default function DicePage() {
         {/* Left Panel - Betting Controls */}
         <div className="lg:col-span-1 space-y-4">
           {/* Game Title */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-primary/20">
                 🎲
@@ -242,7 +242,7 @@ export default function DicePage() {
           </div>
 
           {/* Betting Chips */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <label className="text-sm text-gray-400 mb-3 block font-medium">Bet Amount</label>
             <div className="flex items-center gap-2 mb-3">
               <div className="relative flex-1">
@@ -251,14 +251,14 @@ export default function DicePage() {
                   type="number"
                   value={betAmount}
                   onChange={(e) => setBetAmount(e.target.value)}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 focus:outline-none transition-all"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 focus:outline-none transition-all"
                   min="0.01"
                   step="0.01"
                   disabled={isRolling}
                 />
               </div>
-              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))} className="px-3 py-2.5 bg-[#2f4553]/80 rounded-lg text-sm hover:bg-[#3d5a6e] transition-all border border-[#2f4553]">½</button>
-              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))} className="px-3 py-2.5 bg-[#2f4553]/80 rounded-lg text-sm hover:bg-[#3d5a6e] transition-all border border-[#2f4553]">2×</button>
+              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))} className="px-3 py-2.5 bg-white/10/80 rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10">½</button>
+              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))} className="px-3 py-2.5 bg-white/10/80 rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10">2×</button>
             </div>
             <div className="flex flex-wrap gap-2">
               {CHIP_VALUES.map((val) => (
@@ -276,7 +276,7 @@ export default function DicePage() {
           </div>
 
           {/* Condition Toggle */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <label className="text-sm text-gray-400 mb-2 block font-medium">Roll Direction</label>
             <div className="grid grid-cols-2 gap-2">
               <motion.button
@@ -285,7 +285,7 @@ export default function DicePage() {
                 className={`py-2.5 rounded-lg font-bold transition-all ${
                   condition === "UNDER"
                     ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/20"
-                    : "bg-[#0f1923] text-gray-400 hover:text-white border border-[#2f4553]"
+                    : "bg-bg-main text-gray-400 hover:text-white border border-white/10"
                 }`}
               >
                 ⬇ Under
@@ -296,7 +296,7 @@ export default function DicePage() {
                 className={`py-2.5 rounded-lg font-bold transition-all ${
                   condition === "OVER"
                     ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/20"
-                    : "bg-[#0f1923] text-gray-400 hover:text-white border border-[#2f4553]"
+                    : "bg-bg-main text-gray-400 hover:text-white border border-white/10"
                 }`}
               >
                 ⬆ Over
@@ -305,14 +305,14 @@ export default function DicePage() {
           </div>
 
           {/* Target / Win Chance / Multiplier */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4 space-y-3">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4 space-y-3">
             <div>
               <label className="text-sm text-gray-400 mb-1 block font-medium">Target</label>
               <input
                 type="number"
                 value={target}
                 onChange={(e) => setTarget(Math.min(99.98, Math.max(0.01, parseFloat(e.target.value) || 50)))}
-                className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2.5 text-white font-mono focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 focus:outline-none transition-all"
+                className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2.5 text-white font-mono focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 focus:outline-none transition-all"
                 min="0.01"
                 max="99.98"
                 step="1"
@@ -320,11 +320,11 @@ export default function DicePage() {
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#0f1923]/80 rounded-lg p-3 border border-[#2f4553]/50">
+              <div className="bg-bg-main/80 rounded-lg p-3 border border-white/10/50">
                 <label className="text-xs text-gray-500 mb-1 block">Win Chance</label>
                 <div className="text-accent-primary font-mono font-bold text-lg">{winChance.toFixed(2)}%</div>
               </div>
-              <div className="bg-[#0f1923]/80 rounded-lg p-3 border border-[#2f4553]/50">
+              <div className="bg-bg-main/80 rounded-lg p-3 border border-white/10/50">
                 <label className="text-xs text-gray-500 mb-1 block">Multiplier</label>
                 <div className="text-yellow-400 font-mono font-bold text-lg">{multiplier.toFixed(4)}×</div>
               </div>
@@ -359,7 +359,7 @@ export default function DicePage() {
           </motion.button>
 
           {/* Auto-bet */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm text-gray-400 font-medium">Auto Bet</label>
               {autoBetActive && (
@@ -371,7 +371,7 @@ export default function DicePage() {
                 type="number"
                 value={autoBetCount}
                 onChange={(e) => setAutoBetCount(e.target.value)}
-                className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-accent-primary focus:outline-none"
+                className="flex-1 bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:border-accent-primary focus:outline-none"
                 min="1"
                 max="1000"
                 disabled={autoBetActive}
@@ -382,7 +382,7 @@ export default function DicePage() {
                 className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                   autoBetActive
                     ? "bg-red-500 hover:bg-red-400 shadow-lg shadow-red-500/20"
-                    : "bg-[#2f4553] hover:bg-[#3d5a6e] border border-[#2f4553]"
+                    : "bg-white/10 hover:bg-white/20 border border-white/10"
                 }`}
               >
                 {autoBetActive ? "Stop" : "Start"}
@@ -404,7 +404,7 @@ export default function DicePage() {
         {/* Right Panel - Game Display */}
         <div className="lg:col-span-2 space-y-4">
           {/* Dice Roll Display */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-6 relative overflow-hidden">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-6 relative overflow-hidden">
             {/* Ambient glow behind number */}
             <AnimatePresence>
               {showResult && lastResult && (
@@ -488,17 +488,17 @@ export default function DicePage() {
 
             {/* Stats Row */}
             <div className="grid grid-cols-3 gap-3 mt-4">
-              <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+              <div className="bg-bg-main/80 rounded-lg p-3 text-center border border-white/10/30">
                 <div className="text-xs text-gray-500 mb-1">Profit on Win</div>
                 <div className="text-green-400 font-mono font-bold text-lg">
                   ${((parseFloat(betAmount) || 0) * multiplier - (parseFloat(betAmount) || 0)).toFixed(2)}
                 </div>
               </div>
-              <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+              <div className="bg-bg-main/80 rounded-lg p-3 text-center border border-white/10/30">
                 <div className="text-xs text-gray-500 mb-1">Win Chance</div>
                 <div className="text-accent-primary font-mono font-bold text-lg">{winChance.toFixed(2)}%</div>
               </div>
-              <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+              <div className="bg-bg-main/80 rounded-lg p-3 text-center border border-white/10/30">
                 <div className="text-xs text-gray-500 mb-1">Multiplier</div>
                 <div className="text-yellow-400 font-mono font-bold text-lg">{multiplier.toFixed(4)}×</div>
               </div>
@@ -512,7 +512,7 @@ export default function DicePage() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4"
+                className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -521,15 +521,15 @@ export default function DicePage() {
                   <span className="text-sm font-bold text-white">Provably Fair</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                  <div className="bg-bg-main/60 rounded-lg p-2">
                     <span className="text-gray-500">Server Seed Hash</span>
                     <div className="font-mono text-gray-300 truncate mt-1">{lastResult.serverSeedHash}</div>
                   </div>
-                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                  <div className="bg-bg-main/60 rounded-lg p-2">
                     <span className="text-gray-500">Client Seed</span>
                     <div className="font-mono text-gray-300 truncate mt-1">{lastResult.clientSeed}</div>
                   </div>
-                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                  <div className="bg-bg-main/60 rounded-lg p-2">
                     <span className="text-gray-500">Nonce</span>
                     <div className="font-mono text-gray-300 mt-1">{lastResult.nonce}</div>
                   </div>
@@ -539,7 +539,7 @@ export default function DicePage() {
           </AnimatePresence>
 
           {/* Bet History */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-accent-primary animate-pulse" />
               Recent Bets
@@ -553,7 +553,7 @@ export default function DicePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-gray-500 text-xs border-b border-[#2f4553]/50">
+                    <tr className="text-gray-500 text-xs border-b border-white/10/50">
                       <th className="text-left py-2 font-medium">Roll</th>
                       <th className="text-left py-2 font-medium">Target</th>
                       <th className="text-right py-2 font-medium">Bet</th>
@@ -567,7 +567,7 @@ export default function DicePage() {
                         key={bet.id}
                         initial={idx === 0 ? { opacity: 0, x: -20 } : {}}
                         animate={{ opacity: 1, x: 0 }}
-                        className="border-b border-[#2f4553]/30 hover:bg-[#2f4553]/10 transition-colors"
+                        className="border-b border-white/10/30 hover:bg-white/10/10 transition-colors"
                       >
                         <td className={`py-2.5 font-mono font-bold ${bet.isWin ? "text-green-400" : "text-red-400"}`}>
                           {bet.gameData?.roll?.toFixed(2)}

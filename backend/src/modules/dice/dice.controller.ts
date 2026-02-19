@@ -12,7 +12,7 @@ export class DiceController {
 
   @Post('play')
   async play(@Req() req: any, @Body() dto: PlayDiceDto) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.diceService.play(req.user.id, dto, siteId);
   }
 
@@ -23,7 +23,7 @@ export class DiceController {
 
   @Get('history')
   async history(@Req() req: any, @Query('limit') limit?: string) {
-    const siteId = req.tenant?.siteId || req.user?.siteId || 'default-site-001';
+    const siteId = req.tenant?.siteId || req.user?.siteId || '1';
     return this.diceService.getHistory(req.user.id, siteId, limit ? parseInt(limit) : 20);
   }
 }

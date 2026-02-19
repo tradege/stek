@@ -121,12 +121,23 @@ export class TenantInterceptor implements NestInterceptor {
         return cached.config;
       }
 
-      const config = await this.prisma.siteConfiguration.findFirst({
+      let config = await this.prisma.siteConfiguration.findFirst({
         where: {
           domain: domain,
           active: true,
         },
       });
+
+      // Fallback: if domain not found (e.g. IP address), use the first active brand as default
+      if (!config) {
+        config = await this.prisma.siteConfiguration.findFirst({
+          where: { active: true },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (config) {
+          this.logger.log(`Domain "${domain}" not found, using default brand: ${config.brandName}`);
+        }
+      }
 
       if (config) {
         this.siteCache.set(cacheKey, { config, cachedAt: Date.now() });

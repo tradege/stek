@@ -15,6 +15,8 @@
  */
 
 import { OlympusService } from './olympus.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 import {
   GRID_SIZE,
   HOUSE_EDGE,
@@ -47,7 +49,10 @@ describe('🏛️ Olympus Monte Carlo RTP', () => {
       },
     };
 
-    service = new OlympusService(mockPrisma);
+    const mockVipService = { addXP: jest.fn().mockResolvedValue(undefined) } as any;
+    const mockRewardPoolService = { contribute: jest.fn().mockResolvedValue(undefined) } as any;
+    const mockCommissionProcessor = { processCommission: jest.fn().mockResolvedValue(undefined) } as any;
+    service = new OlympusService(mockPrisma, mockVipService, mockRewardPoolService, mockCommissionProcessor);
   });
 
   it('should have RTP between 85% and 105% over 5,000 spins', async () => {

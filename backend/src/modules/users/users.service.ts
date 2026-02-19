@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
@@ -49,7 +51,6 @@ export class UsersService {
       return mult > max ? mult : max;
     }, 0);
 
-    // Game breakdown
     const gameBreakdown: Record<string, { bets: number; wagered: number; won: number }> = {};
     bets.forEach(b => {
       const game = b.gameType || 'UNKNOWN';
@@ -65,12 +66,15 @@ export class UsersService {
       totalBets,
       totalWager: parseFloat(totalWager.toFixed(2)),
       totalWin: parseFloat(totalWin.toFixed(2)),
+      totalWon: totalWin.toFixed(2),
+      totalLost: (totalWager - totalWin).toFixed(2),
       totalProfit: parseFloat(totalProfit.toFixed(2)),
       winRate: parseFloat(winRate.toFixed(1)),
       biggestWin: parseFloat(biggestWin.toFixed(2)),
       biggestMultiplier: parseFloat(biggestMultiplier.toFixed(2)),
       wonBets: wonBets.length,
       lostBets: totalBets - wonBets.length,
+      favoriteGame: Object.entries(gameBreakdown).sort((a, b) => b[1].bets - a[1].bets)[0]?.[0] || 'N/A',
       gameBreakdown,
     };
   }
@@ -83,9 +87,16 @@ export class UsersService {
         username: true,
         email: true,
         role: true,
+        displayName: true,
+        avatarUrl: true,
+        country: true,
+        language: true,
+        timezone: true,
+        twoFactorEnabled: true,
         createdAt: true,
         totalWagered: true,
         vipLevel: true,
+        lastLoginAt: true,
         wallets: true,
       },
     });
@@ -99,6 +110,108 @@ export class UsersService {
     return {
       ...user,
       stats,
+    };
+  }
+
+  /**
+   * TASK 40-3: Update user profile
+   */
+  async updateProfile(userId: string, data: {
+    avatarUrl?: string;
+    displayName?: string;
+    email?: string;
+    password?: string;
+    language?: string;
+    timezone?: string;
+    country?: string;
+    settings?: {
+      privacyMode?: boolean;
+    };
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+
+    const updateData: any = {};
+
+    // Avatar URL
+    if (data.avatarUrl !== undefined) {
+      updateData.avatarUrl = data.avatarUrl;
+    }
+
+    // Display name
+    if (data.displayName !== undefined) {
+      if (data.displayName.length < 2 || data.displayName.length > 30) {
+        throw new BadRequestException('Display name must be 2-30 characters');
+      }
+      updateData.displayName = data.displayName;
+    }
+
+    // Email change requires password verification
+    if (data.email && data.email !== user.email) {
+      if (!data.password) {
+        throw new BadRequestException('Password is required to change email');
+      }
+
+      let isPasswordValid = false;
+      if (user.passwordHash.startsWith('$argon2')) {
+        isPasswordValid = await argon2.verify(user.passwordHash, data.password);
+      } else {
+        isPasswordValid = await bcrypt.compare(data.password, user.passwordHash);
+      }
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid password');
+      }
+
+      // Check if new email is already taken
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: data.email.toLowerCase() },
+      });
+      if (existingUser) {
+        throw new BadRequestException('Email is already in use');
+      }
+
+      updateData.email = data.email.toLowerCase();
+    }
+
+    // Language
+    if (data.language !== undefined) {
+      updateData.language = data.language;
+    }
+
+    // Timezone
+    if (data.timezone !== undefined) {
+      updateData.timezone = data.timezone;
+    }
+
+    // Country
+    if (data.country !== undefined) {
+      updateData.country = data.country;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return { success: true, message: 'No changes to apply' };
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        displayName: true,
+        avatarUrl: true,
+        country: true,
+        language: true,
+        timezone: true,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Profile updated successfully',
+      user: updated,
     };
   }
 
@@ -209,6 +322,7 @@ export class UsersService {
         select: {
           currency: true,
           balance: true,
+          bonusBalance: true,
         },
       }),
     ]);
@@ -232,7 +346,7 @@ export class UsersService {
       betCount: bets._count,
       wallets: wallets.map(w => ({
         currency: w.currency,
-        balance: Number(w.balance),
+        balance: Number(w.balance) + Number(w.bonusBalance || 0),
       })),
     };
   }

@@ -123,7 +123,7 @@ export default function BankrollPage() {
       case 'CRITICAL':
         return { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' };
       default:
-        return { icon: <CheckCircle className="w-4 h-4" />, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20' };
+        return { icon: <CheckCircle className="w-4 h-4" />, color: 'text-text-secondary', bg: 'bg-gray-500/10', border: 'border-gray-500/20' };
     }
   };
 

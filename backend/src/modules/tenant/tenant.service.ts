@@ -156,7 +156,6 @@ export class TenantService {
     const site = await this.prisma.siteConfiguration.findUnique({
       where: { id: siteId },
       include: {
-        bots: true,
         _count: {
           select: {
             users: true,
@@ -178,12 +177,7 @@ export class TenantService {
    * Get site configuration by domain (used by frontend)
    */
   async getSiteByDomain(domain: string) {
-    const site = await this.prisma.siteConfiguration.findFirst({
-      where: {
-        domain: domain.toLowerCase(),
-        active: true,
-      },
-      select: {
+    const selectFields = {
         id: true,
         brandName: true,
         domain: true,
@@ -200,8 +194,24 @@ export class TenantService {
         loginBgUrl: true,
         gameAssets: true,
         locale: true,
+    };
+
+    let site = await this.prisma.siteConfiguration.findFirst({
+      where: {
+        domain: domain.toLowerCase(),
+        active: true,
       },
+      select: selectFields,
     });
+
+    // Fallback: if domain not found (e.g. IP address access), use the first active brand
+    if (!site) {
+      site = await this.prisma.siteConfiguration.findFirst({
+        where: { active: true },
+        orderBy: { createdAt: 'asc' },
+        select: selectFields,
+      });
+    }
 
     return site;
   }

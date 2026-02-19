@@ -265,7 +265,7 @@ async function main(): Promise<void> {
   
   // Generate master seed
   const masterSeed = crypto.randomBytes(32).toString('hex');
-  const clientSeed = 'stakepro-audit-seed';
+  const clientSeed = 'betworkss-audit-seed';
   
   console.log('  🔑 Master Seed Generated');
   console.log(`  🌐 Client Seed: ${clientSeed}`);

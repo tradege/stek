@@ -85,7 +85,7 @@ export default function AdminDashboard() {
 
   if (loading && !stats) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-12 h-12 border-4 border-[#1475e1] border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-12 h-12 border-4 border-accent-primary border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
 
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
     <div className="flex items-center justify-center h-64">
       <div className="text-center">
         <p className="text-red-400 mb-4">{error}</p>
-        <button onClick={fetchDashboardStats} className="px-4 py-2 bg-[#1475e1] text-[#0f212e] rounded-lg hover:bg-[#1475e1]/90">Retry</button>
+        <button onClick={fetchDashboardStats} className="px-4 py-2 bg-accent-primary text-black rounded-lg hover:bg-accent-primary/90">Retry</button>
       </div>
     </div>
   );
@@ -109,10 +109,10 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Dashboard Overview</h1>
-          <p className="text-gray-400">Welcome back! Here's your casino at a glance.</p>
+          <p className="text-text-secondary">Welcome back! Here's your casino at a glance.</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-text-tertiary">
             Last updated: {lastRefresh.toLocaleTimeString()}
           </span>
           <button onClick={fetchDashboardStats} disabled={loading}
@@ -148,84 +148,84 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-400 text-xs">Net Profit</p>
+            <p className="text-text-secondary text-xs">Net Profit</p>
             <DollarSign className="w-5 h-5 text-green-400" />
           </div>
           <h3 className="text-2xl font-bold text-green-400">{fmt(stats.netProfit)}</h3>
-          <p className="text-xs text-gray-500 mt-1">GGR - Provider Fees</p>
+          <p className="text-xs text-text-tertiary mt-1">GGR - Provider Fees</p>
         </div>
 
         <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-400 text-xs">Total Players</p>
+            <p className="text-text-secondary text-xs">Total Players</p>
             <Users className="w-5 h-5 text-blue-400" />
           </div>
           <h3 className="text-2xl font-bold text-blue-400">{stats.totalUsers.toLocaleString()}</h3>
-          <p className="text-xs text-gray-500 mt-1">{stats.activeUsersLast24h} active in 24h</p>
+          <p className="text-xs text-text-tertiary mt-1">{stats.activeUsersLast24h} active in 24h</p>
         </div>
 
         <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-400 text-xs">Total Wagered</p>
+            <p className="text-text-secondary text-xs">Total Wagered</p>
             <Gamepad2 className="w-5 h-5 text-purple-400" />
           </div>
           <h3 className="text-2xl font-bold text-purple-400">{fmt(stats.stats.wagered)}</h3>
-          <p className="text-xs text-gray-500 mt-1">{stats.totalBets.toLocaleString()} bets placed</p>
+          <p className="text-xs text-text-tertiary mt-1">{stats.totalBets.toLocaleString()} bets placed</p>
         </div>
 
-        <div className="bg-gradient-to-br from-[#1475e1]/20 to-[#1475e1]/10 border border-[#1475e1]/30 rounded-xl p-5">
+        <div className="bg-gradient-to-br from-accent-primary/20 to-accent-primary/10 border border-accent-primary/30 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-400 text-xs">GGR</p>
-            <TrendingUp className="w-5 h-5 text-[#1475e1]" />
+            <p className="text-text-secondary text-xs">GGR</p>
+            <TrendingUp className="w-5 h-5 text-accent-primary" />
           </div>
-          <h3 className="text-2xl font-bold text-[#1475e1]">{fmt(stats.totalGGR)}</h3>
-          <p className="text-xs text-gray-500 mt-1">Gross Gaming Revenue</p>
+          <h3 className="text-2xl font-bold text-accent-primary">{fmt(stats.totalGGR)}</h3>
+          <p className="text-xs text-text-tertiary mt-1">Gross Gaming Revenue</p>
         </div>
       </div>
 
       {/* Money Flow */}
-      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+      <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-bold text-white mb-4">Money Flow</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs text-gray-400">Deposits</span>
+              <span className="text-xs text-text-secondary">Deposits</span>
             </div>
             <p className="text-xl font-bold text-emerald-400">{fmt(stats.totalDeposits)}</p>
           </div>
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <ArrowUpRight className="w-4 h-4 text-orange-400" />
-              <span className="text-xs text-gray-400">Withdrawals</span>
+              <span className="text-xs text-text-secondary">Withdrawals</span>
             </div>
             <p className="text-xl font-bold text-orange-400">{fmt(stats.totalWithdrawals)}</p>
           </div>
           <div className={`${netDeposits >= 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-4`}>
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className={`w-4 h-4 ${netDeposits >= 0 ? 'text-green-400' : 'text-red-400'}`} />
-              <span className="text-xs text-gray-400">Net Deposits</span>
+              <span className="text-xs text-text-secondary">Net Deposits</span>
             </div>
             <p className={`text-xl font-bold ${netDeposits >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {netDeposits >= 0 ? '+' : ''}{fmt(netDeposits)}
             </p>
           </div>
-          <div className="bg-[#1475e1]/10 border border-[#1475e1]/30 rounded-lg p-4">
+          <div className="bg-accent-primary/10 border border-accent-primary/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-4 h-4 text-[#1475e1]" />
-              <span className="text-xs text-gray-400">Payout Ratio</span>
+              <Activity className="w-4 h-4 text-accent-primary" />
+              <span className="text-xs text-text-secondary">Payout Ratio</span>
             </div>
-            <p className="text-xl font-bold text-[#1475e1]">{depositRatio.toFixed(1)}%</p>
+            <p className="text-xl font-bold text-accent-primary">{depositRatio.toFixed(1)}%</p>
           </div>
         </div>
 
         {/* Deposit vs Withdrawal bar */}
         <div className="mt-4">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <div className="flex justify-between text-xs text-text-tertiary mb-1">
             <span>Deposits: {fmt(stats.totalDeposits)}</span>
             <span>Withdrawals: {fmt(stats.totalWithdrawals)}</span>
           </div>
-          <div className="h-3 bg-[#0f212e] rounded-full overflow-hidden flex">
+          <div className="h-3 bg-bg-main rounded-full overflow-hidden flex">
             <div className="h-full bg-emerald-500 rounded-l-full transition-all"
               style={{ width: `${stats.totalDeposits > 0 ? Math.min((stats.totalDeposits / (stats.totalDeposits + stats.totalWithdrawals)) * 100, 100) : 50}%` }} />
             <div className="h-full bg-orange-500 rounded-r-full transition-all"
@@ -236,44 +236,44 @@ export default function AdminDashboard() {
 
       {/* Revenue Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+        <div className="bg-bg-card border border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-green-500/20 rounded-lg"><TrendingUp className="w-5 h-5 text-green-400" /></div>
             <div>
-              <p className="text-gray-400 text-xs">GGR</p>
+              <p className="text-text-secondary text-xs">GGR</p>
               <h3 className="text-xl font-bold text-green-400">{fmt(stats.totalGGR)}</h3>
             </div>
           </div>
-          <p className="text-xs text-gray-500">Bets - Payouts</p>
+          <p className="text-xs text-text-tertiary">Bets - Payouts</p>
         </div>
 
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+        <div className="bg-bg-card border border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-red-500/20 rounded-lg"><Package className="w-5 h-5 text-red-400" /></div>
             <div>
-              <p className="text-gray-400 text-xs">Provider Fees</p>
-              <h3 className={`text-xl font-bold ${stats.providerFees > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+              <p className="text-text-secondary text-xs">Provider Fees</p>
+              <h3 className={`text-xl font-bold ${stats.providerFees > 0 ? 'text-red-400' : 'text-text-secondary'}`}>
                 {stats.providerFees > 0 ? '-' + fmt(stats.providerFees) : '$0.00'}
               </h3>
             </div>
           </div>
-          <p className="text-xs text-gray-500">{stats.providerFees > 0 ? 'External provider fees' : 'All games in-house'}</p>
+          <p className="text-xs text-text-tertiary">{stats.providerFees > 0 ? 'External provider fees' : 'All games in-house'}</p>
         </div>
 
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+        <div className="bg-bg-card border border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-[#1475e1]/20 rounded-lg"><DollarSign className="w-5 h-5 text-[#1475e1]" /></div>
+            <div className="p-2 bg-accent-primary/20 rounded-lg"><DollarSign className="w-5 h-5 text-accent-primary" /></div>
             <div>
-              <p className="text-gray-400 text-xs">Net Profit</p>
-              <h3 className="text-xl font-bold text-[#1475e1]">{fmt(stats.netProfit)}</h3>
+              <p className="text-text-secondary text-xs">Net Profit</p>
+              <h3 className="text-xl font-bold text-accent-primary">{fmt(stats.netProfit)}</h3>
             </div>
           </div>
-          <p className="text-xs text-gray-500">Your actual earnings</p>
+          <p className="text-xs text-text-tertiary">Your actual earnings</p>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+      <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-bold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
@@ -292,35 +292,35 @@ export default function AdminDashboard() {
       </div>
 
       {/* System Status */}
-      <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-6">
+      <div className="bg-bg-card border border-white/10 rounded-xl p-6">
         <h2 className="text-lg font-bold text-white mb-4">System Status</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
             <div>
               <p className="text-sm text-white font-medium">Backend API</p>
-              <p className="text-xs text-gray-500">Operational</p>
+              <p className="text-xs text-text-tertiary">Operational</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
             <div>
               <p className="text-sm text-white font-medium">Database</p>
-              <p className="text-xs text-gray-500">Connected</p>
+              <p className="text-xs text-text-tertiary">Connected</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
             <div>
               <p className="text-sm text-white font-medium">WebSocket</p>
-              <p className="text-xs text-gray-500">{stats.activeSessions} sessions</p>
+              <p className="text-xs text-text-tertiary">{stats.activeSessions} sessions</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
             <div>
               <p className="text-sm text-white font-medium">Sports Feed</p>
-              <p className="text-xs text-gray-500">Live (Cron active)</p>
+              <p className="text-xs text-text-tertiary">Live (Cron active)</p>
             </div>
           </div>
         </div>

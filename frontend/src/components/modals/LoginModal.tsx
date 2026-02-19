@@ -7,7 +7,7 @@ import Modal from '@/components/modals/Modal';
 
 const LoginModal: React.FC = () => {
   const { login, isLoading } = useAuth();
-  const { isLoginOpen, closeLogin, switchToRegister } = useModal();
+  const { isLoginOpen, closeLogin, switchToRegister, openVerification } = useModal();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -41,6 +41,14 @@ const LoginModal: React.FC = () => {
       setError(null);
       closeLogin();
     } catch (err: any) {
+      // Check if user needs email verification - open verification modal instead of redirect
+      if (err.pendingVerification || err.message === 'PENDING_VERIFICATION') {
+        const email = err.email || formData.email;
+        closeLogin();
+        // Open verification modal with email and password for auto-login after verify
+        openVerification(email, formData.password);
+        return;
+      }
       setError(err.message || 'Login failed');
     }
   };
@@ -58,7 +66,7 @@ const LoginModal: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-xl bg-accent-primary flex items-center justify-center shadow-glow mx-auto mb-3">
-            <span className="text-2xl font-bold text-text-inverse">S</span>
+            <span className="text-2xl font-bold text-text-inverse">B</span>
           </div>
           <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
           <p className="text-text-secondary mt-1">Sign in to your account</p>

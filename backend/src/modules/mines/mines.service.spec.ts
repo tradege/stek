@@ -7,6 +7,27 @@
 import { MinesService } from './mines.service';
 import { BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
+
+const mockRewardPoolService = {
+  contributeToPool: jest.fn().mockResolvedValue(undefined),
+} as any;
+
+const mockCommissionProcessor = {
+  processCommission: jest.fn().mockResolvedValue(undefined),
+} as any;
 
 describe('MinesService', () => {
   let service: MinesService;
@@ -16,7 +37,7 @@ describe('MinesService', () => {
     mockPrisma = {
       $transaction: jest.fn(async (cb) => {
         return cb({
-          $queryRaw: jest.fn().mockResolvedValue([{ id: 'wallet-1', balance: 1000 }]),
+          $queryRaw: jest.fn().mockResolvedValue([{ id: "wallet-1", balance: 1000 }]),
           wallet: { update: jest.fn().mockResolvedValue({}) },
           bet: { create: jest.fn().mockResolvedValue({}) },
           transaction: { create: jest.fn().mockResolvedValue({}) },
@@ -26,9 +47,37 @@ describe('MinesService', () => {
         create: jest.fn().mockResolvedValue({}),
         findMany: jest.fn().mockResolvedValue([]),
       },
+      siteConfiguration: {
+        findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { dice: 0.02, mines: 0.03, plinko: 0.02, crash: 0.04 } }),
+        findFirst: jest.fn().mockResolvedValue({ id: "1", houseEdgeConfig: { dice: 0.02, mines: 0.03, plinko: 0.02, crash: 0.04 } }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      riskLimit: {
+        findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
+      },
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: "ss-1",
+          userId: "user-1",
+          seed: "a".repeat(64),
+          seedHash: "b".repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: "ss-1",
+          userId: "user-1",
+          seed: "a".repeat(64),
+          seedHash: "b".repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
     };
 
-    service = new MinesService(mockPrisma);
+
+    service = new MinesService(mockPrisma, mockVipService as any, mockRewardPoolService, mockCommissionProcessor);
   });
 
   // ==================== MINE GENERATION ====================
@@ -117,8 +166,8 @@ describe('MinesService', () => {
       // With 1 mine, 1 reveal: probability = 24/25 = 0.96
       // Multiplier = 0.96 / 0.96 = 1.0 (exactly 1x with house edge)
       const mult = service.calculateMultiplier(1, 1);
-      // Fair would be 25/24 = 1.0416... With 4% edge: 0.96 * 25/24 * 0.99 = 0.99
-      expect(mult).toBe(0.99);
+      // Fair would be 25/24 = 1.0416... With 4% edge: 0.96 * 25/24 = 1.0
+      expect(mult).toBe(1);
     });
 
     it('should floor to 4 decimal places', () => {

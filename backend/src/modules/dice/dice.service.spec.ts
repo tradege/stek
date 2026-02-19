@@ -8,6 +8,27 @@
 import { DiceService } from './dice.service';
 import { BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
+
+
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
+
+
+const mockRewardPoolService = {
+  contributeToPool: jest.fn().mockResolvedValue(undefined),
+} as any;
+
+const mockCommissionProcessor = {
+  processCommission: jest.fn().mockResolvedValue(undefined),
+} as any;
 
 describe('DiceService', () => {
   let service: DiceService;
@@ -34,9 +55,28 @@ describe('DiceService', () => {
       riskLimit: {
         findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
       },
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'ss-1',
+          userId: 'user-1',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'ss-1',
+          userId: 'user-1',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
     };
 
-    service = new DiceService(mockPrisma);
+    service = new DiceService(mockPrisma, mockVipService as any, mockRewardPoolService, mockCommissionProcessor);
   });
 
   // ==================== WIN CHANCE CALCULATION ====================

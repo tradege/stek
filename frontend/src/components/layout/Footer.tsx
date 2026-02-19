@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useModal } from '@/contexts/ModalContext';
 import { useBranding } from '@/contexts/BrandingContext';
 
 /**
@@ -10,6 +11,7 @@ import { useBranding } from '@/contexts/BrandingContext';
  */
 const Footer: React.FC = () => {
   const { branding } = useBranding();
+  const { openFairness } = useModal();
   const brandName = branding.brandName || 'Casino';
 
   return (
@@ -61,6 +63,7 @@ const Footer: React.FC = () => {
               <li><Link href="/terms" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Terms of Service</Link></li>
               <li><Link href="/privacy" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Privacy Policy</Link></li>
               <li><Link href="/responsible-gaming" className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Responsible Gaming</Link></li>
+              <li><button onClick={openFairness} className="text-text-secondary text-sm hover:text-accent-primary transition-colors">Provably Fair</button></li>
             </ul>
           </div>
         </div>

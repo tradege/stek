@@ -18,6 +18,9 @@ import {
   RiskLevel,
 } from './plinko.constants';
 import { BadRequestException } from '@nestjs/common';
+import { VipService } from '../vip/vip.service';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 // Mock Date.now to bypass rate limiting (500ms between bets)
 let mockTime = 1000000;
@@ -31,6 +34,17 @@ beforeAll(() => {
 afterAll(() => {
   Date.now = originalDateNow;
 });
+
+
+const mockRewardPoolService = { contributeToPool: jest.fn() };
+const mockCommissionProcessor = { processCommission: jest.fn() };
+const mockVipService = {
+  updateUserStats: jest.fn().mockResolvedValue(undefined),
+  checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false, newLevel: 0, tierName: 'Bronze' }),
+  processRakeback: jest.fn().mockResolvedValue(undefined),
+  claimRakeback: jest.fn().mockResolvedValue({ success: true, amount: 0, message: 'OK' }),
+  getVipStatus: jest.fn().mockResolvedValue({}),
+};
 
 describe('Plinko Frontend-Backend Consistency', () => {
   let service: PlinkoService;
@@ -46,14 +60,61 @@ describe('Plinko Frontend-Backend Consistency', () => {
           wallet: { update: jest.fn().mockResolvedValue({}) },
           bet: { create: jest.fn().mockResolvedValue({}) },
           transaction: { create: jest.fn().mockResolvedValue({}) },
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
+      siteConfiguration: {
+        findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { dice: 0.04, mines: 0.03, plinko: 0.03, crash: 0.04, olympus: 0.04 } }),
+      },
+      riskLimit: {
+        findUnique: jest.fn().mockResolvedValue({ maxBetAmount: 5000, maxPayoutPerBet: 10000, maxDailyPayout: 50000, maxExposure: 100000 }),
+      },
         });
       }),
+      serverSeed: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        create: jest.fn().mockResolvedValue({
+          id: 'seed-1',
+          userId: 'test-user',
+          seed: 'a'.repeat(64),
+          seedHash: 'b'.repeat(64),
+          isActive: true,
+          nonce: 0,
+        }),
+        update: jest.fn().mockResolvedValue({ nonce: 1 }),
+      },
+      siteConfiguration: {
+        findUnique: jest.fn().mockResolvedValue({ houseEdgeConfig: { dice: 0.04, mines: 0.03, plinko: 0.03, crash: 0.04, olympus: 0.04 } }),
+      },
       bet: {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
 
-    service = new PlinkoService(mockPrisma);
+    service = new PlinkoService(mockPrisma, mockVipService as any, mockRewardPoolService as any, mockCommissionProcessor as any);
   });
 
   // ==================== PATH-BUCKET CONSISTENCY ====================

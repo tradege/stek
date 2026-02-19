@@ -135,7 +135,7 @@ export default function AdminGames() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 text-[#1475e1] animate-spin" />
+        <RefreshCw className="w-8 h-8 text-accent-primary animate-spin" />
       </div>
     );
   }
@@ -150,12 +150,12 @@ export default function AdminGames() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Game Control Center</h1>
-          <p className="text-gray-400">Manage all {allGameTypes.length} games, RTP, house edge, and bot settings</p>
+          <p className="text-text-secondary">Manage all {allGameTypes.length} games, RTP, house edge, and bot settings</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => { fetchConfig(); fetchGameStats(); }}
-            className="px-4 py-2 bg-[#2f4553] rounded-lg text-gray-300 hover:bg-[#3d5a6e] transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-white/10 rounded-lg text-gray-300 hover:bg-white/20 transition-colors flex items-center gap-2"
           >
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
@@ -164,27 +164,27 @@ export default function AdminGames() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-4">
-          <div className="text-xs text-gray-400 mb-1">Total Games</div>
+        <div className="bg-bg-card border border-white/10 rounded-xl p-4">
+          <div className="text-xs text-text-secondary mb-1">Total Games</div>
           <div className="text-2xl font-bold text-white">{allGameTypes.length}</div>
           <div className="text-xs text-green-400 mt-1">{gameStats.filter(g => g.totalBets > 0).length} with activity</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-4">
-          <div className="text-xs text-gray-400 mb-1">Total Bets</div>
+        <div className="bg-bg-card border border-white/10 rounded-xl p-4">
+          <div className="text-xs text-text-secondary mb-1">Total Bets</div>
           <div className="text-2xl font-bold text-cyan-400">{gameStats.reduce((s, g) => s + g.totalBets, 0).toLocaleString()}</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-4">
-          <div className="text-xs text-gray-400 mb-1">Total Wagered</div>
+        <div className="bg-bg-card border border-white/10 rounded-xl p-4">
+          <div className="text-xs text-text-secondary mb-1">Total Wagered</div>
           <div className="text-2xl font-bold text-blue-400">{fmt(gameStats.reduce((s, g) => s + g.totalWagered, 0))}</div>
         </div>
-        <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-4">
-          <div className="text-xs text-gray-400 mb-1">Total GGR</div>
+        <div className="bg-bg-card border border-white/10 rounded-xl p-4">
+          <div className="text-xs text-text-secondary mb-1">Total GGR</div>
           <div className="text-2xl font-bold text-green-400">{fmt(gameStats.reduce((s, g) => s + g.ggr, 0))}</div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#0f1923] p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-bg-main p-1 rounded-lg w-fit">
         {[
           { id: 'overview', label: 'Games Overview', icon: Gamepad2 },
           { id: 'crash', label: 'Crash Settings', icon: Rocket },
@@ -195,8 +195,8 @@ export default function AdminGames() {
             onClick={() => setActiveTab(tab.id as any)}
             className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
               activeTab === tab.id
-                ? 'bg-[#1475e1] text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-accent-primary text-white'
+                : 'text-text-secondary hover:text-white'
             }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -226,33 +226,33 @@ export default function AdminGames() {
               const stats = statsMap.get(gt);
               const hasActivity = stats && stats.totalBets > 0;
               return (
-                <div key={gt} className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5 hover:border-[#1475e1]/30 transition-colors">
+                <div key={gt} className="bg-bg-card border border-white/10 rounded-xl p-5 hover:border-accent-primary/30 transition-colors">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="text-2xl">{meta.icon}</div>
                       <div>
                         <h3 className={`text-lg font-bold ${meta.color}`}>{meta.name}</h3>
-                        <p className="text-xs text-gray-500">{meta.description}</p>
+                        <p className="text-xs text-text-tertiary">{meta.description}</p>
                       </div>
                     </div>
                     <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Active</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 mt-3">
-                    <div className="bg-[#0f1923] rounded-lg p-2">
-                      <div className="text-[10px] text-gray-500">Bets</div>
+                    <div className="bg-bg-main rounded-lg p-2">
+                      <div className="text-[10px] text-text-tertiary">Bets</div>
                       <div className="text-sm font-bold text-white">{stats?.totalBets?.toLocaleString() || '0'}</div>
                     </div>
-                    <div className="bg-[#0f1923] rounded-lg p-2">
-                      <div className="text-[10px] text-gray-500">Wagered</div>
+                    <div className="bg-bg-main rounded-lg p-2">
+                      <div className="text-[10px] text-text-tertiary">Wagered</div>
                       <div className="text-sm font-bold text-cyan-400">{fmt(stats?.totalWagered || 0)}</div>
                     </div>
-                    <div className="bg-[#0f1923] rounded-lg p-2">
-                      <div className="text-[10px] text-gray-500">Payouts</div>
+                    <div className="bg-bg-main rounded-lg p-2">
+                      <div className="text-[10px] text-text-tertiary">Payouts</div>
                       <div className="text-sm font-bold text-orange-400">{fmt(stats?.totalPayout || 0)}</div>
                     </div>
-                    <div className="bg-[#0f1923] rounded-lg p-2">
-                      <div className="text-[10px] text-gray-500">GGR</div>
+                    <div className="bg-bg-main rounded-lg p-2">
+                      <div className="text-[10px] text-text-tertiary">GGR</div>
                       <div className={`text-sm font-bold ${(stats?.ggr || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {fmt(stats?.ggr || 0)}
                       </div>
@@ -264,7 +264,7 @@ export default function AdminGames() {
                       <Shield className="w-3 h-3 text-green-400" />
                       <span className="text-[10px] text-green-400">Provably Fair</span>
                     </div>
-                    <span className="text-[10px] text-gray-500 font-mono">{meta.algo}</span>
+                    <span className="text-[10px] text-text-tertiary font-mono">{meta.algo}</span>
                   </div>
                 </div>
               );
@@ -272,12 +272,12 @@ export default function AdminGames() {
           </div>
 
           {/* Full Stats Table */}
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4">Per-Game Performance</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-400 text-xs border-b border-[#2f4553]">
+                  <tr className="text-text-secondary text-xs border-b border-white/10">
                     <th className="text-left py-3 px-2">Game</th>
                     <th className="text-right py-3 px-2">Bets</th>
                     <th className="text-right py-3 px-2">Wagered</th>
@@ -295,7 +295,7 @@ export default function AdminGames() {
                       ? ((stats.totalPayout / stats.totalWagered) * 100).toFixed(2)
                       : '-';
                     return (
-                      <tr key={gt} className="border-b border-[#2f4553]/50 hover:bg-[#0f1923]/50">
+                      <tr key={gt} className="border-b border-white/10/50 hover:bg-bg-main/50">
                         <td className="py-3 px-2">
                           <span className="mr-2">{meta.icon}</span>
                           <span className={`font-medium ${meta.color}`}>{meta.name}</span>
@@ -324,50 +324,50 @@ export default function AdminGames() {
       {activeTab === 'crash' && editConfig && (
         <div className="space-y-4">
           {/* House Edge */}
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#1475e1]" />
+              <TrendingUp className="w-5 h-5 text-accent-primary" />
               House Edge Configuration
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">House Edge (%)</label>
+                <label className="text-sm text-text-secondary mb-2 block">House Edge (%)</label>
                 <input
                   type="number"
                   value={editConfig.houseEdge}
                   onChange={(e) => setEditConfig({ ...editConfig, houseEdge: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                   min="0"
                   max="20"
                   step="0.5"
                 />
-                <p className="text-xs text-gray-500 mt-1">Default: 4%. Range: 0-20%</p>
+                <p className="text-xs text-text-tertiary mt-1">Default: 4%. Range: 0-20%</p>
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Instant Bust Rate (%)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Instant Bust Rate (%)</label>
                 <input
                   type="number"
                   value={editConfig.instantBust}
                   onChange={(e) => setEditConfig({ ...editConfig, instantBust: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                   min="0"
                   max="20"
                   step="0.5"
                 />
-                <p className="text-xs text-gray-500 mt-1">Chance of 1.00x crash. Default: 4%</p>
+                <p className="text-xs text-text-tertiary mt-1">Chance of 1.00x crash. Default: 4%</p>
               </div>
             </div>
           </div>
 
           {/* Bot Configuration */}
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Gamepad2 className="w-5 h-5 text-[#1475e1]" />
+              <Gamepad2 className="w-5 h-5 text-accent-primary" />
               Bot Configuration
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Bots Enabled</label>
+                <label className="text-sm text-text-secondary mb-2 block">Bots Enabled</label>
                 <button
                   onClick={() => setEditConfig({ ...editConfig, botsEnabled: !editConfig.botsEnabled })}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -381,35 +381,35 @@ export default function AdminGames() {
                 </button>
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Min Bot Bet ($)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Min Bot Bet ($)</label>
                 <input
                   type="number"
                   value={editConfig.minBotBet}
                   onChange={(e) => setEditConfig({ ...editConfig, minBotBet: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                   min="0.01"
                   step="0.01"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 mb-2 block">Max Bot Bet ($)</label>
+                <label className="text-sm text-text-secondary mb-2 block">Max Bot Bet ($)</label>
                 <input
                   type="number"
                   value={editConfig.maxBotBet}
                   onChange={(e) => setEditConfig({ ...editConfig, maxBotBet: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                   min="0.01"
                   step="0.01"
                 />
               </div>
             </div>
             <div className="mt-4">
-              <label className="text-sm text-gray-400 mb-2 block">Max Bots Per Round</label>
+              <label className="text-sm text-text-secondary mb-2 block">Max Bots Per Round</label>
               <input
                 type="number"
                 value={editConfig.maxBotsPerRound}
                 onChange={(e) => setEditConfig({ ...editConfig, maxBotsPerRound: parseInt(e.target.value) || 0 })}
-                className="w-full md:w-1/3 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:border-[#1475e1] focus:outline-none"
+                className="w-full md:w-1/3 bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:border-accent-primary focus:outline-none"
                 min="0"
                 max="50"
               />
@@ -434,7 +434,7 @@ export default function AdminGames() {
             <button
               onClick={saveConfig}
               disabled={saving}
-              className="px-6 py-3 bg-[#1475e1] hover:bg-[#1265c1] rounded-lg text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+              className="px-6 py-3 bg-accent-primary hover:bg-[#1265c1] rounded-lg text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : 'Save Configuration'}
@@ -446,33 +446,33 @@ export default function AdminGames() {
       {/* Global Settings Tab */}
       {activeTab === 'settings' && (
         <div className="space-y-4">
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4">Global Game Settings</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-[#0f1923] rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Default Currency</div>
+              <div className="bg-bg-main rounded-lg p-4">
+                <div className="text-sm text-text-secondary mb-1">Default Currency</div>
                 <div className="text-white font-bold">USDT (Tether)</div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Minimum Bet</div>
+              <div className="bg-bg-main rounded-lg p-4">
+                <div className="text-sm text-text-secondary mb-1">Minimum Bet</div>
                 <div className="text-white font-bold">$0.01</div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Maximum Bet</div>
+              <div className="bg-bg-main rounded-lg p-4">
+                <div className="text-sm text-text-secondary mb-1">Maximum Bet</div>
                 <div className="text-white font-bold">$10,000</div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Provably Fair</div>
+              <div className="bg-bg-main rounded-lg p-4">
+                <div className="text-sm text-text-secondary mb-1">Provably Fair</div>
                 <div className="text-green-400 font-bold flex items-center gap-1">
                   <Shield className="w-4 h-4" /> Enabled (All Games)
                 </div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Rate Limiting</div>
+              <div className="bg-bg-main rounded-lg p-4">
+                <div className="text-sm text-text-secondary mb-1">Rate Limiting</div>
                 <div className="text-white font-bold">500ms between bets</div>
               </div>
-              <div className="bg-[#0f1923] rounded-lg p-4">
-                <div className="text-sm text-gray-400 mb-1">Atomic Transactions</div>
+              <div className="bg-bg-main rounded-lg p-4">
+                <div className="text-sm text-text-secondary mb-1">Atomic Transactions</div>
                 <div className="text-green-400 font-bold flex items-center gap-1">
                   <Shield className="w-4 h-4" /> Row Locking Enabled
                 </div>
@@ -481,12 +481,12 @@ export default function AdminGames() {
           </div>
 
           {/* Active Games Summary Table */}
-          <div className="bg-[#1a2c38] border border-[#2f4553] rounded-xl p-5">
+          <div className="bg-bg-card border border-white/10 rounded-xl p-5">
             <h3 className="text-lg font-bold text-white mb-4">All In-House Games</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-400 text-xs border-b border-[#2f4553]">
+                  <tr className="text-text-secondary text-xs border-b border-white/10">
                     <th className="text-left py-3 px-2">Game</th>
                     <th className="text-center py-3 px-2">Status</th>
                     <th className="text-center py-3 px-2">Provably Fair</th>
@@ -497,7 +497,7 @@ export default function AdminGames() {
                   {allGameTypes.map((gt) => {
                     const meta = GAME_META[gt];
                     return (
-                      <tr key={gt} className="border-b border-[#2f4553]/50 hover:bg-[#0f1923]/50">
+                      <tr key={gt} className="border-b border-white/10/50 hover:bg-bg-main/50">
                         <td className="py-3 px-2">
                           <span className="mr-2">{meta.icon}</span>
                           <span className={`font-medium ${meta.color}`}>{meta.name}</span>

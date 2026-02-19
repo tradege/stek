@@ -6,6 +6,12 @@ import { AffiliateService } from "./affiliate.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { BadRequestException } from "@nestjs/common";
 import { Decimal } from "@prisma/client/runtime/library";
+import { CommissionProcessorService } from './commission-processor.service';
+
+
+const mockCommissionProcessor = {
+  processCommission: jest.fn().mockResolvedValue(undefined),
+};
 
 describe("AffiliateService - Unit Tests", () => {
   let service: AffiliateService;
@@ -59,6 +65,7 @@ describe("AffiliateService - Unit Tests", () => {
             $transaction: jest.fn(),
           },
         },
+        { provide: CommissionProcessorService, useValue: mockCommissionProcessor },
       ],
     }).compile();
 
@@ -174,14 +181,14 @@ describe("AffiliateService - Unit Tests", () => {
   });
 
   describe("Rank System", () => {
-    it("Should start at Iron rank", async () => {
+    it("Should start at Bronze rank", async () => {
       jest.spyOn(prisma.user, "findUnique").mockResolvedValue(mockUser as any);
       jest.spyOn(prisma.user, "count").mockResolvedValue(0);
       jest.spyOn(prisma.user, "findMany").mockResolvedValue([]);
 
       const result = await service.getStats("user-123");
 
-      expect(result.currentRank.name).toBe("Iron");
+      expect(result.currentRank.name).toBe("Bronze");
     });
   });
 

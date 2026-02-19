@@ -47,7 +47,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
   const fetchDepositAddress = async () => {
     try {
-      const response = await fetch(`${API_URL}/wallet/deposit-address/${selectedCurrency}`, {
+      const response = await fetch(`${API_URL}/cashier/deposit-address?currency=${selectedCurrency}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -71,7 +71,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/wallet/deposit`, {
+      const response = await fetch(`${API_URL}/cashier/deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +111,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/wallet/withdraw`, {
+      const response = await fetch(`${API_URL}/cashier/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

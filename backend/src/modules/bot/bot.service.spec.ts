@@ -244,9 +244,9 @@ describe('🤖 BotService - Unit Tests', () => {
           { id: 'bot-1', username: 'Bot1', personality: 'NORMAL', siteId: 'site-1' },
           { id: 'bot-2', username: 'Bot2', personality: 'CAUTIOUS', siteId: 'site-1' },
         ],
-        activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
+        activeBets: new Map(),
         config: {
           botCount: 2,
           minBetAmount: 1,
@@ -287,8 +287,8 @@ describe('🤖 BotService - Unit Tests', () => {
 
     it('5.5 - Legacy toggle should affect all sites', () => {
       (service as any).sitePools.set('site-2', {
-        siteId: 'site-2',
         bots: [{ id: 'bot-3', username: 'Bot3', personality: 'DEGEN', siteId: 'site-2' }],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
@@ -308,7 +308,6 @@ describe('🤖 BotService - Unit Tests', () => {
   describe('📊 Status Reporting', () => {
     beforeEach(() => {
       (service as any).sitePools.set('site-1', {
-        siteId: 'site-1',
         bots: [
           { id: 'bot-1', username: 'Bot1', personality: 'CAUTIOUS', siteId: 'site-1' },
           { id: 'bot-2', username: 'Bot2', personality: 'NORMAL', siteId: 'site-1' },
@@ -345,8 +344,8 @@ describe('🤖 BotService - Unit Tests', () => {
 
     it('6.4 - Legacy getStatus should aggregate all sites', () => {
       (service as any).sitePools.set('site-2', {
-        siteId: 'site-2',
         bots: [{ id: 'bot-4', username: 'Bot4', personality: 'NORMAL', siteId: 'site-2' }],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
@@ -360,8 +359,8 @@ describe('🤖 BotService - Unit Tests', () => {
 
     it('6.5 - Should report enabled=false if any site is disabled', () => {
       (service as any).sitePools.set('site-2', {
-        siteId: 'site-2',
         bots: [],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: false,
@@ -380,8 +379,8 @@ describe('🤖 BotService - Unit Tests', () => {
   describe('🎮 Game State Handling', () => {
     beforeEach(() => {
       (service as any).sitePools.set('site-1', {
-        siteId: 'site-1',
         bots: [{ id: 'bot-1', username: 'Bot1', personality: 'NORMAL', siteId: 'site-1' }],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
@@ -434,8 +433,8 @@ describe('🤖 BotService - Unit Tests', () => {
   describe('🏠 Tenant Isolation', () => {
     it('8.1 - Bot bets should include siteId for isolation', () => {
       (service as any).sitePools.set('site-1', {
-        siteId: 'site-1',
         bots: [{ id: 'bot-1', username: 'Bot1', personality: 'NORMAL', siteId: 'site-1' }],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
@@ -456,11 +455,10 @@ describe('🤖 BotService - Unit Tests', () => {
       // Verify bot events always have isBot: true
       // This ensures GGR calculations can filter out bots
       const pool = {
-        siteId: 'site-1',
         bots: [{ id: 'bot-1', username: 'Bot1', personality: 'NORMAL', siteId: 'site-1' }],
-        activeBets: new Map([['bot-1', { amount: 10, targetCashout: 2.0 }]]),
         chatInterval: null,
         isEnabled: true,
+        activeBets: new Map(),
         config: { botCount: 1, minBetAmount: 1, maxBetAmount: 100, chatEnabled: false, chatIntervalMin: 5, chatIntervalMax: 15, botNamePrefix: '', customChatMessages: null },
       };
       (service as any).sitePools.set('site-1', pool);
@@ -477,14 +475,14 @@ describe('🤖 BotService - Unit Tests', () => {
 
     it('8.3 - Each site should have independent bot pool', () => {
       (service as any).sitePools.set('site-1', {
-        siteId: 'site-1',
         bots: [{ id: 'bot-1' }],
+        siteId: "site-1",
         activeBets: new Map(),
         isEnabled: true,
       });
       (service as any).sitePools.set('site-2', {
-        siteId: 'site-2',
         bots: [{ id: 'bot-2' }, { id: 'bot-3' }],
+        siteId: "site-1",
         activeBets: new Map(),
         isEnabled: true,
       });
@@ -497,16 +495,16 @@ describe('🤖 BotService - Unit Tests', () => {
 
     it('8.4 - Disabling one site should not affect others', () => {
       (service as any).sitePools.set('site-1', {
-        siteId: 'site-1',
         bots: [{ id: 'bot-1', username: 'Bot1', personality: 'NORMAL', siteId: 'site-1' }],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
         config: { botCount: 1, minBetAmount: 1, maxBetAmount: 100, chatEnabled: false, chatIntervalMin: 5, chatIntervalMax: 15, botNamePrefix: '', customChatMessages: null },
       });
       (service as any).sitePools.set('site-2', {
-        siteId: 'site-2',
         bots: [{ id: 'bot-2', username: 'Bot2', personality: 'DEGEN', siteId: 'site-2' }],
+        siteId: "site-1",
         activeBets: new Map(),
         chatInterval: null,
         isEnabled: true,
@@ -533,7 +531,6 @@ describe('🤖 BotService - Unit Tests', () => {
 
     it('9.2 - Should clear existing pool before reload', async () => {
       (service as any).sitePools.set('site-1', {
-        siteId: 'site-1',
         bots: [{ id: 'bot-1' }],
         activeBets: new Map([['bot-1', { amount: 10 }]]),
         chatInterval: null,

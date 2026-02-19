@@ -79,7 +79,7 @@ const vipTiers = [
 export default function VIPPage() {
   const { user } = useAuth();
   const [vipStatus, setVipStatus] = useState<any>(null);
-  const currentLevel = vipStatus?.vipLevel ?? user?.vipLevel ?? 0;
+  const currentLevel = vipStatus?.level ?? user?.vipLevel ?? 0;
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function VIPPage() {
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
-        const res = await fetch(`${API_URL}/api/v1/vip/status`, {
+        const res = await fetch(`${API_URL}/api/vip/status`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {

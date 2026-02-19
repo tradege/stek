@@ -93,7 +93,11 @@ export class BotService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.log('🤖 Initializing Multi-Tenant Bot Service (Ghost Protocol)...');
-    await this.initializeAllSiteBots();
+    try {
+      await this.initializeAllSiteBots();
+    } catch (error) {
+      this.logger.error(`🤖 Bot initialization failed (non-fatal): ${error.message}`);
+    }
     this.logger.log(`🤖 Bot Service ready for ${this.sitePools.size} site(s)`);
   }
 
@@ -104,11 +108,11 @@ export class BotService implements OnModuleInit {
     // Get all active sites with their bot configs
     const sites = await this.prisma.siteConfiguration.findMany({
       where: { active: true },
-      include: { bots: true },
+      include: { botConfig: true },
     });
 
     for (const site of sites) {
-      const botConfig = site.bots[0]; // One BotConfig per site (@@unique([siteId]))
+      const botConfig = site.botConfig[0]; // One BotConfig per site (@@unique([siteId]))
       if (botConfig && botConfig.enabled) {
         await this.initializeSiteBots(site.id, {
           botCount: botConfig.botCount,

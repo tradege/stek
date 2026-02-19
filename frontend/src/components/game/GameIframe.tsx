@@ -187,7 +187,7 @@ export default function GameIframe({ url, gameName, onClose, onError }: GameIfra
               Press <kbd className="px-2 py-1 bg-white/20 rounded text-white">ESC</kbd> to exit fullscreen
             </p>
             <p className="text-white/60 text-sm">
-              {branding.brandName || 'Casino'} • Crypto Casino
+              {branding.brandName || 'Casino'}
             </p>
           </div>
         </div>

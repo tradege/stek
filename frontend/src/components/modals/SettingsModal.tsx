@@ -72,15 +72,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div data-testid="settings-modal" className="relative bg-bg-card border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div data-testid="settings-modal" className="relative w-full max-w-lg mx-4 bg-bg-card rounded-xl border border-white/10 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/10">
           <div className="flex items-center justify-between">
@@ -143,8 +143,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             {/* Music Toggle */}
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#1475e1]/20 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-[#1475e1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-10 h-10 rounded-lg bg-accent-primary/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                   </svg>
                 </div>
@@ -155,7 +155,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </div>
               <button
                 onClick={handleMusicToggle}
-                className={`relative w-14 h-7 rounded-full transition-colors ${masterMusicEnabled ? 'bg-[#1475e1]' : 'bg-white/20'}`}
+                className={`relative w-14 h-7 rounded-full transition-colors ${masterMusicEnabled ? 'bg-accent-primary' : 'bg-white/20'}`}
               >
                 <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${masterMusicEnabled ? 'translate-x-7' : ''}`} />
               </button>

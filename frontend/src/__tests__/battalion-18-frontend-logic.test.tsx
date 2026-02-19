@@ -1272,11 +1272,11 @@ describe('🎨 BATTALION 18: FRONTEND INTEGRITY & UX AUDIT', () => {
 
       it('should have fallback DEFAULT_BRAND config', () => {
         const defaultBrand = {
-          brandName: 'StakePro',
+          brandName: 'Betworkss',
           primaryColor: '#00F0FF',
           backgroundColor: '#0A0E17',
         };
-        expect(defaultBrand.brandName).toBe('StakePro');
+        expect(defaultBrand.brandName).toBe('Betworkss');
         expect(defaultBrand.primaryColor).toBe('#00F0FF');
       });
 

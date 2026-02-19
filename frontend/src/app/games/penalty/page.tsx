@@ -71,7 +71,7 @@ function StadiumBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* Night sky gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0e1a] via-[#111827] to-[#0f1923]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-bg-main via-gray-900 to-bg-main" />
 
       {/* Stars */}
       {Array.from({ length: 30 }).map((_, i) => (
@@ -701,7 +701,7 @@ export default function PenaltyPage() {
                 value={league}
                 onChange={(e) => setLeague(e.target.value as League)}
                 disabled={phase === "active" || phase === "kicking"}
-                className="bg-[#1a2c38]/80 backdrop-blur-sm border border-[#2f4553] rounded-lg px-3 py-2 text-sm text-white appearance-none cursor-pointer pr-8 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
+                className="bg-bg-card/80 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2 text-sm text-white appearance-none cursor-pointer pr-8 focus:outline-none focus:border-green-500 transition-colors disabled:opacity-50"
               >
                 {(Object.keys(LEAGUE_CONFIG) as League[]).map((l) => (
                   <option key={l} value={l}>
@@ -717,7 +717,7 @@ export default function PenaltyPage() {
               className={`p-2 rounded-lg border transition-all ${
                 crowdNoise
                   ? "bg-green-500/20 border-green-500/50 text-green-400"
-                  : "bg-[#1a2c38]/80 border-[#2f4553] text-gray-400"
+                  : "bg-bg-card/80 border-white/10 text-gray-400"
               }`}
               title={crowdNoise ? "Crowd: ON" : "Crowd: OFF"}
             >
@@ -728,7 +728,7 @@ export default function PenaltyPage() {
               </svg>
             </button>
             {/* Balance */}
-            <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-[#2f4553]">
+            <div className="bg-bg-card/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/10">
               <span className="text-gray-400 text-sm">Balance: </span>
               <span className="text-[#00F0FF] font-bold font-mono">${balance.toFixed(2)}</span>
             </div>
@@ -759,28 +759,28 @@ export default function PenaltyPage() {
           {/* Left Panel */}
           <div className="space-y-4">
             {/* Bet Amount */}
-            <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553] p-4">
+            <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-4">
               <label className="text-xs text-gray-400 mb-2 block font-semibold uppercase tracking-wider">Bet Amount</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   value={betAmount}
                   onChange={(e) => setBetAmount(e.target.value)}
-                  className="flex-1 bg-[#0f1923] border border-[#2f4553] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-green-500 transition-colors"
+                  className="flex-1 bg-bg-main border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-green-500 transition-colors"
                   min="0.10"
                   step="0.10"
                   disabled={phase !== "idle" && phase !== "gameover"}
                 />
                 <button
                   onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))}
-                  className="px-3 py-2 bg-[#2f4553] rounded-lg text-sm hover:bg-[#3d5a6e] transition-colors"
+                  className="px-3 py-2 bg-white/10 rounded-lg text-sm hover:bg-white/20 transition-colors"
                   disabled={phase !== "idle" && phase !== "gameover"}
                 >
                   &frac12;
                 </button>
                 <button
                   onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))}
-                  className="px-3 py-2 bg-[#2f4553] rounded-lg text-sm hover:bg-[#3d5a6e] transition-colors"
+                  className="px-3 py-2 bg-white/10 rounded-lg text-sm hover:bg-white/20 transition-colors"
                   disabled={phase !== "idle" && phase !== "gameover"}
                 >
                   2&times;
@@ -791,23 +791,23 @@ export default function PenaltyPage() {
             {/* Game Status */}
             {session && (
               <motion.div
-                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553] p-4"
+                className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-4"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 <label className="text-xs text-gray-400 mb-3 block font-semibold uppercase tracking-wider">Current Session</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center">
+                  <div className="bg-bg-main/80 rounded-lg p-3 text-center">
                     <div className="text-xs text-gray-400">Round</div>
                     <div className="text-white font-bold text-xl">
                       {session.currentRound}/{session.maxRounds}
                     </div>
                   </div>
-                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center">
+                  <div className="bg-bg-main/80 rounded-lg p-3 text-center">
                     <div className="text-xs text-gray-400">Goals</div>
                     <div className="text-green-400 font-bold text-xl">{session.goals}</div>
                   </div>
-                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center col-span-2">
+                  <div className="bg-bg-main/80 rounded-lg p-3 text-center col-span-2">
                     <div className="text-xs text-gray-400">Current Multiplier</div>
                     <motion.div
                       className="text-accent-primary font-bold text-2xl"
@@ -876,7 +876,7 @@ export default function PenaltyPage() {
 
             {phase === "active" && (
               <motion.div
-                className="text-center text-sm text-gray-300 bg-[#1a2c38]/60 backdrop-blur-sm rounded-lg py-2 border border-[#2f4553]/50"
+                className="text-center text-sm text-gray-300 bg-bg-card/60 backdrop-blur-sm rounded-lg py-2 border border-white/10/50"
                 animate={{ opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
@@ -909,14 +909,14 @@ export default function PenaltyPage() {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="bg-[#1a1a2e]/90 backdrop-blur-sm px-3 py-1.5 rounded-l-lg border border-[#2f4553]/50">
+                  <div className="bg-[#1a1a2e]/90 backdrop-blur-sm px-3 py-1.5 rounded-l-lg border border-white/10/50">
                     <span className="text-gray-300">ROUND</span>
                     <span className="text-white ml-1">{session.currentRound}</span>
                   </div>
                   <div className="bg-green-600/90 backdrop-blur-sm px-3 py-1.5 border-y border-green-500/50">
                     <span className="text-white">{session.goals} \u26BD</span>
                   </div>
-                  <div className="bg-[#1a1a2e]/90 backdrop-blur-sm px-3 py-1.5 rounded-r-lg border border-[#2f4553]/50">
+                  <div className="bg-[#1a1a2e]/90 backdrop-blur-sm px-3 py-1.5 rounded-r-lg border border-white/10/50">
                     <span className="text-accent-primary">{session.currentMultiplier.toFixed(2)}&times;</span>
                   </div>
                 </motion.div>
@@ -940,7 +940,7 @@ export default function PenaltyPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553] p-6 inline-block">
+                  <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 p-6 inline-block">
                     <div className="text-xl font-bold text-gray-300 mb-2">Full Time</div>
                     <div className="text-3xl font-bold mb-1">
                       {goalHistory.filter((g) => g.isGoal).length} Goals
@@ -955,8 +955,8 @@ export default function PenaltyPage() {
 
             {/* Payout Statistics Table */}
             {multipliers.length > 0 && (
-              <div className="mt-6 bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553] overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#2f4553] flex items-center justify-between">
+              <div className="mt-6 bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📊</span>
                     <h3 className="font-semibold text-sm text-gray-200">Payout Table</h3>
@@ -966,7 +966,7 @@ export default function PenaltyPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-[#0f1923] text-gray-400 text-xs uppercase tracking-wider">
+                      <tr className="bg-bg-main text-gray-400 text-xs uppercase tracking-wider">
                         <th className="px-3 py-2.5 text-left">Goal</th>
                         <th className="px-3 py-2.5 text-right">Multiplier</th>
                         <th className="px-3 py-2.5 text-right">Payout</th>
@@ -987,7 +987,7 @@ export default function PenaltyPage() {
                         return (
                           <tr
                             key={m.round}
-                            className={`border-b border-[#2f4553]/30 transition-all ${
+                            className={`border-b border-white/10/30 transition-all ${
                               isActive
                                 ? "bg-green-500/15 border-green-500/40"
                                 : isScored
@@ -1048,7 +1048,7 @@ export default function PenaltyPage() {
                   </table>
                 </div>
                 {/* Summary footer */}
-                <div className="px-4 py-2.5 bg-[#0f1923]/80 border-t border-[#2f4553]/50 flex items-center justify-between text-xs">
+                <div className="px-4 py-2.5 bg-bg-main/80 border-t border-white/10/50 flex items-center justify-between text-xs">
                   <span className="text-gray-500">
                     {multipliers.length} rounds | 66.7% goal chance per kick
                   </span>
@@ -1063,14 +1063,14 @@ export default function PenaltyPage() {
             )}
 
             {/* History Table */}
-            <div className="mt-4 bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#2f4553]">
+            <div className="mt-4 bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/10">
                 <h3 className="font-semibold text-sm text-gray-300">Recent Games</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-gray-400 text-xs border-b border-[#2f4553]">
+                    <tr className="text-gray-400 text-xs border-b border-white/10">
                       <th className="px-4 py-2 text-left">Goals</th>
                       <th className="px-4 py-2 text-left">Result</th>
                       <th className="px-4 py-2 text-right">Bet</th>
@@ -1089,7 +1089,7 @@ export default function PenaltyPage() {
                         const profit = parseFloat(bet.profit);
                         return (
                           <ErrorBoundary gameName="Penalty">
-                          <tr key={bet.id} className="border-b border-[#2f4553]/50 hover:bg-white/5">
+                          <tr key={bet.id} className="border-b border-white/10/50 hover:bg-white/5">
                             <td className="px-4 py-2">
                               <span className="text-green-400 font-mono">
                                 {bet.gameData?.goals || "?"} \u26BD

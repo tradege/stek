@@ -276,7 +276,7 @@ export default function MinesPage() {
         {/* Left Panel - Controls */}
         <div className="lg:col-span-1 space-y-4">
           {/* Game Title */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20">
                 💣
@@ -289,7 +289,7 @@ export default function MinesPage() {
           </div>
 
           {/* Betting Chips */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <label className="text-sm text-gray-400 mb-3 block font-medium">Bet Amount</label>
             <div className="flex items-center gap-2 mb-3">
               <div className="relative flex-1">
@@ -298,14 +298,14 @@ export default function MinesPage() {
                   type="number"
                   value={betAmount}
                   onChange={(e) => setBetAmount(e.target.value)}
-                  className="w-full bg-[#0f1923] border border-[#2f4553] rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition-all"
+                  className="w-full bg-bg-main border border-white/10 rounded-lg pl-7 pr-3 py-2.5 text-white font-mono focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none transition-all"
                   min="0.01"
                   step="0.01"
                   disabled={isGameActive}
                 />
               </div>
-              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))} className="px-3 py-2.5 bg-[#2f4553]/80 rounded-lg text-sm hover:bg-[#3d5a6e] transition-all border border-[#2f4553]" disabled={isGameActive}>½</button>
-              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))} className="px-3 py-2.5 bg-[#2f4553]/80 rounded-lg text-sm hover:bg-[#3d5a6e] transition-all border border-[#2f4553]" disabled={isGameActive}>2×</button>
+              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) / 2).toFixed(2))} className="px-3 py-2.5 bg-white/10/80 rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10" disabled={isGameActive}>½</button>
+              <button onClick={() => setBetAmount((prev) => (parseFloat(prev) * 2).toFixed(2))} className="px-3 py-2.5 bg-white/10/80 rounded-lg text-sm hover:bg-white/20 transition-all border border-white/10" disabled={isGameActive}>2×</button>
             </div>
             <div className="flex flex-wrap gap-2">
               {CHIP_VALUES.map((val) => (
@@ -324,7 +324,7 @@ export default function MinesPage() {
           </div>
 
           {/* Mine Count */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4">
             <label className="text-sm text-gray-400 mb-2 block font-medium">Mines: <span className="text-emerald-400 font-bold">{mineCount}</span></label>
             <div className="grid grid-cols-6 gap-1.5">
               {[1, 3, 5, 7, 10, 12, 15, 18, 20, 22, 23, 24].map((count) => (
@@ -336,7 +336,7 @@ export default function MinesPage() {
                   className={`py-2 rounded-lg text-xs font-bold transition-all ${
                     mineCount === count
                       ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/20"
-                      : "bg-[#0f1923] text-gray-400 hover:text-white hover:bg-[#2f4553] border border-[#2f4553]/50"
+                      : "bg-bg-main text-gray-400 hover:text-white hover:bg-white/10 border border-white/10/50"
                   }`}
                 >
                   {count}
@@ -352,19 +352,19 @@ export default function MinesPage() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 space-y-3"
+                className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-emerald-500/30 p-4 space-y-3"
               >
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+                  <div className="bg-bg-main/80 rounded-lg p-3 text-center border border-white/10/30">
                     <div className="text-xs text-gray-500 mb-1">Gems Found</div>
                     <div className="text-emerald-400 font-mono font-bold text-xl">{gameState.revealedTiles.length}</div>
                   </div>
-                  <div className="bg-[#0f1923]/80 rounded-lg p-3 text-center border border-[#2f4553]/30">
+                  <div className="bg-bg-main/80 rounded-lg p-3 text-center border border-white/10/30">
                     <div className="text-xs text-gray-500 mb-1">Multiplier</div>
                     <div className="text-accent-primary font-mono font-bold text-xl">{Number(gameState.currentMultiplier).toFixed(2)}×</div>
                   </div>
                 </div>
-                <div className="bg-[#0f1923]/80 rounded-lg p-4 text-center border border-yellow-500/20">
+                <div className="bg-bg-main/80 rounded-lg p-4 text-center border border-yellow-500/20">
                   <div className="text-xs text-gray-500 mb-1">Current Payout</div>
                   <div className="text-yellow-400 font-mono font-bold text-2xl">${Number(gameState.currentPayout).toFixed(2)}</div>
                 </div>
@@ -465,7 +465,7 @@ export default function MinesPage() {
 
         {/* Right Panel - Mine Grid + Stats */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4 md:p-6">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4 md:p-6">
             <div className="grid grid-cols-5 gap-2 md:gap-3 max-w-lg mx-auto">
               {Array.from({ length: 25 }, (_, i) => {
                 const tile = getTileContent(i);
@@ -510,10 +510,10 @@ export default function MinesPage() {
           </div>
 
           {/* ============ STEP-BY-STEP STATISTICS TABLE ============ */}
-          <div className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 overflow-hidden">
+          <div className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 overflow-hidden">
             <button
               onClick={() => setShowStatsTable(!showStatsTable)}
-              className="w-full px-4 py-3 flex items-center justify-between border-b border-[#2f4553]/50 hover:bg-[#2f4553]/20 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between border-b border-white/10/50 hover:bg-white/10/20 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">📊</span>
@@ -544,11 +544,11 @@ export default function MinesPage() {
                 >
                   <div
                     ref={statsScrollRef}
-                    className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#2f4553] scrollbar-track-transparent"
+                    className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
                   >
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
-                        <tr className="bg-[#0f1923] text-gray-400 text-xs uppercase tracking-wider">
+                        <tr className="bg-bg-main text-gray-400 text-xs uppercase tracking-wider">
                           <th className="px-3 py-2.5 text-left">Step</th>
                           <th className="px-3 py-2.5 text-right">Multiplier</th>
                           <th className="px-3 py-2.5 text-right">Payout</th>
@@ -566,7 +566,7 @@ export default function MinesPage() {
                             <tr
                               key={row.step}
                               data-step={row.step}
-                              className={`border-b border-[#2f4553]/30 transition-all ${
+                              className={`border-b border-white/10/30 transition-all ${
                                 isCurrentStep
                                   ? "bg-emerald-500/15 border-emerald-500/40"
                                   : isCompleted
@@ -633,7 +633,7 @@ export default function MinesPage() {
                     </table>
                   </div>
                   {/* Summary footer */}
-                  <div className="px-4 py-2.5 bg-[#0f1923]/80 border-t border-[#2f4553]/50 flex items-center justify-between text-xs">
+                  <div className="px-4 py-2.5 bg-bg-main/80 border-t border-white/10/50 flex items-center justify-between text-xs">
                     <span className="text-gray-500">
                       {GRID_SIZE - mineCount} safe tiles | {mineCount} mines
                     </span>
@@ -655,7 +655,7 @@ export default function MinesPage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-[#1a2c38]/80 backdrop-blur-sm rounded-xl border border-[#2f4553]/50 p-4"
+                className="bg-bg-card/80 backdrop-blur-sm rounded-xl border border-white/10/50 p-4"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -664,15 +664,15 @@ export default function MinesPage() {
                   <span className="text-sm font-bold text-white">Provably Fair</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                  <div className="bg-bg-main/60 rounded-lg p-2">
                     <span className="text-gray-500">Server Seed Hash</span>
                     <div className="font-mono text-gray-300 truncate mt-1">{gameState.serverSeedHash}</div>
                   </div>
-                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                  <div className="bg-bg-main/60 rounded-lg p-2">
                     <span className="text-gray-500">Client Seed</span>
                     <div className="font-mono text-gray-300 truncate mt-1">{gameState.clientSeed}</div>
                   </div>
-                  <div className="bg-[#0f1923]/60 rounded-lg p-2">
+                  <div className="bg-bg-main/60 rounded-lg p-2">
                     <span className="text-gray-500">Nonce</span>
                     <div className="font-mono text-gray-300 mt-1">{gameState.nonce}</div>
                   </div>

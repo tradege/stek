@@ -42,87 +42,93 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   // ============================================
-  // SWAGGER / OPENAPI DOCUMENTATION
+  // SWAGGER / OPENAPI DOCUMENTATION (Only in non-production)
   // ============================================
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('STEK Platform API')
-    .setDescription(`
-## Multi-Tenant White-Label Casino Platform
+  const isProduction = process.env.NODE_ENV === 'production';
 
-### Authentication
-All protected endpoints require a Bearer JWT token in the Authorization header.
-The JWT contains the user's \`siteId\` for automatic tenant isolation.
+  if (!isProduction) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('STEK Platform API')
+      .setDescription(`
+  ## Multi-Tenant White-Label Casino Platform
 
-### Multi-Tenancy
-Every request is automatically scoped to a brand via:
-- **JWT Token**: Contains \`siteId\` from user registration
-- **X-Site-Id Header**: Optional override for admin operations
-- **Origin Domain**: Auto-resolved from request origin
+  ### Authentication
+  All protected endpoints require a Bearer JWT token in the Authorization header.
+  The JWT contains the user's \`siteId\` for automatic tenant isolation.
 
-### GGR Calculation
-\`\`\`
-GGR (Gross Gaming Revenue) = Total Wagered - Total Payouts
-NGR (Net Gaming Revenue)   = GGR - Affiliate Commissions - Bonuses
-RTP (Return to Player)     = (Total Payouts / Total Wagered) × 100%
-House Edge                 = 100% - RTP
-\`\`\`
+  ### Multi-Tenancy
+  Every request is automatically scoped to a brand via:
+  - **JWT Token**: Contains \`siteId\` from user registration
+  - **X-Site-Id Header**: Optional override for admin operations
+  - **Origin Domain**: Auto-resolved from request origin
 
-### Fraud Alert Statuses
-| Status | Description |
-|--------|-------------|
-| OPEN | New alert, needs review |
-| REVIEWED | Admin has seen it |
-| DISMISSED | False positive |
-| CONFIRMED | Confirmed fraud, action taken |
+  ### GGR Calculation
+  \`\`\`
+  GGR (Gross Gaming Revenue) = Total Wagered - Total Payouts
+  NGR (Net Gaming Revenue)   = GGR - Affiliate Commissions - Bonuses
+  RTP (Return to Player)     = (Total Payouts / Total Wagered) × 100%
+  House Edge                 = 100% - RTP
+  \`\`\`
 
-### Fraud Alert Types
-| Type | Trigger |
-|------|---------|
-| HIGH_WIN_RATE | >80% win rate over 50+ bets |
-| RAPID_BETTING | >100 bets in 1 hour |
-| LARGE_WITHDRAWAL | >$5,000 withdrawal |
-| SUSPICIOUS_RATIO | Withdrawals > 3× deposits |
-    `)
-    .setVersion('1.0.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
-    .addApiKey({ type: 'apiKey', name: 'X-Site-Id', in: 'header', description: 'Brand/Tenant identifier' }, 'X-Site-Id')
-    .addTag('Auth', 'User registration, login, and JWT management')
-    .addTag('Games', 'Dice, Crash, Mines, Plinko, Olympus game endpoints')
-    .addTag('Cashier', 'Wallet, deposits, withdrawals, and balance management')
-    .addTag('Admin Dashboard', 'GGR/NGR reports, user management, brand control')
-    .addTag('Brand Onboarding', 'Create, list, clone, and manage brands')
-    .addTag('Fraud Detection', 'Scan, alerts, and fraud management')
-    .addTag('Affiliate/MLM', 'Referral network, commissions, and leaderboard')
-    .addTag('Tenant', 'Brand configuration and theme management')
-    .addTag('System', 'Health checks and system status')
-    .build();
+  ### Fraud Alert Statuses
+  | Status | Description |
+  |--------|-------------|
+  | OPEN | New alert, needs review |
+  | REVIEWED | Admin has seen it |
+  | DISMISSED | False positive |
+  | CONFIRMED | Confirmed fraud, action taken |
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  // Add global x-site-id header parameter to all endpoints
-  for (const path of Object.values(document.paths || {})) {
-    for (const method of Object.values(path as any)) {
-      if (typeof method === 'object' && method !== null) {
-        (method as any).parameters = (method as any).parameters || [];
-        (method as any).parameters.push({
-          name: 'x-site-id',
-          in: 'header',
-          required: false,
-          description: 'Brand/Site ID for multi-tenant isolation. Auto-detected from domain if not provided.',
-          schema: { type: 'string', example: 'default-site-001' },
-        });
+  ### Fraud Alert Types
+  | Type | Trigger |
+  |------|---------|
+  | HIGH_WIN_RATE | >80% win rate over 50+ bets |
+  | RAPID_BETTING | >100 bets in 1 hour |
+ LARGE_WITHDRAWAL | >$5,000 withdrawal |
+  | SUSPICIOUS_RATIO | Withdrawals > 3× deposits |
+      `)
+      .setVersion('1.0.0')
+      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+      .addApiKey({ type: 'apiKey', name: 'X-Site-Id', in: 'header', description: 'Brand/Tenant identifier' }, 'X-Site-Id')
+      .addTag('Auth', 'User registration, login, and JWT management')
+      .addTag('Games', 'Dice, Crash, Mines, Plinko, Olympus game endpoints')
+      .addTag('Cashier', 'Wallet, deposits, withdrawals, and balance management')
+      .addTag('Admin Dashboard', 'GGR/NGR reports, user management, brand control')
+      .addTag('Brand Onboarding', 'Create, list, clone, and manage brands')
+      .addTag('Fraud Detection', 'Scan, alerts, and fraud management')
+      .addTag('Affiliate/MLM', 'Referral network, commissions, and leaderboard')
+      .addTag('Tenant', 'Brand configuration and theme magement')
+      .addTag('System', 'Health checks and system status')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    // Add global x-site-id header parameter to all endpoints
+    for (const path of Object.values(document.paths || {})) {
+      for (const method of Object.values(path as any)) {
+        if (typeof method === 'object' && method !== null) {
+          (method as any).parameters = (method as any).parameters || [];
+          (method as any).parameters.push({
+            name: 'x-site-id',
+            in: 'header',
+            required: false,
+            description: 'Brand/Site ID for multi-tenant isolation. Auto-detected from domain if not provided.',
+            schema: { type: 'string', example: 'default-site-001' },
+          });
+        }
       }
     }
+    SwaggerModule.setup('api/docs', app, document, {
+      customSiteTitle: 'STEK Platform API Docs',
+      customCss: '.swagger-ui .topbar { background-color: #1e1b4b; }',
+      swaggerOptions: {
+        persistAuthorization: true,
+        tagsSorter: 'alpha',
+        operationsSorter: 'alpha',
+      },
+    });
+    logger.log('📚 Swagger docs available at /api/docs');
+  } else {
+    logger.log('🔒 Swagger docs disabled in production');
   }
-  SwaggerModule.setup('api/docs', app, document, {
-    customSiteTitle: 'STEK Platform API Docs',
-    customCss: '.swagger-ui .topbar { background-color: #1e1b4b; }',
-    swaggerOptions: {
-      persistAuthorization: true,
-      tagsSorter: 'alpha',
-      operationsSorter: 'alpha',
-    },
-  });
-  logger.log('📚 Swagger docs available at /api/docs');
 
   // ============================================
   // DYNAMIC CORS
@@ -137,6 +143,7 @@ House Edge                 = 100% - RTP
     'https://marketedgepros.com', 'https://www.marketedgepros.com',
     'http://167-172-174-75.nip.io', 'http://167-172-174-75.nip.io:3000', 'http://167-172-174-75.nip.io:3001',
     'http://stakepro.167-172-174-75.sslip.io', 'http://lucky.167-172-174-75.sslip.io', 'http://ben.167-172-174-75.sslip.io',
+    'https://betworkss.com', 'https://www.betworkss.com', 'http://betworkss.com', 'http://www.betworkss.com',
   ];
 
   let dynamicOrigins: string[] = [];
@@ -206,7 +213,7 @@ House Edge                 = 100% - RTP
   await app.listen(port);
   
   logger.log(`🚀 STEK Platform running on port ${port}`);
-  logger.log(`📚 API Docs: http://localhost:${port}/api/docs`);
+  if (!isProduction) logger.log(`📚 API Docs: http://localhost:${port}/api/docs`);
   logger.log(`🔒 Security: Helmet + Dynamic CORS + Validation enabled`);
 }
 

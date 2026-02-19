@@ -94,6 +94,53 @@ class SocketEventBus extends EventEmitter {
     this.emit('crash:cashout', cashout);
   }
 
+
+  // ============================================
+  // VAULT (JACKPOT) EVENTS
+  // ============================================
+  /**
+   * Emit jackpot pool amount update (broadcast to all clients)
+   */
+  public emitVaultUpdate(data: { currentAmount: number }): void {
+    this.emit('vault:update', data);
+  }
+
+  /**
+   * Emit jackpot win event (broadcast to all clients)
+   */
+  public emitVaultWin(data: { userId: string; amount: number; gameType: string }): void {
+    this.emit('vault:win', data);
+  }
+
+  // ============================================
+  // LIVE RAKEBACK STREAM EVENTS
+  // ============================================
+  /**
+   * Emit when a player earns rakeback (private to user)
+   */
+  public emitRakebackEarned(data: {
+    userId: string;
+    amount: number;
+    gameType: string;
+    betAmount: number;
+    rakebackRate: number;
+  }): void {
+    this.emit('rakeback:earned', data);
+  }
+
+  /**
+   * Emit live feed of recent wins/rakeback (broadcast to all)
+   */
+  public emitLiveFeed(data: {
+    username: string;
+    type: 'win' | 'rakeback' | 'jackpot' | 'level_up';
+    amount: number;
+    gameType?: string;
+    message?: string;
+  }): void {
+    this.emit('live:feed', data);
+  }
+
   // ============================================
   // WALLET SERVICE EVENTS
   // ============================================

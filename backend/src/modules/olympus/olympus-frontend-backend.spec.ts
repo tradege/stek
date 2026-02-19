@@ -14,6 +14,8 @@
 
 import { OlympusService } from './olympus.service';
 import { BadRequestException } from '@nestjs/common';
+import { RewardPoolService } from '../reward-pool/reward-pool.service';
+import { CommissionProcessorService } from '../affiliate/commission-processor.service';
 
 // Mock Date.now to bypass rate limiting
 let mockTime = 1000000;
@@ -49,7 +51,7 @@ describe('🏛️ Olympus Frontend-Backend Consistency', () => {
       },
     };
 
-    service = new OlympusService(mockPrisma);
+    service = new OlympusService(mockPrisma, { updateUserStats: jest.fn().mockResolvedValue(undefined), checkLevelUp: jest.fn().mockResolvedValue({ leveledUp: false }), processRakeback: jest.fn().mockResolvedValue(undefined) } as any, { contributeToPool: jest.fn().mockResolvedValue(undefined) } as any, { processCommission: jest.fn().mockResolvedValue(undefined) } as any);
     if ((service as any).freeSpinSessions) {
       (service as any).freeSpinSessions.clear();
     }
